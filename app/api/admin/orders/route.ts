@@ -23,12 +23,22 @@ export async function POST(request:Request){
   const c=await database().connect();
   try{
    await c.query("BEGIN");
-   const duplicate=await c.query("SELECT id,created_by FROM orders WHERE store_id=$1 AND request_key=$2",[storeId,body.requestKey]);
-   if(duplicate.rows.length){await c.query("ROLLBACK");return duplicate.rows[0].created_by===member.account_id?response({id:duplicate.rows[0].id,repeated:true}):response({error:"So‘rov kaliti band"},409);}
+   const result=await c.query("INSERT INTO orders(store_id,source,created_by,request_key) VALUES($1,'staff',$2,$3) ON CONFLICT(store_id,request_key) DO NOTHING RETURNING id",[storeId,member.account_id,body.requestKey]);
+   if (!result.rowCount) {
+     const existing = await c.query(
+       `SELECT o.id, o.created_by, i.variant_id, i.quantity FROM orders o
+        LEFT JOIN order_items i ON i.store_id=o.store_id AND i.order_id=o.id
+        WHERE o.store_id=$1 AND o.request_key=$2 AND o.source='staff'`,
+       [storeId,body.requestKey]
+     );
+     const item = existing.rows[0];
+     const matches = existing.rowCount === 1 && item.created_by === member.account_id
+       && item.variant_id === body.variantId.toLowerCase() && item.quantity === body.quantity;
+     await c.query("ROLLBACK");
+     return matches ? response({id:item.id,repeated:true}) : response({error:"So‘rov kaliti band"},409);
+   }
    const variant=await c.query("SELECT id,quantity,price_uzs FROM variants WHERE store_id=$1 AND id=$2 AND active=true FOR UPDATE",[storeId,body.variantId]);
    if(!variant.rows.length||variant.rows[0].quantity<body.quantity){await c.query("ROLLBACK");return response({error:"Mahsulot yetarli emas"},409);}
-   const result=await c.query("INSERT INTO orders(store_id,source,created_by,request_key) VALUES($1,'staff',$2,$3) ON CONFLICT(store_id,request_key) DO NOTHING RETURNING id",[storeId,member.account_id,body.requestKey]);
-   if(!result.rows.length){await c.query("ROLLBACK");return response({error:"So‘rov takrorlandi. Buyurtmalarni yangilang."},409);}
    const id=result.rows[0].id;
    await c.query("INSERT INTO order_items(store_id,order_id,variant_id,quantity,unit_price_uzs) VALUES($1,$2,$3,$4,$5)",[storeId,id,body.variantId,body.quantity,variant.rows[0].price_uzs]);
    await c.query("INSERT INTO audit_events(store_id,actor_id,action,entity_type,entity_id) VALUES($1,$2,'request_created','order',$3)",[storeId,member.account_id,id]);

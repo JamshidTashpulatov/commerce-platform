@@ -57,7 +57,12 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal((await call("/api/admin/variants","GET",undefined,seller)).data.items[0].id,variant);
   const body={variantId:variant,quantity:2,requestKey:randomUUID()};
   assert.equal((await call("/api/admin/orders","POST",body,seller,"https://invalid.example")).status,403);
-  const created=await call("/api/admin/orders","POST",body,seller);
+  const attempts = await Promise.all([1,2].map(()=>call("/api/admin/orders","POST",body,seller)));
+  assert.deepEqual(attempts.map(r=>r.status).sort(),[200,201]);
+  assert.equal(attempts[0].data.id,attempts[1].data.id);
+  assert.equal((await call("/api/admin/orders","POST",{...body,quantity:1},seller)).status,409);
+  assert.equal((await call("/api/admin/orders","POST",body,admin)).status,409);
+  const created=attempts.find(r=>r.status===201);
   assert.equal(created.status,201);const id=created.data.id;const path="/api/admin/orders/"+id;
   assert.equal(await stock(),3);
   const repeated=await call("/api/admin/orders","POST",body,seller);assert.equal(repeated.status,200);assert.equal(repeated.data.id,id);
