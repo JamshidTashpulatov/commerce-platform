@@ -27,7 +27,7 @@ export async function GET(request:Request){
        ORDER BY o.created_at DESC,o.id DESC LIMIT 101
      )
      SELECT o.id,o.source,o.request_status,o.sale_status,o.fulfillment_status,o.revision,
-       o.currency,o.created_at,COALESCE((
+       o.currency,o.created_at,(SELECT w.reference FROM website_checkouts w WHERE w.store_id=o.store_id AND w.id=o.website_checkout_id) AS website_reference,COALESCE((
          SELECT SUM(i.unit_price_uzs::numeric*i.quantity) FROM order_items i
          WHERE i.store_id=o.store_id AND i.order_id=o.id
        ),0)::text AS total_uzs FROM page o ORDER BY o.created_at DESC,o.id DESC`,
