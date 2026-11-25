@@ -27,7 +27,7 @@ export default function StaffOrderDetails(){
  if(loading)return <p role="status">Buyurtma yuklanmoqda…</p>;
  if(!detail)return <><Link href="/staff">← Buyurtmalar</Link><p role="alert">{error||"Buyurtma topilmadi"}</p><button className="secondary" onClick={refresh}>Qayta yuklash</button></>;
  const o=detail.order;
- const total=detail.items.reduce((sum,item)=>sum+BigInt(item.unit_price_uzs)*BigInt(item.quantity),0n);
+ const total=detail.items.reduce((sum,item)=>sum+BigInt(item.unit_price_uzs)*BigInt(item.quantity),BigInt(0));
  return <><Link href="/staff" className="text-button">← Buyurtmalar</Link><div className="section-head"><div><p className="eyebrow">BUYURTMA TAFSILOTLARI</p><h1>{o.id.slice(0,8)}</h1><p className="muted">{formatDate(o.created_at)} · {sourceLabels[o.source]}</p></div><button className="secondary" disabled={busy} onClick={refresh}>Yangilash</button></div>
  <div className="metrics"><div className="metric"><span>Buyurtma</span><strong>{requestLabels[o.request_status]}</strong></div><div className="metric"><span>Sotuv</span><strong>{saleLabels[o.sale_status]}</strong></div><div className="metric"><span>Yetkazib berish</span><strong>{deliveryLabels[o.fulfillment_status]}</strong></div></div>
  {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
