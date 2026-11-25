@@ -230,6 +230,27 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal((await call("/api/admin/finance","GET",undefined,admin)).data.supplier_invoice_balance_uzs,"1000");
   const correctedSupplier=await call(cashPath,"GET",undefined,admin);
   assert.equal(correctedSupplier.data.groups.find(g=>g.kind==="supplier_payment_reversal").amount_uzs,"400");
+  const inventoryPath="/api/admin/inventory";
+  const beforeStock=await stock();
+  const stockReceipt={invoiceId:invoice.data.id,variantId:variant,quantity:2,unitCost:"300",date,key:randomUUID()};
+  assert.equal((await call(inventoryPath,"GET",undefined,investor)).status,403);
+  assert.equal((await call(inventoryPath,"POST",stockReceipt,seller)).status,403);
+  assert.equal((await call(inventoryPath,"POST",{...stockReceipt,quantity:4},admin)).status,409);
+  assert.equal(await stock(),beforeStock);
+  const stockPosted=await call(inventoryPath,"POST",stockReceipt,admin);
+  assert.equal(stockPosted.status,201);
+  assert.equal((await call(inventoryPath,"POST",stockReceipt,admin)).status,200);
+  assert.equal(await stock(),beforeStock+2);
+  const inventoryReport=await call(inventoryPath,"GET",undefined,admin);
+  assert.equal(inventoryReport.status,200);
+  assert.equal(inventoryReport.data.invoices.find(i=>i.id===invoice.data.id).received_uzs,"600");
+  assert.equal(inventoryReport.data.invoices.find(i=>i.id===invoice.data.id).unreceived_uzs,"400");
+  assert.equal((await call(inventoryPath,"POST",{...stockReceipt,key:randomUUID()},admin)).status,409);
+  assert.equal((await call(inventoryPath,"POST",{...stockReceipt,quantity:1,unitCost:"400",key:randomUUID()},admin)).status,201);
+  assert.equal(await stock(),beforeStock+3);
+  assert.equal((await call("/api/admin/finance","GET",undefined,admin)).data.supplier_invoice_balance_uzs,"1000");
+  const afterStockCash=await call(cashPath,"GET",undefined,admin);
+  assert.equal(afterStockCash.data.closing_uzs,correctedSupplier.data.closing_uzs);
 
 
  }finally{await pool.end();}
