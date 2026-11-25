@@ -1,0 +1,20 @@
+:root {
+  color-scheme: light;
+  --surface: #f5f5f7;
+  --text: #171719;
+  --muted: #626268;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.shell { max-width: 1120px; margin-inline: auto; padding: 80px 24px; }
+.eyebrow { font-size: .8125rem; font-weight: 600; letter-spacing: .05em; color: var(--muted); }
+h1 { font-size: clamp(2rem, 6vw, 4rem); line-height: 1.1; letter-spacing: -.02em; text-wrap: balance; margin-block: 16px; }
+.description { max-width: 60ch; line-height: 1.6; color: var(--muted); text-wrap: pretty; }
+:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
