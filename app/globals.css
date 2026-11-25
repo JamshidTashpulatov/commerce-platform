@@ -348,7 +348,7 @@ html.sf-locked { overflow: hidden; }
 
 /* Smooth in-page jumps where Lenis is not running (touch screens). */
 @media (prefers-reduced-motion: no-preference) {
-  html:has(.sf):not(.lenis) { scroll-behavior: smooth; }
+  html.sf-smooth:not(.lenis) { scroll-behavior: smooth; }
 }
 
 /* Storefront: everything clickable shows a pointer (Tailwind's preflight resets buttons to the
