@@ -1,6 +1,7 @@
 "use client";
 import {useState} from "react";
 import Link from "next/link";
+import {RequestInbox} from "../../components/request-inbox";
 import {FinancePreview} from "../../components/finance-preview";
 import {money,products} from "../../lib/catalog";
 const orders=[
@@ -18,6 +19,7 @@ export default function Dashboard(){
  const filtered=orders.filter(o=>(status==="Barchasi"||o.status===status)&&(method==="Barchasi"||o.method===method)&&(!date||o.date===date)&&(o.id+" "+o.product).toLowerCase().includes(q.toLowerCase()));
  const settled=filtered.filter(o=>o.status==="Yakunlangan");
  return <div className="dashboard"><aside className="sidebar"><Link href="/" className="brand">Store.</Link>{sections.map(t=><button key={t} aria-pressed={tab===t} onClick={()=>setTab(t)}>{t}</button>)}</aside><main className="dash-content"><div><p className="eyebrow">DEMO / PUBLIC PREVIEW</p><h1>{tab}</h1><p className="muted">Faqat namuna ma’lumotlari. Real hisoblar yoki mijoz ma’lumotlari mavjud emas.</p></div>
+ {["Overview","Orders"].includes(tab)&&<RequestInbox/>}
  {["Overview","Orders","Sales"].includes(tab)?<><div className="filters"><label>Sana<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label><label>Holat<select value={status} onChange={e=>setStatus(e.target.value)}>{["Barchasi","Yakunlangan","Kutilmoqda"].map(s=><option key={s}>{s}</option>)}</select></label><label>To‘lov turi<select value={method} onChange={e=>setMethod(e.target.value)}>{["Barchasi","Naqd","Nasiya"].map(s=><option key={s}>{s}</option>)}</select></label><label>Qidirish<input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buyurtma yoki mahsulot"/></label></div>
  <div className="metrics"><div className="metric"><span>Buyurtmalar</span><strong>{filtered.length}</strong></div><div className="metric"><span>Jami buyurtma qiymati</span><strong>{money(filtered.reduce((s,o)=>s+o.amount,0))}</strong></div><div className="metric"><span>Yakunlangan sotuvlar</span><strong>{money(settled.reduce((s,o)=>s+o.amount,0))}</strong></div><div className="metric"><span>Kutilmoqda</span><strong>{filtered.length-settled.length}</strong></div></div>
  {tab==="Overview"&&<section className="surface"><h3>Sotuvlar bo‘yicha taqsimot</h3><div className="bars">{["Naqd","Nasiya"].map(m=>{const v=filtered.filter(o=>o.method===m).length;return <div className="bar-row" key={m}><span>{m}: {v}</span><div className="bar-track"><div className="bar-fill" style={{width:(filtered.length?v/filtered.length*100:0)+"%"}}/></div></div>})}</div></section>}
