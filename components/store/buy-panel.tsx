@@ -94,7 +94,7 @@ function OptionSection({group,skus,selected,onPick}:{group:OptionGroup;skus:Stor
     </div>
   </section>;
   return <section className="sf-option" aria-labelledby={titleId}>
-    <h2 className="sf-option-title" id={titleId}>{group.name}. <span>{group.affectsPrice?"Narx tanlovga qarab o‘zgaradi.":"Kerakli turini tanlang."}</span></h2>
+    <h2 className="sf-option-title" id={titleId}>{group.name}. <span>{group.affectsPrice?"Narxga ta’sir qiladi.":"Kerakli turini tanlang."}</span></h2>
     <div className="sf-tiles-pick" role="radiogroup" aria-labelledby={titleId}>
       {values.map(v=><button type="button" role="radio" key={v.label} aria-checked={v.label===chosen} disabled={!v.exists} onClick={()=>onPick(v.label)}>
         <span className="sf-pick-label">{v.label}</span>
