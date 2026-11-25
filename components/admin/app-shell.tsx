@@ -43,6 +43,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { brandName } from "@/lib/brand";
 import { staffFetch } from "@/lib/staff-client";
+import { UzbekValidation } from "./uzbek-validation";
 import { BrandMark } from "@/components/brand-mark";
 import { RoleProvider, isAdminRole, roleLabels, type StaffRole } from "./kit";
 
@@ -211,6 +212,7 @@ export function AppShell({ role, children }: { role: StaffRole; children: ReactN
             </header>
             <main className="mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col gap-6 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-6">{children}</main>
           </SidebarInset>
+          <UzbekValidation />
           <Toaster theme="light" position="top-center" />
         </SidebarProvider>
       </TooltipProvider>

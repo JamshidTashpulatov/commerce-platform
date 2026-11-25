@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
-import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, PageHeader, RefreshButton, Section, SubmitButton, SummaryList, TableFrame, TextField, errorText, isAmount } from "@/components/admin/kit";
+import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, PageHeader, RefreshButton, Section, StatusBadge, SubmitButton, SummaryList, TableFrame, TextField, errorText, isAmount } from "@/components/admin/kit";
 import { PeerPortfolioSetting } from "@/components/admin/peer-portfolio-setting";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,7 +13,10 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { staffFetch } from "@/lib/staff-client";
 
-type Investor = { account_id: string; name: string; contributed: string; withdrawn: string; distributed: string; allocated: string; returned: string; outstanding: string; available: string };
+type Investor = { account_id: string; name: string; contributed: string; withdrawn: string; distributed: string; allocated: string; returned: string; outstanding: string; available: string; phone_masked: string | null; sign_in: "linked" | "pending" | "none"; by_phone: boolean };
+const formatLocalPhone = (d: string) => [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].filter(Boolean).join(" ");
+const signInLabels = { linked: "Telegram ulangan", pending: "Tasdiq kutilmoqda", none: "Ulanmagan" } as const;
+const signInTone = { linked: "success", pending: "warning", none: "neutral" } as const;
 const labels: Record<string, string> = { contribution: "Kapital kiritilishi", withdrawal: "Kapital qaytarilishi", distribution: "Foyda taqsimoti qaydi" };
 
 export default function Investors() {
@@ -28,7 +31,7 @@ export default function Investors() {
   const [confirm, setConfirm] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
-  const [telegramId, setTelegramId] = useState("");
+  const [phone, setPhone] = useState("");
   const [createError, setCreateError] = useState("");
   const key = useRef("");
   const pending = useRef(false);
@@ -80,9 +83,9 @@ export default function Investors() {
     setBusy(true);
     setCreateError("");
     try {
-      await staffFetch("/api/admin/investors/accounts", "POST", { name, telegramId });
+      await staffFetch("/api/admin/investors/accounts", "POST", { name, phone: "+998" + phoneDigits });
       setName("");
-      setTelegramId("");
+      setPhone("");
       setCreateOpen(false);
       toast.success("Investor hisobi yaratildi.");
       await load();
@@ -93,6 +96,8 @@ export default function Investors() {
       setBusy(false);
     }
   }
+  // Nine digits after +998; a pasted full number with the country code is accepted too.
+  const phoneDigits = phone.replace(/[^0-9]/g, "").replace(/^998(?=\d{9})/, "").slice(0, 9);
   const touch = () => {
     key.current = "";
   };
@@ -126,6 +131,8 @@ export default function Investors() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Investor</TableHead>
+                      <TableHead>Telefon</TableHead>
+                      <TableHead>Kirish</TableHead>
                       <TableHead className="text-right">Joriy asosiy kapital</TableHead>
                       <TableHead className="text-right">Kiritilgan</TableHead>
                       <TableHead className="text-right">Yechilgan</TableHead>
@@ -143,6 +150,10 @@ export default function Investors() {
                           <Link href={"/staff/investors/" + i.account_id} className="font-medium underline underline-offset-4" aria-label={i.name + " hisoboti"}>
                             {i.name}
                           </Link>
+                        </TableCell>
+                        <TableCell className="tabular-nums">{i.phone_masked ?? "—"}</TableCell>
+                        <TableCell>
+                          <StatusBadge tone={signInTone[i.sign_in]}>{signInLabels[i.sign_in]}</StatusBadge>
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           <Money value={BigInt(i.contributed) - BigInt(i.withdrawn)} />
@@ -282,8 +293,15 @@ export default function Investors() {
             }}
           >
             <TextField label="Investor nomi">{fieldId => <Input id={fieldId} name="name" required minLength={2} maxLength={120} value={name} disabled={busy} onChange={e => setName(e.target.value)} />}</TextField>
-            <TextField label="Telegram ID" description="Faqat raqamlar. Hisob egasi shu Telegram foydalanuvchisi ekanini tekshiring.">
-              {fieldId => <Input id={fieldId} name="telegramId" required inputMode="numeric" maxLength={16} value={telegramId} disabled={busy} onChange={e => setTelegramId(e.target.value.replace(/[^0-9]/g, ""))} />}
+            <TextField label="Telefon raqam" description="Investor Telegram mini ilovasiga birinchi kirganda shu raqamni Telegram orqali tasdiqlaydi." error={phoneDigits.length > 0 && phoneDigits.length < 9 ? "9 ta raqam kiriting: operator kodi va nomer." : undefined}>
+              {fieldId => (
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-muted-foreground" aria-hidden="true">
+                    +998
+                  </span>
+                  <Input id={fieldId} name="phone" type="tel" inputMode="numeric" autoComplete="off" required className="pl-12 tabular-nums" placeholder="90 123 45 67" value={formatLocalPhone(phoneDigits)} disabled={busy} onChange={e => setPhone(e.target.value)} />
+                </div>
+              )}
             </TextField>
             <InlineError message={createError} />
           </form>
@@ -291,7 +309,7 @@ export default function Investors() {
             <Button type="button" variant="outline" disabled={busy} onClick={() => setCreateOpen(false)}>
               Ortga
             </Button>
-            <SubmitButton form="investor-create" busy={busy} disabled={name.trim().length < 2 || !telegramId}>
+            <SubmitButton form="investor-create" busy={busy} disabled={name.trim().length < 2 || phoneDigits.length !== 9}>
               Hisob yaratish
             </SubmitButton>
           </DialogFooter>
