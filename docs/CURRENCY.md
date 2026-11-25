@@ -33,6 +33,20 @@ DATABASE_URL=... STORE_ID=... node scripts/convert-prices-to-usd.mjs --rate=1265
 
 Tested on a copy of the local catalog: 475 variants converted, a second run refused, and a run with the marker removed refused on the dollar check.
 
+Jamik gave the rate on 2026-11-25: **1 $ = 12 500 so'm** (`--rate=12500`). The dry run also prints the prices that needed rounding, with before and after, and the order lines with what the rate would give them. On the local catalog every one of the 475 variant prices divides exactly, so nothing is rounded.
+
+### Order of the release
+
+The live site must never show so'm numbers with a `$` sign, or dollar numbers as so'm. So the dollar display and the conversion go out together, in one maintenance window:
+
+1. Jamik reviews the production dry run (`--rate=12500`, no `--apply`) and says yes.
+2. Merge the dollar-display PR. Do not deploy it yet.
+3. Run the script with `--apply` on production.
+4. Immediately deploy the latest `origin/main`.
+5. Check the home page, a product and the cart.
+
+Between steps 3 and 4 the old site shows dollar numbers with "so‘m". Keep that gap to the minute or two the deploy takes, or switch checkout off (`WEBSITE_CHECKOUT_ENABLED`) for the window. If the deploy fails, the script's audit event shows the conversion ran; do not run it again.
+
 ### The two test orders in production
 
 At the time of writing, production holds two test orders whose `order_items.unit_price_uzs` are in so'm. There are no capital events, receipts or other amounts. Options, for Jamik to choose before the conversion runs:

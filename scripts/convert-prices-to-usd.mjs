@@ -80,6 +80,9 @@ async function main(){
     const plan=rows.map(r=>({...r,exact:Number(r.price)/rate,after:retailDollars(r.price,rate)}));
     console.log("Variant prices");
     console.table(plan.map(r=>({product:r.name.slice(0,32),sku:r.sku.slice(0,22),active:r.active,"before (so'm)":fmt(r.price),"exact $":r.exact.toFixed(2),"after $":fmt(r.after)})));
+    const rounded=plan.filter(r=>r.after!==r.exact);
+    console.log(rounded.length?`\nPrices that needed rounding (${rounded.length} of ${plan.length}; the rest divide exactly):`:`\nEvery price divides exactly at this rate; nothing was rounded (${plan.length} variants).`);
+    if(rounded.length)console.table(rounded.map(r=>({product:r.name.slice(0,32),sku:r.sku.slice(0,22),"before (so'm)":fmt(r.price),"exact $":r.exact.toFixed(2),"after $":fmt(r.after),"diff $":(r.after-r.exact).toFixed(2)})));
 
     const groups=(await client.query("SELECT name,option_groups FROM products WHERE store_id=$1",[STORE_ID])).rows
       .map(r=>({name:r.name,numbers:priceLikeNumbers(r.option_groups)})).filter(r=>r.numbers.length);
@@ -98,6 +101,15 @@ async function main(){
     }
     console.log(others.length?"\nOther tables holding so'm amounts (NOT converted, need a decision):":"\nNo other table holds amounts for this store.");
     if(others.length)console.table(others);
+    const orders=(await client.query(`SELECT o.id,o.source,o.status,o.request_status,o.created_at,p.name,i.quantity,i.unit_price_uzs::text AS unit
+      FROM order_items i JOIN orders o ON o.store_id=i.store_id AND o.id=i.order_id
+      LEFT JOIN variants v ON v.store_id=i.store_id AND v.id=i.variant_id LEFT JOIN products p ON p.store_id=v.store_id AND p.id=v.product_id
+      WHERE i.store_id=$1 ORDER BY o.created_at`,[STORE_ID])).rows;
+    if(orders.length){
+      console.log("\nOrder lines (NOT converted; shown with what the rate would give):");
+      console.table(orders.map(o=>({order:o.id.slice(0,8),created:o.created_at.toISOString().slice(0,10),source:o.source,status:o.status+"/"+o.request_status,
+        product:(o.name??"?").slice(0,28),qty:o.quantity,"unit (so'm)":fmt(o.unit),"at rate $":(Number(o.unit)/rate).toFixed(2)})));
+    }
 
     if(!apply){await client.query("ROLLBACK");console.log("\nDry run: nothing written. Add --apply to convert the variant prices above.");return;}
     let changed=0;
