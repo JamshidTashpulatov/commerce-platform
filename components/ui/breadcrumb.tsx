@@ -9,7 +9,7 @@ function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
     <nav
       aria-label="breadcrumb"
       data-slot="breadcrumb"
-      className={cn(className)}
+      className={className}
       {...props}
     />
   )
@@ -20,7 +20,7 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
     <ol
       data-slot="breadcrumb-list"
       className={cn(
-        "flex flex-wrap items-center gap-1.5 text-sm wrap-break-word text-muted-foreground",
+        "flex flex-wrap items-center gap-2 text-sm wrap-break-word text-muted-foreground",
         className
       )}
       {...props}
@@ -32,7 +32,10 @@ function BreadcrumbItem({ className, ...props }: React.ComponentProps<"li">) {
   return (
     <li
       data-slot="breadcrumb-item"
-      className={cn("inline-flex items-center gap-1", className)}
+      className={cn(
+        "inline-flex items-center gap-1.5 has-data-[slot=breadcrumb-ellipsis]:-my-0.5 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
       {...props}
     />
   )
@@ -81,12 +84,13 @@ function BreadcrumbSeparator({
       data-slot="breadcrumb-separator"
       role="presentation"
       aria-hidden="true"
-      className={cn("[&>svg]:size-3.5", className)}
+      className={cn(
+        "inline-flex min-w-4 items-center justify-center text-2xs font-medium [&>svg]:size-4",
+        className
+      )}
       {...props}
     >
-      {children ?? (
-        <ChevronRightIcon />
-      )}
+      {children ?? <ChevronRightIcon className="rtl:-scale-x-100" />}
     </li>
   )
 }
@@ -101,13 +105,12 @@ function BreadcrumbEllipsis({
       role="presentation"
       aria-hidden="true"
       className={cn(
-        "flex size-5 items-center justify-center [&>svg]:size-4",
+        "flex size-6 items-center justify-center text-muted-foreground transition-colors group-hover/button:text-foreground in-aria-expanded:text-foreground",
         className
       )}
       {...props}
     >
-      <MoreHorizontalIcon
-      />
+      <MoreHorizontalIcon className="size-4" />
       <span className="sr-only">More</span>
     </span>
   )
