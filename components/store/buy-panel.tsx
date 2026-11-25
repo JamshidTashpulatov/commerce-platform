@@ -20,7 +20,7 @@ function closest(skus:StoreVariant[],current:StoreVariant,group:string,value:str
 
 const sectionTitle="mb-5 text-[21px] leading-[1.19] font-semibold tracking-[0.011em] tablet:text-2xl tablet:leading-[1.17]";
 
-export function BuyPanel({product}:{product:StoreProductDetail}){
+export function BuyPanel({product,demo=false}:{product:StoreProductDetail;demo?:boolean}){
   const {skus,groups}=product;
   const [selectedId,setSelectedId]=useState(()=>(skus.find(v=>v.inStock)??skus[0]).id);
   const selected=skus.find(v=>v.id===selectedId)??skus[0];
@@ -65,6 +65,7 @@ export function BuyPanel({product}:{product:StoreProductDetail}){
       <section className={cn("flex flex-col rounded-[18px] bg-sf-alt p-6 tablet:p-7",(groups.length||skus.length>1)&&"mt-10")} aria-label="Tanlangan mahsulot">
         <p className="text-sm leading-5 text-sf-ink-2">{summary}</p>
         <p className="mt-2 text-[28px] leading-[1.14] font-semibold tracking-[0.007em] tabular-nums" aria-live="polite">{soum(selected.price)}</p>
+        {demo&&<p className="mt-1 text-xs text-sf-ink-3">Namuna narx. Sotuvchi tasdiqlaydi.</p>}
         <Availability inStock={selected.inStock} long className="mt-3 text-sm leading-5 [&>span:first-child]:mt-[7px]"/>
         <div className="mt-6 flex flex-col gap-3">
           <a className={pill({className:"w-full gap-2"})} href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer">

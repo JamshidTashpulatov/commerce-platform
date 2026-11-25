@@ -64,3 +64,29 @@ export function sortCategories(names:string[]){
   return [...names].sort((a,b)=>rank(a)-rank(b)||a.localeCompare(b,"uz"));
 }
 
+
+export type DescriptionParts={body:string;config:{name:string;values:string}[];demoNote:string|null};
+/**
+ * Catalog descriptions end with an optional "Konfiguratsiya: Rang — A, B. Xotira — C."
+ * listing and a demo notice. The storefront shows the listing only when there are
+ * no option pickers saying the same thing, and the notice as a separate small note.
+ */
+export function splitDescription(text:string):DescriptionParts{
+  let rest=text.trim();
+  let demoNote:string|null=null;
+  const demo=/\s*Demo mahsulot\b[\s\S]*$/i.exec(rest);
+  if(demo){
+    demoNote=demo[0].trim().replace(/^Demo mahsulot\s*[·.]\s*/i,"").replace(/^./,c=>c.toUpperCase());
+    rest=rest.slice(0,demo.index).trim();
+  }
+  const config:{name:string;values:string}[]=[];
+  const cfg=/\s*Konfiguratsiya:\s*([\s\S]*)$/i.exec(rest);
+  if(cfg){
+    for(const part of cfg[1].split(/\.\s+(?=[^.]+—)/)){
+      const [name,...values]=part.replace(/\.$/,"").split("—");
+      if(name&&values.length)config.push({name:name.trim(),values:values.join("—").trim()});
+    }
+    rest=rest.slice(0,cfg.index).trim();
+  }
+  return {body:rest,config,demoNote:demoNote?(demoNote.endsWith(".")?demoNote:demoNote+"."):null};
+}

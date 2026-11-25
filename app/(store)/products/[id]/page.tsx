@@ -5,7 +5,8 @@ import {cache} from "react";
 import {BuyPanel} from "../../../../components/store/buy-panel";
 import {pill,wrap} from "../../../../components/store/bits";
 import {getProduct} from "../../../../lib/server/storefront";
-import {catalogHref,fromSoum,soum} from "../../../../lib/storefront";
+import {InfoIcon} from "lucide-react";
+import {catalogHref,fromSoum,soum,splitDescription} from "../../../../lib/storefront";
 
 export const dynamic="force-dynamic";
 const load=cache(async(id:string)=>{try{return await getProduct(id);}catch{return undefined;}});
@@ -24,16 +25,27 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
     <Link className={pill()} href="/catalog">Katalogga qaytish</Link>
   </section>;
   const oneprice=new Set(product.skus.map(s=>s.price)).size===1;
+  const about=splitDescription(product.description);
+  // The option pickers already list the configurations; repeat them only when there are none.
+  const config=product.groups.length?[]:about.config;
   return <div className={wrap+" pb-16"}>
     <header className="flex flex-col gap-2 pt-8 pb-8 tablet:pt-14 tablet:pb-12">
       <Link className="self-start text-sm text-sf-link hover:underline" href={catalogHref(product.category)}>{product.category}</Link>
       <h1 className="text-[32px] leading-[1.125] font-semibold tracking-[0.004em] tablet:text-5xl tablet:leading-[1.08] tablet:tracking-[-0.003em]">{product.name}</h1>
       <p className="text-[17px] tablet:text-[19px]">{oneprice?soum(product.fromPrice):fromSoum(product.fromPrice)}</p>
     </header>
-    <BuyPanel product={product}/>
-    {product.description&&<section className="mt-20 max-w-[692px] border-t border-sf-line pt-12" aria-labelledby="about-title">
+    <BuyPanel product={product} demo={!!about.demoNote}/>
+    {(about.body||config.length>0||about.demoNote)&&<section className="mt-20 max-w-[692px] border-t border-sf-line pt-12" aria-labelledby="about-title">
       <h2 id="about-title" className="mb-4 text-2xl leading-[1.17] font-semibold">Mahsulot haqida.</h2>
-      <p className="whitespace-pre-line text-sf-ink-2">{product.description}</p>
+      {about.body&&<p className="text-[17px] leading-[1.6] whitespace-pre-line text-sf-ink-2">{about.body}</p>}
+      {config.length>0&&<dl className="mt-6 divide-y divide-sf-line/70 border-y border-sf-line/70">
+        {config.map(c=><div key={c.name} className="grid gap-1 py-3.5 tablet:grid-cols-[180px_1fr] tablet:gap-6">
+          <dt className="text-sm font-semibold">{c.name}</dt><dd className="text-sm text-sf-ink-2">{c.values}</dd>
+        </div>)}
+      </dl>}
+      {about.demoNote&&<p className="mt-6 flex items-start gap-2.5 rounded-xl bg-sf-alt px-4 py-3 text-xs leading-[1.5] text-sf-ink-2">
+        <InfoIcon className="mt-px size-4 shrink-0" aria-hidden="true"/><span><strong className="font-semibold text-sf-ink">Demo mahsulot.</strong> {about.demoNote}</span>
+      </p>}
     </section>}
   </div>;
 }
