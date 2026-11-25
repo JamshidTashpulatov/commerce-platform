@@ -1,6 +1,8 @@
 import {NextResponse} from "next/server";
 import {database,configuredStoreId} from "../../../../../../lib/server/db";
 import {requireStoreRole} from "../../../../../../lib/server/auth";
+import {priceInstallment} from "../../../../../../lib/installment-pricing";
+import {installmentPolicy} from "../../../../../../lib/server/installment-policy";
 import {isUuid,sameOrigin,smallJson,privateHeaders} from "../../../../../../lib/server/http";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -17,14 +19,14 @@ export async function GET(_request:Request,{params}:Ctx){
  await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
  const o=await c.query("SELECT id FROM orders WHERE store_id=$1 AND id=$2",[store,id]);
  if(!o.rowCount){await c.query("ROLLBACK");return reply({error:"Buyurtma topilmadi"},404);}
- const t=await c.query("SELECT agreed_total_uzs::text,payment_type,initial_due_uzs::text FROM order_payment_terms WHERE store_id=$1 AND order_id=$2",[store,id]);
+ const t=await c.query("SELECT agreed_total_uzs::text,payment_type,initial_due_uzs::text,cost_uzs::text,financed_principal_uzs::text,markup_uzs::text,term_months,minimum_initial_bps,monthly_markup_bps FROM order_payment_terms WHERE store_id=$1 AND order_id=$2",[store,id]);
  const r=await c.query("SELECT r.id,r.amount_uzs::text,r.kind,r.method,r.received_on::text,r.created_at,r.recorded_by,(v.receipt_id IS NOT NULL) AS reversed FROM order_manual_receipts r LEFT JOIN order_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE r.store_id=$1 AND r.order_id=$2 ORDER BY r.created_at DESC",[store,id]);
  const scheduled=await c.query("SELECT COALESCE(SUM(r.amount_uzs) FILTER(WHERE v.receipt_id IS NULL),0)::text AS paid FROM installment_contracts c JOIN installment_schedule s ON s.store_id=c.store_id AND s.contract_id=c.id JOIN installment_receipts r ON r.store_id=s.store_id AND r.schedule_id=s.id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE c.store_id=$1 AND c.order_id=$2 AND c.status IN ('active','settled')",[store,id]);
  const contract=await c.query("SELECT 1 FROM installment_contracts WHERE store_id=$1 AND order_id=$2 AND status IN ('active','settled')",[store,id]);
  await c.query("COMMIT");
  const received=r.rows.reduce((sum,row)=>sum+(row.reversed?BigInt(0):BigInt(row.amount_uzs)),BigInt(0));
  const combined=received+BigInt(scheduled.rows[0].paid);
- return reply({terms:t.rows[0]??null,receipts:r.rows,manual_received_uzs:received.toString(),received_uzs:combined.toString(),remaining_uzs:t.rows[0]?(BigInt(t.rows[0].agreed_total_uzs)-combined).toString():null,has_schedule:!!contract.rowCount});
+ return reply({terms:t.rows[0]??null,receipts:r.rows,manual_received_uzs:received.toString(),received_uzs:combined.toString(),remaining_uzs:t.rows[0]?(BigInt(t.rows[0].agreed_total_uzs)-combined).toString():null,has_schedule:!!contract.rowCount,pricing_policy:installmentPolicy()});
  }catch{await c.query("ROLLBACK");return reply({error:"To‘lovlarni yuklab bo‘lmadi"},503);}finally{c.release();}
  }catch{return reply({error:"Xizmat vaqtincha ishlamayapti"},503);}
 }
@@ -34,7 +36,11 @@ export async function POST(request:Request,{params}:Ctx){
  if(!isUuid(id)||!b)return reply({error:"Ma’lumotlarni tekshiring"},400);
  const action=b.action;
  if(action==="terms"){
-  if(!amount(b.total)||BigInt(b.total)<=BigInt(0)||!amount(b.initial)||BigInt(b.initial)>BigInt(b.total)||!["cash","installment"].includes(String(b.type))||(b.type==="cash"?b.initial!=="0":BigInt(b.initial)<=BigInt(0)))return reply({error:"Kelishilgan summalarni tekshiring"},400);
+  if(b.type==="cash"){
+   if(!amount(b.total)||BigInt(b.total)<=BigInt(0)||b.initial!=="0")return reply({error:"Kelishilgan summani tekshiring"},400);
+  }else if(b.type==="installment"){
+   if(!amount(b.cost)||!amount(b.initial)||typeof b.months!=="number"||!Number.isSafeInteger(b.months))return reply({error:"Tan narxi, boshlang‘ich to‘lov va muddatni tekshiring"},400);
+  }else return reply({error:"To‘lov turini tanlang"},400);
  }else if(action==="receipt"){
   if(!amount(b.amount)||BigInt(b.amount)<=BigInt(0)||!isUuid(b.key)||!validDate(b.date)||!["cash","transfer","other"].includes(String(b.method)))return reply({error:"To‘lov ma’lumotlarini tekshiring"},400);
  }else if(action==="reverse"){
@@ -59,7 +65,12 @@ export async function POST(request:Request,{params}:Ctx){
   if(existing.rowCount)return await fail("To‘lov qayd etilgan. Shartlarni o‘zgartirish bloklangan.");
   const contract=await c.query("SELECT 1 FROM installment_contracts WHERE store_id=$1 AND order_id=$2",[store,id]);
   if(contract.rowCount)return await fail("Nasiya shartnomasi mavjud");
-  await c.query("INSERT INTO order_payment_terms(store_id,order_id,agreed_total_uzs,payment_type,initial_due_uzs) VALUES($1,$2,$3,$4,$5) ON CONFLICT(store_id,order_id) DO UPDATE SET agreed_total_uzs=EXCLUDED.agreed_total_uzs,payment_type=EXCLUDED.payment_type,initial_due_uzs=EXCLUDED.initial_due_uzs",[store,id,b.total,b.type,b.initial]);
+  let quote:ReturnType<typeof priceInstallment>|null=null;
+  if(b.type==="installment"){
+   const policy=installmentPolicy();if(!policy)return await fail("Nasiya hisoblash qoidalari sozlanmagan",503);
+   try{quote=priceInstallment(BigInt(String(b.cost)),BigInt(String(b.initial)),Number(b.months),policy);}catch{return await fail("Boshlang‘ich to‘lov, tan narxi yoki muddat talabga mos emas",400);}
+  }
+  await c.query("INSERT INTO order_payment_terms(store_id,order_id,agreed_total_uzs,payment_type,initial_due_uzs,cost_uzs,financed_principal_uzs,markup_uzs,term_months,minimum_initial_bps,monthly_markup_bps) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(store_id,order_id) DO UPDATE SET agreed_total_uzs=EXCLUDED.agreed_total_uzs,payment_type=EXCLUDED.payment_type,initial_due_uzs=EXCLUDED.initial_due_uzs,cost_uzs=EXCLUDED.cost_uzs,financed_principal_uzs=EXCLUDED.financed_principal_uzs,markup_uzs=EXCLUDED.markup_uzs,term_months=EXCLUDED.term_months,minimum_initial_bps=EXCLUDED.minimum_initial_bps,monthly_markup_bps=EXCLUDED.monthly_markup_bps",[store,id,quote?.total??b.total,b.type,b.initial,quote?.cost??null,quote?.principal??null,quote?.markup??null,quote?.months??null,quote?.minimumInitialBps??null,quote?.monthlyMarkupBps??null]);
   event="payment_terms_saved";
  }else if(action==="receipt"){
   if(!t)return await fail("Avval to‘lov shartlarini saqlang");
