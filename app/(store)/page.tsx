@@ -5,8 +5,11 @@ import {cn} from "@/lib/utils";
 import {Card} from "@/components/ui/card";
 import {ProductVisual} from "../../components/store/product-visual";
 import {Shelf} from "../../components/store/shelf";
+import {HeroVideo} from "../../components/store/hero-video";
+import {imageSources} from "../../lib/image-sources";
 import {Availability,eyebrow,pill,wrap} from "../../components/store/bits";
-import {listProducts,sortCategories,type StoreProduct,type Tone} from "../../lib/server/storefront";
+import {imageTone,listProducts,sortCategories,type StoreProduct,type Tone} from "../../lib/server/storefront";
+import {publishedBanner} from "../../lib/server/banner";
 import {STORE_NAME,STORE_TAGLINE,TELEGRAM_URL,catalogHref,fromSoum,productHref} from "../../lib/storefront";
 import {pageMeta} from "../../lib/server/seo";
 
@@ -28,12 +31,29 @@ function flagships(products:StoreProduct[]){
   });
 }
 
+type HeroLink={label:string;href:string};
+type Hero={eyebrow:string;title:string;subtitle:string;image:string|null;video:string|null;category:string;tone:Tone|null;primary:HeroLink|null;secondary:HeroLink|null};
+
+// Site paths open in place; https addresses from the banner open in a new tab.
+function HeroButton({link,className}:{link:HeroLink;className:string}){
+  return link.href.startsWith("/")?<Link className={className} href={link.href}>{link.label}</Link>
+    :<a className={className} href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a>;
+}
+
 export default async function Home(){
   let products:StoreProduct[]=[];let failed=false;
   try{products=await listProducts();}catch{failed=true;}
   const leads=flagships(products);
-  const heroIndex=Math.max(0,leads.findIndex(l=>l.category.toLowerCase()==="iphone"));
-  const hero=leads[heroIndex];
+  // The banner edited in the staff workspace leads the page. Without one, the iPhone flagship does,
+  // and its category leaves the tiles below.
+  const banner=await publishedBanner();
+  const heroIndex=banner?-1:Math.max(0,leads.findIndex(l=>l.category.toLowerCase()==="iphone"));
+  const lead=leads[heroIndex];
+  const hero:Hero|null=banner?{eyebrow:banner.eyebrow,title:banner.title,subtitle:banner.subtitle,image:banner.imageUrl,video:banner.videoUrl,category:"",tone:await imageTone(banner.imageUrl),
+      primary:banner.primaryLabel?{label:banner.primaryLabel,href:banner.primaryHref}:null,secondary:banner.secondaryLabel?{label:banner.secondaryLabel,href:banner.secondaryHref}:null}
+    :lead?{eyebrow:lead.category,title:lead.product.name,subtitle:`${fromSoum(lead.product.fromPrice)}. Savatga qo‘shing yoki bir bosishda xarid qiling.`,
+      image:lead.product.image,video:null,category:lead.category,tone:lead.product.tone,
+      primary:{label:"Batafsil",href:productHref(lead.product.id)},secondary:{label:"Barcha "+lead.category,href:catalogHref(lead.category)}}:null;
   const tiles=leads.filter((_,i)=>i!==heroIndex);
   const shelf=[...products].sort((a,b)=>Number(!!b.image)-Number(!!a.image)||Number(b.inStock)-Number(a.inStock)).slice(0,12);
 
@@ -43,23 +63,30 @@ export default async function Home(){
     <a className={pill()} href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer">Telegram’da yozish</a>
   </section>;
 
-  const heroDark=!!hero.product.tone?.dark;
+  const heroDark=!!hero.tone?.dark;
   return <>
-    <section data-tone className={cn("flex flex-col items-center overflow-hidden bg-(--tile-bg) pt-12 text-center tablet:pt-14",heroDark&&"text-[#f5f5f7]")}
-      style={toneStyle(hero.product.tone,"#fff")} aria-labelledby="hero-title">
-      <div className="flex flex-col items-center gap-1.5 px-4">
-        <p className={cn(eyebrow,"text-sm",heroDark&&"text-[#a1a1a6]")}>{hero.category}</p>
-        <h1 id="hero-title" className="text-[40px] leading-[1.1] font-semibold tracking-normal tablet:text-[56px] tablet:leading-[1.07] tablet:tracking-[-0.005em]">{hero.product.name}</h1>
-        <p className="mb-4 text-[21px] leading-[1.19] tracking-[0.011em] tablet:text-[28px] tablet:leading-[1.14]">{fromSoum(hero.product.fromPrice)}. Savatga qo‘shing yoki bir bosishda xarid qiling.</p>
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-3">
-          <Link className={pill()} href={productHref(hero.product.id)}>Batafsil</Link>
-          <Link className={pill({tone:"ghost",dark:heroDark})} href={catalogHref(hero.category)}>Barcha {hero.category}</Link>
-        </div>
+    {/* From tablet width a video fills the first screen under the nav with the text centred over it; on phones and for images the media sits below the text. */}
+    <section data-tone className={cn("relative isolate flex flex-col items-center overflow-hidden bg-(--tile-bg) pt-12 text-center tablet:pt-14",heroDark&&"text-[#f5f5f7]",
+        hero.video&&"tablet:h-[calc(100svh-2.75rem)] tablet:max-h-[1000px] tablet:min-h-[560px] tablet:justify-center tablet:pt-0",!hero.image&&!hero.video&&"pb-16 tablet:pb-20")}
+      style={toneStyle(hero.tone,"#fff")} aria-labelledby="hero-title">
+      <div className="flex max-w-[980px] flex-col items-center gap-1.5 px-4">
+        {hero.eyebrow&&<p className={cn(eyebrow,"text-sm",heroDark&&"text-[#a1a1a6]")}>{hero.eyebrow}</p>}
+        <h1 id="hero-title" className="text-[40px] leading-[1.1] font-semibold tracking-normal tablet:text-[56px] tablet:leading-[1.07] tablet:tracking-[-0.005em]">{hero.title}</h1>
+        {hero.subtitle&&<p className="text-[21px] leading-[1.19] tracking-[0.011em] tablet:text-[28px] tablet:leading-[1.14]">{hero.subtitle}</p>}
+        {(hero.primary||hero.secondary)&&<div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-3">
+          {hero.primary&&<HeroButton link={hero.primary} className={pill()}/>}
+          {hero.secondary&&<HeroButton link={hero.secondary} className={pill({tone:"ghost",dark:heroDark})}/>}
+        </div>}
       </div>
-      <Link href={productHref(hero.product.id)} tabIndex={-1} aria-hidden="true"
-        className="relative mt-8 block aspect-4/3 w-full max-w-[1180px] tablet:aspect-video tablet:max-h-[72vh]">
-        <ProductVisual image={hero.product.image} name={hero.product.name} category={hero.category} priority fit="blend" sizes="(min-width:1180px) 1180px, 100vw" className="absolute inset-0"/>
-      </Link>
+      {hero.video?<div className="relative mt-8 aspect-square w-full tablet:absolute tablet:inset-0 tablet:-z-10 tablet:mt-0 tablet:aspect-auto">
+        <HeroVideo src={hero.video} poster={hero.image?imageSources(hero.image).src:null} dark={heroDark}/>
+        {/* Keeps the centred text readable where the video is bright behind it. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden bg-radial-[ellipse_at_center] from-(--tile-bg)/60 via-(--tile-bg)/20 via-35% to-transparent to-65% tablet:block"/>
+      </div>:hero.image&&(()=>{
+        const art=<ProductVisual image={hero.image} name={hero.title} category={hero.category} priority fit="blend" sizes="(min-width:1180px) 1180px, 100vw" className="absolute inset-0"/>;
+        const frame="relative mt-8 block aspect-4/3 w-full max-w-[1180px] tablet:aspect-video tablet:max-h-[72vh]";
+        return hero.primary?.href.startsWith("/")?<Link href={hero.primary.href} tabIndex={-1} aria-hidden="true" className={frame}>{art}</Link>:<div aria-hidden="true" className={frame}>{art}</div>;
+      })()}
     </section>
 
     {tiles.length>0&&<section className="grid gap-3 p-3 desktop:grid-cols-2" aria-label="Turkumlar bo‘yicha tanlov">
