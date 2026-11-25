@@ -1,0 +1,10 @@
+"use client";
+import {useCallback,useEffect,useState} from "react";
+import {staffFetch,formatUzs,formatDate,saleLabels} from "../../lib/staff-client";
+type Summary={contributions_uzs:string;withdrawals_uzs:string;recorded_distributions_uzs:string;allocated_uzs:string;available_uzs:string;allocations:{order_id:string;amount_uzs:string;sale_status:string;created_at:string}[]};
+export default function InvestorPage(){
+ const [data,setData]=useState<Summary|null>(null);const [error,setError]=useState("");const [loading,setLoading]=useState(true);
+ const load=useCallback(async()=>{setLoading(true);setError("");try{setData(await staffFetch<Summary>("/api/investor/summary"));}catch(e){setData(null);setError(e instanceof Error?e.message:"Yuklab bo‘lmadi");}finally{setLoading(false);}},[]);
+ useEffect(()=>{void load();},[load]);
+ return <main className="container order-workspace"><div className="section-head"><h1>Mening kapitalim.</h1><button className="secondary" disabled={loading} onClick={load}>Yangilash</button></div>{loading&&<p>Yuklanmoqda…</p>}{error&&<p role="alert">{error}</p>}{data&&!loading&&<><div className="metrics">{[["Kiritilgan kapital",data.contributions_uzs],["Ajratilgan kapital",data.allocated_uzs],["Bo‘sh kapital",data.available_uzs],["Qaytarilgan kapital",data.withdrawals_uzs],["Foyda qaydlari",data.recorded_distributions_uzs]].map(([label,value])=><div className="metric" key={label}><span>{label}</span><strong>{formatUzs(value)}</strong></div>)}</div><section className="surface"><h2>Moliyalashtirilgan buyurtmalar</h2>{data.allocations.length?<div className="table-scroll"><table><thead><tr>{["Buyurtma","Sana","Ajratilgan summa","Sotuv holati"].map(h=><th key={h} scope="col">{h}</th>)}</tr></thead><tbody>{data.allocations.map(a=><tr key={a.order_id}><td>{a.order_id.slice(0,8)}</td><td>{formatDate(a.created_at)}</td><td>{formatUzs(a.amount_uzs)}</td><td>{saleLabels[a.sale_status]}</td></tr>)}</tbody></table></div>:<p>Ajratilgan kapital mavjud emas.</p>}<p className="muted">Hisobot faqat hisobingizga tegishli qaydlarni ko‘rsatadi. Kapital qaytishi avtomatik hisoblanmaydi.</p></section></>}</main>;
+}
