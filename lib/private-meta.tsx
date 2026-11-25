@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { ImageResponse } from "next/og";
+import { brandName } from "./brand";
 
-/** Store brand, the same string the storefront uses in its root title template ("%s. Malika Tech"). */
-export const brandName = "Malika Tech";
+export { brandName };
 export const ogSize = { width: 1200, height: 630 };
 
 /**
