@@ -1,8 +1,0 @@
-"use client";
-import {useState,useRef} from "react";
-import {staffFetch} from "../lib/staff-client";
-export function InvestorCreate({onCreated}:{onCreated:()=>void}){
- const [name,setName]=useState("");const [telegramId,setTelegramId]=useState("");const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [notice,setNotice]=useState("");const pending=useRef(false);
- async function submit(){if(pending.current)return;pending.current=true;setBusy(true);setError("");setNotice("");try{await staffFetch("/api/admin/investors/accounts","POST",{name,telegramId});setName("");setTelegramId("");setNotice("Investor hisobi yaratildi.");onCreated();}catch(e){setError(e instanceof Error?e.message:"Hisob yaratilmadi");}finally{pending.current=false;setBusy(false);}}
- return <section className="surface"><h2>Investor hisobini yaratish</h2><form className="order-workspace" onSubmit={e=>{e.preventDefault();void submit();}}><div className="form-grid"><label>Investor nomi<input required minLength={2} maxLength={120} value={name} disabled={busy} onChange={e=>setName(e.target.value)}/></label><label>Telegram ID<input required inputMode="numeric" maxLength={16} value={telegramId} disabled={busy} onChange={e=>setTelegramId(e.target.value.replace(/[^0-9]/g,""))}/></label></div><p className="muted">Telegram hisobining egasi tekshirilishi kerak. Investor faqat ko‘rish huquqiga ega bo‘ladi. Kapital alohida qayd etiladi.</p><button className="primary" disabled={busy||name.trim().length<2||!telegramId} type="submit">Hisob yaratish</button></form>{error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}</section>;
-}

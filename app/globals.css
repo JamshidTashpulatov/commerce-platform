@@ -254,6 +254,15 @@
 }
 
 /*
+ * Size "M" for the back office. SortUI components are drawn at 32px controls and 13px text ("S").
+ * Every SortUI size is in rem, so one root step scales components, type and spacing together
+ * (controls 36px, text 14.6 / 15.75px) without editing any component.
+ */
+html:has([data-ui-size="m"]) {
+  font-size: 112.5%;
+}
+
+/*
  * Legacy hand-written styles for pages that are not yet on Tailwind and shadcn/ui
  * (storefront, /investor, /dashboard). They switch off for any page that renders an
  * element with data-ui="shadcn", so migrated pages get the plain shadcn theme.
