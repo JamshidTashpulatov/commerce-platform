@@ -48,7 +48,7 @@ export async function POST(request:Request,{params}:Ctx){
  try{
  await c.query("BEGIN");
  const fail=async(error:string,status=409)=>{await c.query("ROLLBACK");return reply({error},status);};
- const o=await c.query("SELECT request_status,customer_record_id FROM orders WHERE store_id=$1 AND id=$2 FOR UPDATE",[store,id]);
+ const o=await c.query("SELECT request_status,sale_status,customer_record_id FROM orders WHERE store_id=$1 AND id=$2 FOR UPDATE",[store,id]);
  if(!o.rowCount)return await fail("Buyurtma topilmadi",404);
  if(o.rows[0].request_status==="cancelled")return await fail("Buyurtma bekor qilingan");
  const contract=await c.query("SELECT id,status FROM installment_contracts WHERE store_id=$1 AND order_id=$2",[store,id]);
@@ -78,7 +78,19 @@ export async function POST(request:Request,{params}:Ctx){
  if(!s.rowCount)return await fail("To‘lov qatori topilmadi",404);
  if(BigInt(s.rows[0].paid)+BigInt(String(b.amount))>BigInt(s.rows[0].amount_uzs))return await fail("To‘lov jadvaldagi qoldiqdan oshmoqda");
  const result=await c.query("INSERT INTO installment_receipts(store_id,schedule_id,amount_uzs,idempotency_key,recorded_by,received_on,method) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(store_id,idempotency_key) DO NOTHING RETURNING id",[store,b.scheduleId,b.amount,b.key,member.account_id,b.date,b.method]);
- if(!result.rowCount)return await fail("Takroriy so‘rov");event="installment_receipt_recorded";
+ if(!result.rowCount)return await fail("Takroriy so‘rov");
+ // A sold order's funding is frozen. Capture original invested amounts, never current portfolio balances.
+ if(o.rows[0].sale_status==="sold"){
+   await c.query(`WITH participants AS (
+     SELECT investor_account_id,amount_uzs,sum(amount_uzs) OVER () AS funded
+     FROM order_funding_allocations WHERE store_id=$1 AND order_id=$2
+   )
+   INSERT INTO installment_receipt_funding_weights(store_id,receipt_id,investor_account_id,invested_uzs)
+   SELECT $1,$3,p.investor_account_id,p.amount_uzs FROM participants p
+   JOIN order_payment_terms t ON t.store_id=$1 AND t.order_id=$2 AND t.cost_uzs=p.funded`,
+   [store,id,result.rows[0].id]);
+ }
+ event="installment_receipt_recorded";
  }else{
  const r=await c.query("SELECT r.id FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id WHERE r.store_id=$1 AND s.contract_id=$2 AND r.id=$3",[store,existing.id,b.receiptId]);
  if(!r.rowCount)return await fail("To‘lov topilmadi",404);

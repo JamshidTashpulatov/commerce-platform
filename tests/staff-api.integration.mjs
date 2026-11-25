@@ -329,6 +329,16 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.ok(secondPage.items.every(o=>!seen.has(o.id)));
   const match = await call("/api/admin/orders?q="+id+"&status=in_progress","GET",undefined,seller);
   assert.deepEqual(match.data.items.map(o=>o.id),[id]);
+  const fundedReceipt = {...monthly,key:randomUUID(),amount:"100"};
+  assert.equal((await call(schedulePath,"POST",fundedReceipt,seller)).status,201);
+  const retryFunded = await call(schedulePath,"POST",fundedReceipt,seller);
+  assert.equal(retryFunded.status,200);
+  const weights = await pool.query(
+    "SELECT investor_account_id,invested_uzs FROM installment_receipt_funding_weights WHERE store_id=$1 AND receipt_id=$2",
+    [storeId,retryFunded.data.id]
+  );
+  assert.deepEqual(Object.fromEntries(weights.rows.map(w=>[w.investor_account_id,w.invested_uzs])),{[investorId]:"700",[secondId]:"300"});
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM installment_receipt_funding_weights WHERE receipt_id=$1",[reverseMonthly.receiptId])).rows[0].n,0);
   // Product pages keep variants together and filter across the full published catalog.
   await pool.query(`WITH added AS (
     INSERT INTO products(store_id,name,category,published)
