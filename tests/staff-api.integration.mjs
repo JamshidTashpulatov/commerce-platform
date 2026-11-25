@@ -342,6 +342,17 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal((await fetch(origin+media.data.url)).status,200);
   assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:1,published:false},admin)).status,200);
   assert.equal((await fetch(origin+media.data.url)).status,404);
+  // The model groups products on the storefront: set in the admin, kept when omitted, derived from the name when empty.
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:2,published:true,model:"x".repeat(81)},admin)).status,400);
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:2,published:true,model:"  Fixture family  "},admin)).status,200);
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:3,published:true},admin)).status,200);
+  assert.equal((await call("/api/admin/catalog","GET",undefined,admin)).data.products.find(p=>p.id===mediaProductId).model,"Fixture family");
+  assert.deepEqual([...new Set((await call("/api/catalog?category=Test&model=Fixture+family")).data.items.map(i=>i.id))],[mediaProductId]);
+  assert.equal((await call("/api/catalog?category=Test&model=Media+fixture")).data.items.length,0);
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:4,published:true,model:""},admin)).status,200);
+  assert.deepEqual([...new Set((await call("/api/catalog?category=Test&model=Media+fixture")).data.items.map(i=>i.id))],[mediaProductId]);
+  assert.equal((await call("/api/catalog?sort=cheapest")).status,400);
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:5,published:false},admin)).status,200);
 
 
 

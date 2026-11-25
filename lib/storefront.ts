@@ -103,3 +103,17 @@ export function bySize<T>(values:T[],label:(v:T)=>string=(v=>String(v))):T[]{
 export const TITLE_TEMPLATE="%s. "+STORE_NAME;
 export const STORE_TAGLINE="Apple texnikasi do‘koni";
 export const STORE_DESCRIPTION="iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar. Narxlar so‘mda, buyurtmani sotuvchi qo‘ng‘iroq qilib tasdiqlaydi.";
+
+/**
+ * The model family a product belongs to, from its name: screen sizes and the
+ * tier after a generation number are dropped, so "iPhone 18 Pro Max" and
+ * "iPhone 18 Pro" are "iPhone 18", and "MacBook Pro 14″" is "MacBook Pro".
+ * Names without a generation number ("iPad mini", "iPhone Air") are their own family.
+ */
+export function modelFamily(name:string):string{
+  const base=name.trim().replace(/\s*\d+(?:[.,]\d+)?(?:″|"|-inch| dyuym)$/,"").trim();
+  return base.match(/^(.*\d+)(?:e| Pro Max| Pro| Plus| mini)$/)?.[1]??base;
+}
+
+/** A product's model on the storefront: the one set in the catalog admin, else derived from the name. */
+export const productModel=(model:string|null|undefined,name:string)=>model?.trim()||modelFamily(name);

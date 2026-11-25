@@ -4,7 +4,7 @@ import {variantImage,type OptionGroup,type OptionSelection} from "../catalog-opt
 import {approvedImageUrl,localMediaId} from "./catalog-media";
 import {database,configuredStoreId} from "./db";
 import {isUuid} from "./http";
-import {sortCategories} from "../storefront";
+import {productModel,sortCategories} from "../storefront";
 export {sortCategories};
 
 // Read-only queries for the public storefront. Only published products with
@@ -114,4 +114,43 @@ export async function categorySummary(category:string):Promise<{count:number;fro
      FROM products p JOIN variants v ON v.store_id=p.store_id AND v.product_id=p.id AND v.active
      WHERE p.store_id=$1 AND p.published AND p.category=$2`,[configuredStoreId(),category]);
   return r.rows[0]?.count?{count:r.rows[0].count,fromPrice:r.rows[0].from_price}:null;
+}
+
+export type ModelFamily={family:string;image:string|null;count:number};
+/**
+ * The model families of one published category for the filter strip above its
+ * catalog page. Families are ordered and pictured by their most expensive model.
+ */
+export async function categoryFamilies(category:string):Promise<ModelFamily[]>{
+  const r=await database().query(
+    `SELECT p.id,p.name,p.model,p.image_url,p.option_groups,
+       (array_agg(v.image_url ORDER BY v.price_uzs,v.id))[1] AS variant_image,
+       (array_agg(v.option_values ORDER BY v.price_uzs,v.id))[1] AS first_options
+     FROM products p JOIN variants v ON v.store_id=p.store_id AND v.product_id=p.id AND v.active
+     WHERE p.store_id=$1 AND p.published AND p.category=$2
+     GROUP BY p.id ORDER BY max(v.price_uzs) DESC,p.name,p.id LIMIT 200`,[configuredStoreId(),category]);
+  const families=new Map<string,ModelFamily>();
+  for(const row of r.rows){
+    const family=productModel(row.model,row.name);
+    const known=families.get(family);
+    if(known){known.count++;continue;}
+    families.set(family,{family,count:1,
+      image:variantImage(publicGroups(row.option_groups as OptionGroup[]),row.first_options as OptionSelection,safe(row.variant_image),safe(row.image_url))});
+  }
+  return [...families.values()];
+}
+
+/** One entry per published category, pictured by its most expensive model, for the strip above the full catalog. */
+export async function categoryLeads():Promise<{category:string;image:string|null}[]>{
+  const r=await database().query(
+    `SELECT DISTINCT ON (category) category,image_url,option_groups,variant_image,first_options FROM (
+       SELECT p.category,p.name,p.image_url,p.option_groups,max(v.price_uzs) AS top,
+         (array_agg(v.image_url ORDER BY v.price_uzs,v.id))[1] AS variant_image,
+         (array_agg(v.option_values ORDER BY v.price_uzs,v.id))[1] AS first_options
+       FROM products p JOIN variants v ON v.store_id=p.store_id AND v.product_id=p.id AND v.active
+       WHERE p.store_id=$1 AND p.published GROUP BY p.id) x
+     ORDER BY category,(variant_image IS NULL AND image_url IS NULL),top DESC,name`,[configuredStoreId()]);
+  const byCategory=new Map(r.rows.map(row=>[row.category as string,
+    variantImage(publicGroups(row.option_groups as OptionGroup[]),row.first_options as OptionSelection,safe(row.variant_image),safe(row.image_url))]));
+  return sortCategories([...byCategory.keys()]).map(category=>({category,image:byCategory.get(category)??null}));
 }
