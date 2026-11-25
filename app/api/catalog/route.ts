@@ -3,6 +3,7 @@ import {variantImage,type OptionGroup,type OptionSelection} from "../../../lib/c
 import {approvedImageUrl} from "../../../lib/server/catalog-media";
 import { database,configuredStoreId } from "../../../lib/server/db";
 import {isUuid} from "../../../lib/server/http";
+import {modelFamily} from "../../../lib/storefront";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request:Request){
@@ -12,6 +13,8 @@ export async function GET(request:Request){
     const after=params.get("after");
     const category=params.get("category") || null;
     const query=params.get("q")?.trim() || null;
+    const model=params.get("model")?.trim() || null;
+    if (model && model.length>200) return NextResponse.json({error:"Qidiruv parametrlarini tekshiring"},{status:400});
     // Sort key: newest first by default (negative creation time), the lowest price for cheapest
     // first, its negative for dearest first, 0 for name order.
     // Name and id break ties, so the cursor (a product id) stays a stable keyset position.
@@ -23,6 +26,12 @@ export async function GET(request:Request){
       return NextResponse.json({error:"Qidiruv parametrlarini tekshiring"},{status:400});
     }
     const db=database();
+    // A model family is derived from product names, so resolve it to product ids first.
+    let modelIds:string[]|null=null;
+    if (model) {
+      const named=await db.query(`SELECT id,name FROM products WHERE store_id=$1 AND published AND ($2::text IS NULL OR category=$2)`,[storeId,category]);
+      modelIds=named.rows.filter(r=>modelFamily(r.name)===model).map(r=>r.id);
+    }
     const [page,categories]=await Promise.all([
       db.query(
         `WITH base AS (
@@ -32,6 +41,7 @@ export async function GET(request:Request){
              WHERE v.store_id=p.store_id AND v.product_id=p.id AND v.active) fp
            WHERE p.store_id=$1 AND p.published
              AND ($2::text IS NULL OR p.category=$2)
+             AND ($6::uuid[] IS NULL OR p.id=ANY($6::uuid[]))
              AND EXISTS (
                SELECT 1 FROM variants v WHERE v.store_id=p.store_id AND v.product_id=p.id AND v.active
                  AND ($3::text IS NULL OR strpos(lower(concat_ws(' ',p.name,p.category,v.color,v.storage_label)),lower($3))>0
@@ -51,7 +61,7 @@ export async function GET(request:Request){
            v.quantity>0 AS in_stock,(SELECT count(*)>24 FROM matches) AS has_more
          FROM page p JOIN variants v ON v.product_id=p.id AND v.store_id=p.store_id AND v.active
          ORDER BY p.sort_key,p.name,p.id,v.color,v.id`,
-        [storeId,category,query,after,sort]
+        [storeId,category,query,after,sort,modelIds]
       ),
       db.query(`SELECT DISTINCT p.category FROM products p WHERE p.store_id=$1 AND p.published
                 AND EXISTS (SELECT 1 FROM variants v WHERE v.store_id=p.store_id AND v.product_id=p.id AND v.active)

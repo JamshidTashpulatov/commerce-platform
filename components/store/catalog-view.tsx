@@ -47,6 +47,7 @@ export function CatalogView({strip}:{strip?:ReactNode}){
   const pathname=usePathname();
   const params=useSearchParams();
   const category=params.get("category")??"";
+  const model=params.get("model")??"";
   const sortParam=params.get("sort")??"";
   const sort:Sort=sortParam in SORTS?sortParam as Sort:"new";
   const [query,setQuery]=useState(()=>params.get("q")??"");
@@ -55,7 +56,7 @@ export function CatalogView({strip}:{strip?:ReactNode}){
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [retry,setRetry]=useState(0);
-  const filterKey=category+"\u0000"+query.trim()+"\u0000"+sort;
+  const filterKey=[category,model,query.trim(),sort].join("\u0000");
   // The cursor stack belongs to one filter; changing the filter starts again at page one.
   const [paging,setPaging]=useState<{key:string;pages:string[]}>({key:filterKey,pages:[]});
   const pages=paging.key===filterKey?paging.pages:[];
@@ -72,11 +73,13 @@ export function CatalogView({strip}:{strip?:ReactNode}){
     const timer=setTimeout(async()=>{
       const url=new URLSearchParams();
       if(category)url.set("category",category);
+      if(category&&model)url.set("model",model);
       if(q)url.set("q",q);
       if(sort!=="new")url.set("sort",sort);
       const shown=url.toString();
       if(shown!==params.toString())router.replace(pathname+(shown?"?"+shown:""),{scroll:false});
       const api=new URLSearchParams({q,category,sort});
+      if(category&&model)api.set("model",model);
       if(cursor)api.set("after",cursor);
       try{
         const res=await fetch("/api/catalog?"+api,{cache:"no-store"});
@@ -89,7 +92,7 @@ export function CatalogView({strip}:{strip?:ReactNode}){
     },q?250:0);
     return ()=>{active=false;clearTimeout(timer);};
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[category,query,sort,cursor,retry]);
+  },[category,model,query,sort,cursor,retry]);
 
   const cards=useMemo(()=>toCards(rows),[rows]);
   const setCategory=(c:string)=>{
