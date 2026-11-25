@@ -47,7 +47,7 @@ export default async function Home(){
       <div className="flex flex-col items-center gap-1.5 px-4">
         <p className={cn(eyebrow,"text-sm",heroDark&&"text-[#a1a1a6]")}>{hero.category}</p>
         <h1 id="hero-title" className="text-[40px] leading-[1.1] font-semibold tracking-normal tablet:text-[56px] tablet:leading-[1.07] tablet:tracking-[-0.005em]">{hero.product.name}</h1>
-        <p className="mb-4 text-[21px] leading-[1.19] tracking-[0.011em] tablet:text-[28px] tablet:leading-[1.14]">{fromSoum(hero.product.fromPrice)}. Buyurtma Telegram orqali.</p>
+        <p className="mb-4 text-[21px] leading-[1.19] tracking-[0.011em] tablet:text-[28px] tablet:leading-[1.14]">{fromSoum(hero.product.fromPrice)}. Savatga qo‘shing yoki bir bosishda xarid qiling.</p>
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-3">
           <Link className={pill()} href={productHref(hero.product.id)}>Batafsil</Link>
           <Link className={pill({tone:"ghost",dark:heroDark})} href={catalogHref(hero.category)}>Barcha {hero.category}</Link>
@@ -107,12 +107,12 @@ export default async function Home(){
 
     <section id="buyurtma" className="pb-16" aria-labelledby="how-title">
       <div className={cn(wrap,"mb-6")}>
-        <h2 id="how-title" className="max-w-[640px] text-2xl leading-[1.17] font-semibold tablet:text-[28px] tablet:leading-[1.14]">Buyurtma berish. <span className="text-sf-ink-2">Uch qadamda, ortiqcha shaklsiz.</span></h2>
+        <h2 id="how-title" className="max-w-[640px] text-2xl leading-[1.17] font-semibold tablet:text-[28px] tablet:leading-[1.14]">Buyurtma berish. <span className="text-sf-ink-2">Uch qadam, ortiqcha shakllarsiz.</span></h2>
       </div>
       <ol className={cn(wrap,"grid gap-4 tablet:grid-cols-3 tablet:gap-5")}>
-        {[["Tanlang","Katalogda model, rang va xotirani tanlang. Narx tanlovga qarab darhol yangilanadi."],
-          ["Telegram’da yozing","Mahsulot sahifasidagi tugma do‘konning Telegram botini ochadi. Tanlovingizni nusxa olib yuborishingiz mumkin."],
-          ["Sotuvchi tasdiqlaydi","Sotuvchi narx, mavjudlik va topshirish shartlarini siz bilan kelishadi. Onlayn to‘lov yo‘q."]].map(([title,text],i)=>
+        {[["Tanlang","Model, rang va xotirani tanlang. Narx tanlovingizga qarab darhol yangilanadi."],
+          ["Rasmiylashtiring","Savatga qo‘shing yoki bir bosishda xarid qiling. Ism va raqamingiz yetarli."],
+          ["Sotuvchi tasdiqlaydi","Sotuvchi qo‘ng‘iroq qilib, narx va topshirishni kelishadi. Onlayn to‘lov yo‘q."]].map(([title,text],i)=>
           <li key={title} className="sf-reveal flex flex-col gap-2 rounded-[18px] bg-sf-alt p-7">
             <span className="mb-2 inline-flex size-8 items-center justify-center rounded-full bg-sf-ink text-sm font-semibold text-white">{i+1}</span>
             <h3 className="text-[21px] leading-[1.19] font-semibold">{title}</h3>

@@ -10,7 +10,7 @@ export function StoreFooter({categories}:{categories:string[]}){
   return <footer className="mt-auto bg-sf-alt text-xs leading-4 tracking-[-0.01em] text-black/55">
     <div className={wrap+" py-5 pb-6"}>
       <div className="flex flex-col gap-2.5 pb-4">
-        <p>Saytdagi narxlar va mavjudlik ma’lumot uchun. Yakuniy narx va yetkazib berish sotuvchi bilan Telegram orqali kelishiladi. Onlayn to‘lov qabul qilinmaydi.</p>
+        <p>Saytdagi narxlar va mavjudlik ma’lumot uchun. Buyurtmadan keyin sotuvchi qo‘ng‘iroq qilib, yakuniy narx va topshirishni kelishadi. Onlayn to‘lov qabul qilinmaydi.</p>
         <p>{STORE_NAME} mustaqil do‘kon. Apple, iPhone, iPad, Mac, Apple Watch, AirPods va Apple Vision Pro Apple Inc. kompaniyasining savdo belgilaridir. Do‘kon Apple Inc. vakili emas.</p>
       </div>
       <Separator className="bg-sf-line"/>

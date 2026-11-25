@@ -19,7 +19,7 @@ export const dynamic="force-dynamic";
 
 export const metadata:Metadata={
   title:{default:STORE_NAME+". Apple texnikasi do‘koni",template:"%s. "+STORE_NAME},
-  description:"iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar. Narxlar so‘mda, buyurtma Telegram orqali.",
+  description:"iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar. Narxlar so‘mda, buyurtma saytda, tasdiq sotuvchidan.",
 };
 
 export default async function StoreLayout({children}:{children:ReactNode}){

@@ -15,7 +15,7 @@ const load=cache(async(id:string)=>{try{return await getProduct(id);}catch{retur
 
 export async function generateMetadata({params}:{params:Promise<{id:string}>}):Promise<Metadata>{
   const product=await load((await params).id);
-  return product?{title:product.name,description:`${product.name}. ${fromSoum(product.fromPrice)}. Buyurtma Telegram orqali.`}:{title:"Mahsulot"};
+  return product?{title:product.name,description:`${product.name}. ${fromSoum(product.fromPrice)}. Savatga qo‘shing yoki bir bosishda xarid qiling.`}:{title:"Mahsulot"};
 }
 
 export default async function ProductPage({params}:{params:Promise<{id:string}>}){
