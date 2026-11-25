@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {createHash,randomBytes,randomUUID} from "node:crypto";
+import {createHash,createHmac,randomBytes,randomUUID} from "node:crypto";
 import test from "node:test";
 import pg from "pg";
 
@@ -115,5 +115,33 @@ test("website checkout creates encrypted, deduplicated purchase requests and not
     assert.equal(res.status,403,path+" with "+cookie.split("=")[0]);
    }
   }
+
+  // Telegram Mini App: the signed launch data opens a customer session only.
+  const tgId=2000000+Math.floor(Math.random()*900000);
+  const tgAccount=(await pool.query("INSERT INTO accounts(telegram_user_id) VALUES($1) RETURNING id",[String(tgId)])).rows[0].id;
+  await pool.query("INSERT INTO memberships(store_id,account_id,role) VALUES($1,$2,'seller')",[storeId,tgAccount]);
+  const fields=new URLSearchParams({auth_date:String(Math.floor(Date.now()/1000)),query_id:randomUUID(),user:JSON.stringify({id:tgId,first_name:"Telegram",last_name:"Mijoz"})});
+  const key=createHmac("sha256","WebAppData").update(process.env.TELEGRAM_BOT_TOKEN).digest();
+  fields.set("hash",createHmac("sha256",key).update([...fields].map(([k,v])=>k+"="+v).join("\n")).digest("hex"));
+  const initData=fields.toString();
+  const signIn=await fetch(origin+"/api/customer/telegram/mini-app",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json"},body:JSON.stringify({initData})});
+  assert.equal(signIn.status,200);
+  const customerToken=/__Host-store_customer=([^;]+)/.exec(signIn.headers.get("set-cookie")??"")?.[1];
+  assert.ok(customerToken,"customer cookie issued");
+  assert.ok(!/__Host-store_session=/.test(signIn.headers.get("set-cookie")??""),"no staff session issued");
+  for(const path of ["/api/admin/orders","/api/investor/summary","/api/admin/catalog"]){
+   assert.equal((await fetch(origin+path,{headers:{Cookie:"__Host-store_customer="+customerToken}})).status,403,path);
+  }
+  // Replaying the same launch data is refused, and the staff Mini App login still works with it.
+  assert.equal((await fetch(origin+"/api/customer/telegram/mini-app",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json"},body:JSON.stringify({initData})})).status,409);
+  assert.equal((await fetch(origin+"/api/auth/telegram-mini-app",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json"},body:JSON.stringify({initData})})).status,200);
+  // A checkout from a signed-in customer is linked to the Telegram account; without a Telegram phone it needs one typed in.
+  const tgCart={...cart([{variantId:phone,quantity:1}]),phone:"+998977776655"};
+  const tgPost=(body)=>fetch(origin+"/api/checkout",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json","X-Forwarded-For":"10.7.7.7",Cookie:"__Host-store_customer="+customerToken},body:JSON.stringify(body)});
+  assert.equal((await tgPost({...tgCart,requestKey:randomUUID(),phone:undefined,useTelegramPhone:true})).status,400);
+  const linked=await tgPost(tgCart);
+  assert.equal(linked.status,201);
+  const ref=(await linked.json()).reference;
+  assert.equal((await pool.query("SELECT telegram_account_id FROM website_checkouts WHERE reference=$1",[ref])).rows[0].telegram_account_id,tgAccount);
  }finally{await pool.end();}
 });

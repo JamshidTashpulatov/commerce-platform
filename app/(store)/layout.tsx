@@ -6,6 +6,7 @@ import {StoreNav} from "../../components/store/store-nav";
 import {StoreFooter} from "../../components/store/store-footer";
 import {CompareTray} from "../../components/store/compare-tray";
 import {CartSheet} from "../../components/store/cart-sheet";
+import {MiniAppSignIn} from "../../components/store/mini-app-signin";
 import {listCategories} from "../../lib/server/storefront";
 import {STORE_NAME} from "../../lib/storefront";
 
@@ -28,6 +29,6 @@ export default async function StoreLayout({children}:{children:ReactNode}){
     <Suspense fallback={<div className="sticky top-0 z-40 h-12 bg-[rgba(250,250,252,0.8)] tablet:h-11"/>}><StoreNav categories={categories}/></Suspense>
     <main id="sf-main" className="min-w-0 flex-1">{children}</main>
     <StoreFooter categories={categories}/>
-    <Suspense><CompareTray/><CartSheet/></Suspense>
+    <Suspense><CompareTray/><CartSheet/><MiniAppSignIn/></Suspense>
   </div>;
 }

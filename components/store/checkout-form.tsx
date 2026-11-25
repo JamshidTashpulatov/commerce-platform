@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useMemo,useRef,useState} from "react";
+import {useRouter} from "next/navigation";
 import {Loader2Icon,ShieldCheckIcon} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {Input} from "@/components/ui/input";
@@ -26,7 +27,15 @@ export function CheckoutForm({channel,lines,telegram,submitLabel,onSuccess,onPri
   channel:"cart"|"one_click";lines:Line[];telegram:TelegramLogin;submitLabel:string;
   onSuccess:(reference:string)=>void;onPriceChange?:(lines:Quote[])=>void;compact?:boolean;
 }){
+  const router=useRouter();
   const saved=contactStore.use();
+  const [tgNotice,setTgNotice]=useState<string|null>(null);
+  useEffect(()=>{
+    const flag=new URLSearchParams(window.location.search).get("tg");
+    if(flag==="error")setTgNotice("Telegram orqali kirish amalga oshmadi. Qayta urinib ko‘ring yoki ma’lumotlarni qo‘lda kiriting.");
+    else if(flag==="off")setTgNotice("Telegram orqali kirish hozircha sozlanmagan. Ma’lumotlarni qo‘lda kiriting.");
+  },[]);
+  const signOut=async()=>{await fetch("/api/customer/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}).catch(()=>{});setName("");setUseTelegramPhone(false);setEditing(true);router.refresh();};
   const tg=telegram.customer;
   const [name,setName]=useState("");
   const [phone,setPhone]=useState("");
@@ -79,6 +88,7 @@ export function CheckoutForm({channel,lines,telegram,submitLabel,onSuccess,onPri
   };
 
   return <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+    {tgNotice&&<p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{tgNotice}</p>}
     {telegram.configured&&!tg&&<div className="flex flex-col gap-3">
       <a href={telegram.startHref} className={pill({tone:"ghost",className:"w-full gap-2"})}><TelegramIcon/>Telegram orqali davom etish</a>
       <p className="flex items-center gap-3 text-xs text-sf-ink-3"><span className="h-px flex-1 bg-sf-line"/>yoki ma’lumotlarni kiriting<span className="h-px flex-1 bg-sf-line"/></p>
@@ -93,8 +103,13 @@ export function CheckoutForm({channel,lines,telegram,submitLabel,onSuccess,onPri
       <div className="flex shrink-0 flex-col items-end gap-1.5 text-sm">
         <button type="button" className="cursor-pointer text-sf-link hover:underline" onClick={()=>setEditing(true)}>O‘zgartirish</button>
         {saved&&!tg&&<button type="button" className="cursor-pointer text-sf-ink-3 hover:text-sf-ink-2" onClick={()=>{contactStore.set(null);setName("");setPhone("");setRemember(false);setEditing(true);}}>Meni unut</button>}
+        {tg&&<button type="button" className="cursor-pointer text-sf-ink-3 hover:text-sf-ink-2" onClick={signOut}>Chiqish</button>}
       </div>
     </div>:<>
+      {tg&&<p className="flex items-center justify-between gap-3 rounded-xl bg-sf-alt px-4 py-3 text-sm">
+        <span className="inline-flex items-center gap-2"><TelegramIcon className="size-4 text-sf-blue"/>Telegram orqali kirdingiz</span>
+        <button type="button" className="cursor-pointer text-sf-ink-3 hover:text-sf-ink-2" onClick={signOut}>Chiqish</button>
+      </p>}
       <label className="flex flex-col gap-2">
         <span className="text-sm font-semibold">Ismingiz</span>
         <Input value={name} onChange={e=>setName(e.target.value)} autoComplete="name" maxLength={80} placeholder="Ism va familiya"
