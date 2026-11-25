@@ -18,7 +18,7 @@ export default function OrderPage(){
  if(d.initial+d.received>d.salePrice){setMessage("Qayd etilgan to‘lov kelishilgan jami summadan oshmasligi kerak.");return;}
  if(d.orderStatus==="Bekor qilingan"&&d.saleStatus==="Sotilgan"){setMessage("Bekor qilingan buyurtmani sotilgan deb belgilash mumkin emas.");return;}
  if(d.deliveryStatus==="Yetkazilgan"&&d.saleStatus!=="Sotilgan"){setMessage("Avval sotuv holatini tasdiqlang.");return;}
- if(d.fundingA+d.fundingB>d.cost){setMessage("Investor mablag‘lari kiritilgan tan narxidan oshmasligi kerak (namuna qoidasi).");return;}
+
  try{saveDetails(id,d);setMessage("Namuna buyurtma saqlandi.");}catch{setMessage("Saqlash imkoni bo‘lmadi.");}}
  if(!loaded)return <main className="container"><p>Yuklanmoqda…</p></main>;
  if(!request)return <main className="container"><h2>Buyurtma topilmadi.</h2><Link className="secondary" href="/dashboard">Boshqaruv paneliga qaytish</Link></main>;
