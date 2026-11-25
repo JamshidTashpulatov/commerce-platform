@@ -51,7 +51,7 @@ export function BuyPanel({product}:{product:StoreProductDetail}){
     </div>
 
     <div className="sf-config">
-      {groups.map(g=><OptionSection key={g.name} group={g} skus={skus} selected={selected} onPick={value=>choose(closest(skus,selected,g.name,value))}/>)}
+      {[...groups].sort((a,b)=>Number(isColorGroup(b.name))-Number(isColorGroup(a.name))).map(g=><OptionSection key={g.name} group={g} skus={skus} selected={selected} onPick={value=>choose(closest(skus,selected,g.name,value))}/>)}
 
       {!groups.length&&skus.length>1&&<section className="sf-option">
         <h2 className="sf-option-title"><label htmlFor="sf-variant">Variant. <span>Kerakli turini tanlang.</span></label></h2>

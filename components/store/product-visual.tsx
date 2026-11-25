@@ -2,14 +2,37 @@ import type {ReactNode} from "react";
 import {glyphFor,type Glyph} from "../../lib/storefront";
 
 // A product photo, or a quiet line drawing when the product has no image yet.
-export function ProductVisual({image,name,category,className="",priority=false,fit="cover"}:{
-  image:string|null;name:string;category:string;className?:string;priority?:boolean;fit?:"cover"|"contain";
+export function ProductVisual({image,name,category,className="",priority=false,fit="cover",sizes="(min-width:1069px) 50vw, 100vw"}:{
+  image:string|null;name:string;category:string;className?:string;priority?:boolean;fit?:"cover"|"contain";sizes?:string;
 }){
-  if(image)return <img className={"pv-img "+className} data-fit={fit} src={image} alt={name} referrerPolicy="no-referrer"
-    loading={priority?"eager":"lazy"} fetchPriority={priority?"high":"auto"} decoding="async"/>;
+  if(image){
+    const cdn=appleSources(image);
+    // Store CDN shots sit inside the frame: cut-outs keep a margin, white-backed
+    // JPEGs blend into the light tile. Uploaded marketing photos fill it.
+    return <img className={"pv-img "+className} data-fit={cdn?"contain":fit} data-alpha={cdn?.alpha||undefined} data-blend={cdn&&!cdn.alpha||undefined}
+      src={cdn?.src??image} srcSet={cdn?.srcSet} sizes={cdn?.srcSet?sizes:undefined} alt={name} referrerPolicy="no-referrer"
+      loading={priority?"eager":"lazy"} fetchPriority={priority?"high":"auto"} decoding="async"/>;
+  }
   return <div className={"pv-fallback "+className} role="img" aria-label={name+". Rasm tez orada qo‘shiladi"}>
     <GlyphArt glyph={glyphFor(name,category)}/>
   </div>;
+}
+
+// Apple's image CDN resizes on request. Ask for sensible widths instead of the
+// stored original, which can be 5120px wide. The aspect ratio is preserved.
+function appleSources(raw:string){
+  let url:URL;
+  try{url=new URL(raw);}catch{return null;}
+  if(url.hostname!=="store.storeimages.cdn-apple.com")return null;
+  const wid=Number(url.searchParams.get("wid")),hei=Number(url.searchParams.get("hei"));
+  if(!wid||!hei)return null;
+  const alpha=url.searchParams.get("fmt")==="png-alpha";
+  // A non-numeric version token signs the exact size; changing it returns 404.
+  if(!/^\d*$/.test(url.searchParams.get(".v")??""))return {src:raw,srcSet:undefined,alpha};
+  const at=(w:number)=>{const u=new URL(url);u.searchParams.set("wid",String(w));u.searchParams.set("hei",String(Math.round(w*hei/wid)));return u.toString();};
+  const widths=[480,800,1200,1600,2400].filter(w=>w<wid);
+  widths.push(Math.min(wid,3200));
+  return {src:at(Math.min(wid,1200)),srcSet:widths.map(w=>at(w)+" "+w+"w").join(", "),alpha};
 }
 
 function GlyphArt({glyph}:{glyph:Glyph}){
