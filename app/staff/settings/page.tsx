@@ -1,0 +1,9 @@
+"use client";
+import {useEffect,useState,useRef} from "react";
+import {staffFetch} from "../../../lib/staff-client";
+export default function Settings(){
+ const [saved,setSaved]=useState<boolean|null>(null);const [value,setValue]=useState(false);const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [notice,setNotice]=useState("");const pending=useRef(false);
+ useEffect(()=>{let active=true;staffFetch<{allowPeerPortfolios:boolean}>("/api/admin/settings/investors").then(d=>{if(active){setSaved(d.allowPeerPortfolios);setValue(d.allowPeerPortfolios);}}).catch(e=>{if(active)setError(e instanceof Error?e.message:"Sozlamalar yuklanmadi");});return()=>{active=false;};},[]);
+ async function save(){if(pending.current||saved===null||saved===value)return;pending.current=true;setBusy(true);setError("");setNotice("");try{const d=await staffFetch<{allowPeerPortfolios:boolean}>("/api/admin/settings/investors","PUT",{allowPeerPortfolios:value});setSaved(d.allowPeerPortfolios);setNotice("Sozlama saqlandi.");}catch(e){setError(e instanceof Error?e.message:"Saqlanmadi");}finally{pending.current=false;setBusy(false);}}
+ return <><h1>Sozlamalar.</h1><section className="surface"><h2>Investorlar maxfiyligi</h2>{saved===null&&!error&&<p>Yuklanmoqda…</p>}{saved!==null&&<><label className="check-label"><input type="checkbox" checked={value} disabled={busy} onChange={e=>{setValue(e.target.checked);setNotice("");}}/>Boshqa investorlar portfoliolarini ko‘rsatish</label><p className="muted">Yoqilganda investorlar shu fondning boshqa investorlari kapitali va umumiy foyda qaydlarini ko‘ra oladi. Individual to‘lovlar, buyurtmalar va mijoz ma’lumotlari ochilmaydi. Investorlar hech qanday moliyaviy yozuvni tahrirlay olmaydi.</p><button className="primary" disabled={busy||saved===value} onClick={()=>void save()}>Saqlash</button></>}{error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}</section></>;
+}
