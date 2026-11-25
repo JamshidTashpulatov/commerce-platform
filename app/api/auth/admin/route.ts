@@ -22,7 +22,11 @@ export async function POST(request:Request){
   const b=await smallJson(request);
   if(!b || typeof b.email!=="string" || b.email.length>254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.email.trim())
     || typeof b.password!=="string" || !b.password.length || Buffer.byteLength(b.password)>512
-    || !["login","activate"].includes(String(b.action)))return reply("Email va parolni tekshiring.",400);
+    || !["login","activate","change"].includes(String(b.action)))return reply("Email va parolni tekshiring.",400);
+  const change=b.action==="change";
+  const newPassword=b.newPassword;
+  if(change&&(typeof newPassword!=="string"||newPassword.length<15||Buffer.byteLength(newPassword)>512))
+    return reply("Kamida 15 belgili yangi parol tanlang.",400);
   const activate=b.action==="activate";
   if(activate && b.password.length<15)return reply("Kamida 15 belgili parol tanlang.",400);
   try{
@@ -49,8 +53,11 @@ export async function POST(request:Request){
           window_start=CASE WHEN $3 THEN now() ELSE window_start END WHERE store_id=$1 AND account_id=$2`,[store,row.account_id,row.expired]);
         await c.query("COMMIT");return denied();
       }
+      const nextSalt=change?randomBytes(16):salt;
+      const nextKey=change?await derive(String(newPassword),nextSalt):key;
+      if(change)await c.query("UPDATE sessions SET revoked_at=now() WHERE account_id=$1 AND password_store_id=$2 AND revoked_at IS NULL",[row.account_id,store]);
       await c.query(`UPDATE admin_credentials SET salt=$3,password_hash=$4,attempts=0,window_start=now()
-        WHERE store_id=$1 AND account_id=$2`,[store,row.account_id,salt,key]);
+        WHERE store_id=$1 AND account_id=$2`,[store,row.account_id,nextSalt,nextKey]);
       const token=randomBytes(32).toString("base64url");
       await c.query(`INSERT INTO sessions(token_hash,account_id,password_store_id,expires_at)
         VALUES($1,$2,$3,now()+interval '8 hours')`,[createHash("sha256").update(token).digest("hex"),row.account_id,store]);
