@@ -12,30 +12,46 @@ export async function GET(request:Request){
     const after=params.get("after");
     const category=params.get("category") || null;
     const query=params.get("q")?.trim() || null;
+    // Sort key: newest first by default (negative creation time), the lowest price for cheapest
+    // first, its negative for dearest first, 0 for name order.
+    // Name and id break ties, so the cursor (a product id) stays a stable keyset position.
+    const sort=params.get("sort") || "new";
+    if (!["new","name","price_asc","price_desc"].includes(sort)) {
+      return NextResponse.json({error:"Qidiruv parametrlarini tekshiring"},{status:400});
+    }
     if ((after!==null && !isUuid(after)) || (query && query.length>200) || (category && category.length>200)) {
       return NextResponse.json({error:"Qidiruv parametrlarini tekshiring"},{status:400});
     }
     const db=database();
     const [page,categories]=await Promise.all([
       db.query(
-        `WITH matches AS (
-           SELECT p.* FROM products p WHERE p.store_id=$1 AND p.published
+        `WITH base AS (
+           SELECT p.*,CASE $5::text WHEN 'new' THEN -extract(epoch FROM p.created_at) WHEN 'price_asc' THEN fp.price WHEN 'price_desc' THEN -fp.price ELSE 0 END AS sort_key
+           FROM products p
+           CROSS JOIN LATERAL (SELECT min(v.price_uzs) AS price FROM variants v
+             WHERE v.store_id=p.store_id AND v.product_id=p.id AND v.active) fp
+           WHERE p.store_id=$1 AND p.published
              AND ($2::text IS NULL OR p.category=$2)
-             AND ($4::uuid IS NULL OR (p.name,p.id) > (
-               SELECT name,id FROM products WHERE store_id=$1 AND id=$4 AND published))
              AND EXISTS (
                SELECT 1 FROM variants v WHERE v.store_id=p.store_id AND v.product_id=p.id AND v.active
                  AND ($3::text IS NULL OR strpos(lower(concat_ws(' ',p.name,p.category,v.color,v.storage_label)),lower($3))>0
                    OR EXISTS (SELECT 1 FROM jsonb_each_text(v.option_values) opt WHERE strpos(lower(opt.value),lower($3))>0))
              )
-           ORDER BY p.name,p.id LIMIT 25
-         ), page AS (SELECT * FROM matches ORDER BY name,id LIMIT 24)
+         ), matches AS (
+           SELECT b.* FROM base b
+           WHERE $4::uuid IS NULL OR (b.sort_key,b.name,b.id) > (
+             SELECT CASE $5::text WHEN 'new' THEN -extract(epoch FROM c.created_at) WHEN 'price_asc' THEN fp.price WHEN 'price_desc' THEN -fp.price ELSE 0 END,c.name,c.id
+             FROM products c CROSS JOIN LATERAL (SELECT min(v.price_uzs) AS price FROM variants v
+               WHERE v.store_id=c.store_id AND v.product_id=c.id AND v.active) fp
+             WHERE c.store_id=$1 AND c.id=$4 AND c.published)
+           ORDER BY b.sort_key,b.name,b.id LIMIT 25
+         ), page AS (SELECT * FROM matches ORDER BY sort_key,name,id LIMIT 24)
          SELECT p.id,p.name,p.category,p.description,p.image_url,p.option_groups,v.id AS variant_id,
            v.color,v.storage_label,v.option_values,v.image_url AS variant_image_url,v.price_uzs::text,
            v.quantity>0 AS in_stock,(SELECT count(*)>24 FROM matches) AS has_more
          FROM page p JOIN variants v ON v.product_id=p.id AND v.store_id=p.store_id AND v.active
-         ORDER BY p.name,p.id,v.color,v.id`,
-        [storeId,category,query,after]
+         ORDER BY p.sort_key,p.name,p.id,v.color,v.id`,
+        [storeId,category,query,after,sort]
       ),
       db.query(`SELECT DISTINCT p.category FROM products p WHERE p.store_id=$1 AND p.published
                 AND EXISTS (SELECT 1 FROM variants v WHERE v.store_id=p.store_id AND v.product_id=p.id AND v.active)

@@ -2,10 +2,10 @@ import type {Metadata} from "next";
 import {Suspense} from "react";
 import {CatalogView} from "../../../components/store/catalog-view";
 import {wrap} from "../../../components/store/bits";
-import {CategoryModels} from "../../../components/store/category-models";
-import {categoryModels,categorySummary} from "../../../lib/server/storefront";
+import {CatalogStrip,type StripItem} from "../../../components/store/catalog-strip";
+import {categoryLeads,categoryModels,categorySummary} from "../../../lib/server/storefront";
 import {pageMeta} from "../../../lib/server/seo";
-import {catalogHref,fromSoum} from "../../../lib/storefront";
+import {catalogHref,fromSoum,productHref} from "../../../lib/storefront";
 
 export const dynamic="force-dynamic";
 
@@ -25,10 +25,12 @@ export async function generateMetadata({searchParams}:{searchParams:Promise<{cat
 export default async function CatalogPage({searchParams}:{searchParams:Promise<{category?:string}>}){
   const {category}=await searchParams;
   // A failed lookup only hides the strip; the catalog itself loads on the client.
-  const models=typeof category==="string"&&category?await categoryModels(category).catch(()=>[]):[];
+  const items:StripItem[]=typeof category==="string"&&category
+    ?(await categoryModels(category).catch(()=>[])).map(m=>({key:m.id,href:productHref(m.id),name:m.name,image:m.image,category}))
+    :(await categoryLeads().catch(()=>[])).map(c=>({key:c.category,href:catalogHref(c.category),name:c.category,image:c.image,category:c.category}));
   return <div className={wrap+" pb-20"}>
     <Suspense fallback={<h1 className="pt-16 text-5xl font-semibold">Katalog.</h1>}>
-      <CatalogView models={models.length>1?<CategoryModels category={category!} models={models}/>:undefined}/>
+      <CatalogView strip={items.length>1?<CatalogStrip label={category?category+" modellari":"Turkumlar"} items={items}/>:undefined}/>
     </Suspense>
   </div>;
 }

@@ -2,13 +2,14 @@
 import {useEffect,useMemo,useRef,useState,type ReactNode} from "react";
 import Link from "next/link";
 import {usePathname,useRouter,useSearchParams} from "next/navigation";
-import {SearchIcon,XCircleIcon,SearchXIcon,WifiOffIcon} from "lucide-react";
+import {ArrowUpDownIcon,SearchIcon,XCircleIcon,SearchXIcon,WifiOffIcon} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {Input} from "@/components/ui/input";
+import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from "@/components/ui/select";
 import {Skeleton} from "@/components/ui/skeleton";
 import {Empty,EmptyContent,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle} from "@/components/ui/empty";
 import type {OptionGroup,OptionSelection} from "../../lib/catalog-options";
-import {fromSoum,isColorGroup,productHref,sortCategories,swatchColor} from "../../lib/storefront";
+import {fromSoum,isColorGroup,productHref,swatchColor} from "../../lib/storefront";
 import {ProductVisual} from "./product-visual";
 import {Availability,eyebrow,pill} from "./bits";
 import {CompareToggle} from "./compare-toggle";
@@ -37,22 +38,24 @@ function toCards(rows:Row[]):Card[]{
   });
 }
 
-const chip="h-9 flex-none cursor-pointer rounded-full border border-sf-line bg-white px-4 text-sm tracking-[-0.016em] text-sf-ink transition-[background-color,border-color,color,scale] duration-200 hover:border-sf-ink-3 active:scale-[0.97] aria-pressed:border-sf-ink aria-pressed:bg-sf-ink aria-pressed:text-white";
+const SORTS={new:"Yangi modellar",name:"Nomi bo‘yicha",price_asc:"Avval arzonlari",price_desc:"Avval qimmatlari"} as const;
+type Sort=keyof typeof SORTS;
 
-/** `models`: the strip of the category's models, rendered on the server and shown under the heading. */
-export function CatalogView({models}:{models?:ReactNode}){
+/** `strip`: the row of categories or of the category's models, rendered on the server and shown under the search. */
+export function CatalogView({strip}:{strip?:ReactNode}){
   const router=useRouter();
   const pathname=usePathname();
   const params=useSearchParams();
   const category=params.get("category")??"";
+  const sortParam=params.get("sort")??"";
+  const sort:Sort=sortParam in SORTS?sortParam as Sort:"new";
   const [query,setQuery]=useState(()=>params.get("q")??"");
   const [rows,setRows]=useState<Row[]>([]);
-  const [categories,setCategories]=useState<string[]>([]);
   const [next,setNext]=useState<string|null>(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [retry,setRetry]=useState(0);
-  const filterKey=category+"\u0000"+query.trim();
+  const filterKey=category+"\u0000"+query.trim()+"\u0000"+sort;
   // The cursor stack belongs to one filter; changing the filter starts again at page one.
   const [paging,setPaging]=useState<{key:string;pages:string[]}>({key:filterKey,pages:[]});
   const pages=paging.key===filterKey?paging.pages:[];
@@ -70,28 +73,35 @@ export function CatalogView({models}:{models?:ReactNode}){
       const url=new URLSearchParams();
       if(category)url.set("category",category);
       if(q)url.set("q",q);
+      if(sort!=="new")url.set("sort",sort);
       const shown=url.toString();
       if(shown!==params.toString())router.replace(pathname+(shown?"?"+shown:""),{scroll:false});
-      const api=new URLSearchParams({q,category});
+      const api=new URLSearchParams({q,category,sort});
       if(cursor)api.set("after",cursor);
       try{
         const res=await fetch("/api/catalog?"+api,{cache:"no-store"});
         const data=await res.json().catch(()=>null);
         if(!res.ok)throw new Error(typeof data?.error==="string"?data.error:"Katalog yuklanmadi");
-        if(active){setRows(data.items);setCategories(data.categories);setNext(data.next);}
+        if(active){setRows(data.items);setNext(data.next);}
       }catch(e){
         if(active){setRows([]);setNext(null);setError(e instanceof Error?e.message:"Katalog yuklanmadi");}
       }finally{if(active)setLoading(false);}
     },q?250:0);
     return ()=>{active=false;clearTimeout(timer);};
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[category,query,cursor,retry]);
+  },[category,query,sort,cursor,retry]);
 
   const cards=useMemo(()=>toCards(rows),[rows]);
   const setCategory=(c:string)=>{
     const url=new URLSearchParams();
     if(c)url.set("category",c);
     if(query.trim())url.set("q",query.trim());
+    if(sort!=="new")url.set("sort",sort);
+    router.replace(pathname+(url.size?"?"+url:""),{scroll:false});
+  };
+  const setSort=(value:Sort)=>{
+    const url=new URLSearchParams(params.toString());
+    if(value==="new")url.delete("sort");else url.set("sort",value);
     router.replace(pathname+(url.size?"?"+url:""),{scroll:false});
   };
   const turn=(dir:1|-1)=>{
@@ -103,11 +113,11 @@ export function CatalogView({models}:{models?:ReactNode}){
     <header className="pt-10 pb-5 tablet:pt-16 tablet:pb-7">
       <h1 className="text-[40px] leading-[1.1] font-semibold tablet:text-5xl tablet:leading-[1.08] tablet:tracking-[-0.003em]">{category||"Barcha mahsulotlar"}.</h1>
       <p className="mt-2 text-[19px] leading-[1.21] text-sf-ink-2 tablet:text-[21px]">{category?"Turkumdagi barcha modellar. Narxlar so‘mda.":"Katalogdagi barcha modellar bir joyda. Narxlar so‘mda."}</p>
-      {models&&<div className="mt-7 tablet:mt-9">{models}</div>}
     </header>
 
     <div ref={top} className="flex scroll-mt-16 flex-col gap-4 pb-7">
-      <div className="relative flex max-w-[520px] items-center text-sf-ink-2">
+      <div className="flex items-center gap-3">
+      <div className="relative flex min-w-0 flex-1 items-center text-sf-ink-2">
         <label htmlFor="qidiruv" className="sr-only">Qidirish</label>
         <SearchIcon className="pointer-events-none absolute left-3.5 size-[17px]" strokeWidth={1.6} aria-hidden="true"/>
         <Input id="qidiruv" ref={search} type="search" value={query} maxLength={200} autoComplete="off"
@@ -116,11 +126,17 @@ export function CatalogView({models}:{models?:ReactNode}){
         {query&&<button type="button" className="absolute right-1.5 inline-flex size-8 cursor-pointer items-center justify-center text-sf-ink-3 hover:text-sf-ink-2"
           aria-label="Qidiruvni tozalash" onClick={()=>{setQuery("");search.current?.focus();}}><XCircleIcon className="size-[18px]" aria-hidden="true"/></button>}
       </div>
-      <div className="sf-no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 tablet:-mx-[22px] tablet:px-[22px]" role="group" aria-label="Turkum">
-        <button type="button" className={chip} aria-pressed={!category} onClick={()=>setCategory("")}>Barchasi</button>
-        {(categories.length?sortCategories(categories):category?[category]:[]).map(c=>
-          <button type="button" key={c} className={chip} aria-pressed={category===c} onClick={()=>setCategory(c)}>{c}</button>)}
+      <Select items={SORTS} value={sort} onValueChange={v=>v&&setSort(v as Sort)}>
+        <SelectTrigger aria-label="Saralash" className="h-11 shrink-0 cursor-pointer gap-2.5 rounded-xl bg-white pr-3.5 pl-3.5 data-[size=default]:h-11 data-[size=default]:pr-3.5 text-[17px] tracking-[-0.022em] text-sf-ink outline-sf-line focus-visible:outline-sf-blue focus-visible:ring-sf-blue/20 tablet:min-w-[220px] [&_svg]:text-sf-ink-2">
+          <ArrowUpDownIcon className="size-[17px]" strokeWidth={1.6} aria-hidden="true"/>
+          <SelectValue className="max-tablet:sr-only"/>
+        </SelectTrigger>
+        <SelectContent align="end" alignItemWithTrigger={false} className="font-sf">
+          {(Object.keys(SORTS) as Sort[]).map(k=><SelectItem key={k} value={k} className="cursor-pointer py-2 text-[17px] tracking-[-0.022em]">{SORTS[k]}</SelectItem>)}
+        </SelectContent>
+      </Select>
       </div>
+      {strip&&<div className="pt-3">{strip}</div>}
     </div>
 
     <p className="sr-only" role="status" aria-live="polite">{loading?"Katalog yuklanmoqda":error?"":`${cards.length} ta mahsulot ko‘rsatildi`}</p>

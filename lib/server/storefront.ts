@@ -129,3 +129,18 @@ export async function categoryModels(category:string,limit=24):Promise<CategoryM
   return r.rows.map(row=>({id:row.id,name:row.name,
     image:variantImage(publicGroups(row.option_groups as OptionGroup[]),row.first_options as OptionSelection,safe(row.variant_image),safe(row.image_url))}));
 }
+
+/** One entry per published category, pictured by its most expensive model, for the strip above the full catalog. */
+export async function categoryLeads():Promise<{category:string;image:string|null}[]>{
+  const r=await database().query(
+    `SELECT DISTINCT ON (category) category,image_url,option_groups,variant_image,first_options FROM (
+       SELECT p.category,p.name,p.image_url,p.option_groups,max(v.price_uzs) AS top,
+         (array_agg(v.image_url ORDER BY v.price_uzs,v.id))[1] AS variant_image,
+         (array_agg(v.option_values ORDER BY v.price_uzs,v.id))[1] AS first_options
+       FROM products p JOIN variants v ON v.store_id=p.store_id AND v.product_id=p.id AND v.active
+       WHERE p.store_id=$1 AND p.published GROUP BY p.id) x
+     ORDER BY category,(variant_image IS NULL AND image_url IS NULL),top DESC,name`,[configuredStoreId()]);
+  const byCategory=new Map(r.rows.map(row=>[row.category as string,
+    variantImage(publicGroups(row.option_groups as OptionGroup[]),row.first_options as OptionSelection,safe(row.variant_image),safe(row.image_url))]));
+  return sortCategories([...byCategory.keys()]).map(category=>({category,image:byCategory.get(category)??null}));
+}
