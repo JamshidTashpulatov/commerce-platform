@@ -21,7 +21,7 @@ type Data = { can_review: boolean; terms: { agreed_total_uzs: string; initial_du
 const stateTone = { paid: "success", overdue: "danger", pending: "neutral" } as const;
 const stateLabels: Record<string, string> = { paid: "To‘langan", overdue: "Kechikkan", pending: "Kutilmoqda" };
 
-export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0 }: { version?: number; endpoint: string; cancelled: boolean; onChanged: () => void }) {
+export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0, plain }: { plain?: boolean; version?: number; endpoint: string; cancelled: boolean; onChanged: () => void }) {
   const url = endpoint + "/installments";
   const [data, setData] = useState<Data | null>(null);
   const [months, setMonths] = useState(6);
@@ -99,7 +99,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0 
 
   if ((!loading || data) && !loadError && t?.payment_type !== "installment") return null;
   return (
-    <Section title="Nasiya jadvali" description="Oylik to‘lov qayd etilganda tizim uni asosiy kapital va foydaga o‘zi ajratadi." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
+    <Section plain={plain} title="Nasiya jadvali" description="Oylik to‘lov qayd etilganda tizim uni asosiy kapital va foydaga o‘zi ajratadi." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
       {loading && !data ? (
         <LoadingBlock label="Jadval yuklanmoqda" />
       ) : loadError ? (

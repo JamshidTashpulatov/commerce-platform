@@ -18,7 +18,7 @@ type PaymentData = { can_review: boolean; terms: Terms | null; receipts: Receipt
 export const paymentMethods: Record<string, string> = { cash: "Naqd", transfer: "Pul o‘tkazmasi", other: "Boshqa" };
 const validSum = (s: string) => /^(0|[1-9][0-9]{0,11})$/.test(s);
 
-export function OrderPayments({ endpoint, cancelled, onChanged }: { endpoint: string; cancelled: boolean; onChanged?: () => void }) {
+export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: { plain?: boolean; part?: "terms" | "receipts"; endpoint: string; cancelled: boolean; onChanged?: () => void }) {
   const url = endpoint + "/payments";
   const [data, setData] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,13 +102,14 @@ export function OrderPayments({ endpoint, cancelled, onChanged }: { endpoint: st
   const canReceipt = !busy && !cancelled && !data?.has_schedule && !!data?.terms && validSum(amount) && BigInt(amount) > BigInt(0) && BigInt(amount) <= cap && !!date;
 
   return (
-    <Section title="To‘lov shartlari va to‘lovlar" description="Tizimdan tashqarida olingan to‘lovlar qo‘lda qayd etiladi. Bu pul o‘tkazmasi emas." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
+    <Section plain={plain} title="To‘lov shartlari va to‘lovlar" description="Tizimdan tashqarida olingan to‘lovlar qo‘lda qayd etiladi. Bu pul o‘tkazmasi emas." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
       {loading ? (
         <LoadingBlock label="To‘lovlar yuklanmoqda" />
       ) : loadError ? (
         <ErrorState message={loadError} onRetry={() => void load()} />
       ) : data ? (
         <>
+          {part !== "receipts" && (
           <form
             className="flex flex-col gap-4"
             onSubmit={e => {
@@ -172,9 +173,12 @@ export function OrderPayments({ endpoint, cancelled, onChanged }: { endpoint: st
               </SubmitButton>
             )}
           </form>
+          )}
 
           <InlineError message={error} />
 
+          {part !== "terms" && (
+            <>
           {data.terms && (
             <>
               <StatGrid className="xl:grid-cols-3">
@@ -304,6 +308,8 @@ export function OrderPayments({ endpoint, cancelled, onChanged }: { endpoint: st
             </TableFrame>
           ) : (
             <EmptyState title="Hozircha to‘lov qayd etilmagan" description={data.terms ? undefined : "Avval kelishilgan shartlarni saqlang."} />
+          )}
+            </>
           )}
 
           <ConfirmDialog

@@ -90,7 +90,15 @@ export function RefreshButton({ onClick, busy, label = "Yangilash" }: { onClick:
  * A page section: heading, optional description and action, then content directly on the page.
  * Deliberately not a card, so tables, stat tiles and sub-forms inside are the only framed level.
  */
-export function Section({ title, description, action, children, className }: { title: string; description?: string; action?: ReactNode; children: ReactNode; className?: string }) {
+export function Section({ title, description, action, children, className, plain }: { title: string; description?: string; action?: ReactNode; children: ReactNode; className?: string; plain?: boolean }) {
+  // `plain`: the caller (a step of the order flow) already shows the title and explanation.
+  if (plain)
+    return (
+      <section aria-label={title} className={cn("flex flex-col gap-4", className)}>
+        {action && <div className="flex justify-end">{action}</div>}
+        {children}
+      </section>
+    );
   return (
     <section className={cn("flex flex-col gap-4 border-t pt-6", className)}>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
