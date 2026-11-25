@@ -1,0 +1,5 @@
+# Backend foundation
+
+Apply migrations 001 and 002 in order to a fresh PostgreSQL database. CI uses a disposable database. Configure DATABASE_URL and STORE_ID through secret settings. Configure APP_ORIGIN as the exact HTTPS origin and TELEGRAM_BOT_TOKEN securely; never commit credentials.
+
+Catalog and protected orders are read-only endpoints. Admin Mini App authentication verifies signed fresh initData, rejects replays and issues an HTTPS-only session only for existing staff memberships. Provision staff accounts through a controlled administrative process; no public role assignment. Schedule deletion of expired sessions and auth assertions. The existing UI still uses demo data. Live integration, logout, rate limiting, end-to-end auth tests and security review remain required. Website Telegram login is a separate OIDC integration; see https://core.telegram.org/bots/telegram-login. Mini App verification reference: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app.
