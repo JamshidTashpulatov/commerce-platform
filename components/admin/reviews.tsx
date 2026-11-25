@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
@@ -71,7 +72,8 @@ export function ReviewList({ reviews, showOrder, onResolved }: { reviews: Receip
               )}
             </div>
             {!r.resolved_at && (
-              <Button type="button" variant="outline" className="shrink-0 self-start" onClick={() => setSelected(r)}>
+              <Button type="button" variant="secondary" className="shrink-0 self-start" onClick={() => setSelected(r)}>
+                <CheckIcon data-icon="inline-start" />
                 Tafovutni yopish
               </Button>
             )}

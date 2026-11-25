@@ -1,5 +1,6 @@
 "use client";
 
+import { PlusIcon, WrenchIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, RefreshButton, Section, StatusBadge, SummaryList, TableFrame, TextField, errorText, formatDay, tashkentToday } from "./kit";
@@ -197,7 +198,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
                         {r.state !== "paid" && data.contract?.status === "active" && !cancelled && (
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                            
                             disabled={busy}
                             onClick={() => {
@@ -207,6 +208,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
                               key.current = "";
                             }}
                           >
+                            <PlusIcon data-icon="inline-start" />
                             To‘lov qo‘shish
                           </Button>
                         )}
@@ -257,7 +259,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
                               {!r.reversed && !cancelled && (
                                 <Button
                                   type="button"
-                                  variant="ghost"
+                                  variant="secondary"
                                  
                                   disabled={busy}
                                   onClick={() => {
@@ -265,6 +267,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
                                     setCorrecting(r);
                                   }}
                                 >
+                                  <WrenchIcon data-icon="inline-start" />
                                   Tuzatish
                                 </Button>
                               )}

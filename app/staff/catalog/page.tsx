@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeftIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { ArrowLeftIcon, PencilIcon, PlusIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
 import { CatalogImageUpload } from "@/components/admin/catalog-image-upload";
 import { CatalogOptionEditor } from "@/components/admin/catalog-option-editor";
@@ -168,7 +168,8 @@ export default function CatalogAdmin() {
                       <StatusBadge tone={p.published ? "success" : "neutral"}>{p.published ? "E’lon qilingan" : "Qoralama"}</StatusBadge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button type="button" variant="outline" onClick={() => select(p)}>
+                      <Button type="button" variant="secondary" onClick={() => select(p)}>
+                        <PencilIcon data-icon="inline-start" />
                         Tahrirlash
                       </Button>
                     </TableCell>
@@ -284,7 +285,8 @@ export default function CatalogAdmin() {
                         <StatusBadge tone={v.active ? "success" : "neutral"}>{v.active ? "Faol" : "Faol emas"}</StatusBadge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button type="button" variant="outline" disabled={locked} onClick={() => openVariant(v)}>
+                        <Button type="button" variant="secondary" disabled={locked} onClick={() => openVariant(v)}>
+                          <PencilIcon data-icon="inline-start" />
                           Tahrirlash
                         </Button>
                       </TableCell>
