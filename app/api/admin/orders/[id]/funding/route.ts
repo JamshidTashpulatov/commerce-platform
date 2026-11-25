@@ -20,7 +20,7 @@ export async function GET(_request:Request,{params}:Ctx){
  const investors=await c.query(`
  SELECT m.account_id,COALESCE(p.display_name,'Investor '||left(m.account_id::text,8)) AS name,
  (COALESCE((SELECT SUM(CASE event_type WHEN 'contribution' THEN amount_uzs WHEN 'withdrawal' THEN -amount_uzs ELSE 0 END) FROM investor_capital_events e WHERE e.store_id=m.store_id AND e.investor_account_id=m.account_id),0)
- -COALESCE((SELECT SUM(a.amount_uzs) FROM order_funding_allocations a WHERE a.store_id=m.store_id AND a.investor_account_id=m.account_id AND a.order_id<>$2),0))::text AS available_for_order_uzs
+ -COALESCE((SELECT SUM(a.outstanding_uzs) FROM investor_funding_balances a WHERE a.store_id=m.store_id AND a.investor_account_id=m.account_id AND a.order_id<>$2),0))::text AS available_for_order_uzs
  FROM memberships m LEFT JOIN investor_profiles p ON p.store_id=m.store_id AND p.account_id=m.account_id WHERE m.store_id=$1 AND m.role='investor' ORDER BY name LIMIT 200`,[store,id]);
  await c.query("COMMIT");return reply({principal:o.rows[0].principal,allocations:allocations.rows,investors:investors.rows,enabled:process.env.INVESTOR_FUNDING_ENABLED==="true"});
  }catch{await c.query("ROLLBACK");return reply({error:"Moliyalashtirishni yuklab bo‘lmadi"},503);}finally{c.release();}
@@ -61,7 +61,7 @@ export async function PUT(request:Request,{params}:Ctx){
  if(lock.rows[0]?.role!=="investor")return await fail("Investor topilmadi",404);
  const available=await c.query(`
  SELECT (COALESCE((SELECT SUM(CASE event_type WHEN 'contribution' THEN amount_uzs WHEN 'withdrawal' THEN -amount_uzs ELSE 0 END) FROM investor_capital_events WHERE store_id=$1 AND investor_account_id=$2),0)
- -COALESCE((SELECT SUM(amount_uzs) FROM order_funding_allocations WHERE store_id=$1 AND investor_account_id=$2 AND order_id<>$3),0))::text AS value`,[store,accountId,id]);
+ -COALESCE((SELECT SUM(outstanding_uzs) FROM investor_funding_balances WHERE store_id=$1 AND investor_account_id=$2 AND order_id<>$3),0))::text AS value`,[store,accountId,id]);
  if(BigInt(entry.amount)>BigInt(available.rows[0].value))return await fail("Investor kapitali yetarli emas");
  }
  await c.query("DELETE FROM order_funding_allocations WHERE store_id=$1 AND order_id=$2",[store,id]);
