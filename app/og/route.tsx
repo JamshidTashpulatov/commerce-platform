@@ -6,8 +6,9 @@ import {database,configuredStoreId} from "../../lib/server/db";
 import {approvedImageUrl,localMediaId} from "../../lib/server/catalog-media";
 import {getProduct,listProducts} from "../../lib/server/storefront";
 import {imageSources} from "../../lib/image-sources";
-import {STORE_NAME,STORE_TAGLINE,fromSoum,soum} from "../../lib/storefront";
+import {STORE_NAME,STORE_TAGLINE} from "../../lib/storefront";
 import {BRAND_MARK_D,BRAND_MARK_ROTATIONS} from "../../lib/brand-mark";
+import {formatFrom,formatMoney} from "../../lib/money";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -71,7 +72,7 @@ function DefaultCard(){
   return <div style={{...frame,flexDirection:"column",justifyContent:"center",alignItems:"center",gap:28}}>
     <Mark size={120}/>
     <div style={{fontSize:84,fontWeight:700,letterSpacing:-2}}>{STORE_NAME}</div>
-    <div style={{fontSize:38,fontWeight:600,color:"#6e6e73"}}>{`${STORE_TAGLINE}. Narxlar so‘mda.`}</div>
+    <div style={{fontSize:38,fontWeight:600,color:"#6e6e73"}}>{`${STORE_TAGLINE}. Narxlar dollarda.`}</div>
   </div>;
 }
 
@@ -94,7 +95,7 @@ export async function GET(request:Request){
             <div style={{display:"flex",flexDirection:"column",gap:16}}>
               <div style={{fontSize:30,fontWeight:600,color:"#6e6e73"}}>{p.category}</div>
               <div style={{fontSize:p.name.length>18?60:74,fontWeight:700,lineHeight:1.05,letterSpacing:-1.5}}>{p.name}</div>
-              <div style={{fontSize:40,fontWeight:600}}>{oneprice?soum(p.fromPrice):fromSoum(p.fromPrice)}</div>
+              <div style={{fontSize:40,fontWeight:600}}>{oneprice?formatMoney(p.fromPrice):formatFrom(p.fromPrice)}</div>
             </div>
             <div style={{fontSize:24,fontWeight:600,color:"#6e6e73"}}>Buyurtma saytda. Sotuvchi tasdiqlaydi.</div>
           </div>
@@ -115,7 +116,7 @@ export async function GET(request:Request){
           <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:32}}>
             <div style={{display:"flex",flexDirection:"column",gap:12,flexShrink:1}}>
               <div style={{fontSize:category.length>9?68:96,fontWeight:700,letterSpacing:-2,lineHeight:1}}>{category}</div>
-              <div style={{fontSize:36,fontWeight:600,color:"#6e6e73"}}>{`${list.length} ta model. ${fromSoum(from)}.`}</div>
+              <div style={{fontSize:36,fontWeight:600,color:"#6e6e73"}}>{`${list.length} ta model. ${formatFrom(from)}.`}</div>
             </div>
             <div style={{display:"flex",gap:14,flexShrink:0}}>
               {imgs.map((img,i)=><div key={i} style={{display:"flex",width:168,height:220,alignItems:"center",justifyContent:"center",background:img.bg,borderRadius:28,border:"1px solid #ececf0"}}>

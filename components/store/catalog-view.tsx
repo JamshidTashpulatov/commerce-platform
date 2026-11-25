@@ -8,7 +8,7 @@ import {Input} from "@/components/ui/input";
 import {Skeleton} from "@/components/ui/skeleton";
 import {Empty,EmptyContent,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle} from "@/components/ui/empty";
 import type {OptionGroup,OptionSelection} from "../../lib/catalog-options";
-import {fromSoum,isColorGroup,productHref,sortCategories,swatchColor} from "../../lib/storefront";
+import {isColorGroup,productHref,sortCategories,swatchColor} from "../../lib/storefront";
 import {ProductVisual} from "./product-visual";
 import {Availability,eyebrow,pill} from "./bits";
 import {CompareToggle} from "./compare-toggle";
@@ -16,6 +16,7 @@ import {ShoppingBagIcon} from "lucide-react";
 import {addToCart} from "../../lib/cart-store";
 import {cartUi} from "../../lib/cart-ui";
 import {scrollToElement} from "../../lib/smooth-scroll";
+import {formatFrom} from "../../lib/money";
 
 type Row={id:string;name:string;category:string;description:string;image_url:string|null;variant_id:string;color:string;
   storage_label:string|null;price_uzs:string;in_stock:boolean;option_groups:OptionGroup[];option_values:OptionSelection};
@@ -101,7 +102,7 @@ export function CatalogView(){
   return <>
     <header className="pt-10 pb-5 tablet:pt-16 tablet:pb-7">
       <h1 className="text-[40px] leading-[1.1] font-semibold tablet:text-5xl tablet:leading-[1.08] tablet:tracking-[-0.003em]">{category||"Barcha mahsulotlar"}.</h1>
-      <p className="mt-2 text-[19px] leading-[1.21] text-sf-ink-2 tablet:text-[21px]">{category?"Turkumdagi barcha modellar. Narxlar so‘mda.":"Katalogdagi barcha modellar bir joyda. Narxlar so‘mda."}</p>
+      <p className="mt-2 text-[19px] leading-[1.21] text-sf-ink-2 tablet:text-[21px]">{category?"Turkumdagi barcha modellar. Narxlar dollarda.":"Katalogdagi barcha modellar bir joyda. Narxlar dollarda."}</p>
     </header>
 
     <div ref={top} className="flex scroll-mt-16 flex-col gap-4 pb-7">
@@ -157,7 +158,7 @@ export function CatalogView(){
             </ul>}
             <p className={eyebrow}>{c.category}</p>
             <h2 className="mb-1.5 text-[21px] leading-[1.19] font-semibold tracking-[0.011em] [overflow-wrap:anywhere]">{c.name}</h2>
-            <p className="text-sm">{fromSoum(c.fromPrice)}</p>
+            <p className="text-sm">{formatFrom(c.fromPrice)}</p>
             <Availability inStock={c.inStock} className="mt-1.5"/>
             {c.variants>1&&<p className="text-xs text-sf-ink-3">{c.variants} ta variant</p>}
           </div>

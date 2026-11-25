@@ -7,9 +7,10 @@ import {cn} from "@/lib/utils";
 import {Switch} from "@/components/ui/switch";
 import {Empty,EmptyContent,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle} from "@/components/ui/empty";
 import {compareHref,compareStore} from "../../lib/compare-store";
-import {fromSoum,productHref,soum,swatchColor} from "../../lib/storefront";
+import {productHref,swatchColor} from "../../lib/storefront";
 import {ProductVisual} from "./product-visual";
 import {Availability,eyebrow,pill} from "./bits";
+import {formatFrom,formatMoney} from "../../lib/money";
 
 export type CompareProduct={id:string;name:string;category:string;image:string|null;fromPrice:string;toPrice:string;
   inStock:boolean;inStockCount:number;variants:number;colors:{label:string;image:string|null}[];groups:Record<string,string[]>};
@@ -41,8 +42,8 @@ export function CompareView({products,siblings,max}:{products:CompareProduct[];s
     const list:Row[]=[];
     const push=(key:string,label:string,values:string[][],cells:ReactNode[],hint?:string)=>
       list.push({key,label,hint,cells,same:products.length<2||values.every(v=>norm(v)===norm(values[0]))});
-    push("from","Boshlang‘ich narx",products.map(p=>[p.fromPrice]),products.map(p=><span key={p.id} className="text-[17px] font-semibold tabular-nums">{soum(p.fromPrice)}</span>));
-    push("range","Narx oralig‘i",products.map(p=>[p.fromPrice,p.toPrice]),products.map(p=><span key={p.id} className="tabular-nums">{p.fromPrice===p.toPrice?"Bitta narx":`${soum(p.fromPrice)} dan ${soum(p.toPrice)} gacha`}</span>),"Variantlar bo‘yicha eng arzon va eng qimmat narx.");
+    push("from","Boshlang‘ich narx",products.map(p=>[p.fromPrice]),products.map(p=><span key={p.id} className="text-[17px] font-semibold tabular-nums">{formatMoney(p.fromPrice)}</span>));
+    push("range","Narx oralig‘i",products.map(p=>[p.fromPrice,p.toPrice]),products.map(p=><span key={p.id} className="tabular-nums">{p.fromPrice===p.toPrice?"Bitta narx":`${formatMoney(p.fromPrice)} dan ${formatMoney(p.toPrice)} gacha`}</span>),"Variantlar bo‘yicha eng arzon va eng qimmat narx.");
     push("stock","Mavjudlik",products.map(p=>[String(p.inStock),String(p.inStockCount)]),products.map(p=><div key={p.id} className="flex flex-col items-center gap-1">
       <Availability inStock={p.inStock} always className="text-sm"/>
       <span className="text-xs text-sf-ink-3">{p.inStock?`${p.inStockCount} / ${p.variants} variant omborda`:"Kelishini sotuvchidan so‘rang"}</span>
@@ -105,7 +106,7 @@ export function CompareView({products,siblings,max}:{products:CompareProduct[];s
             <ProductVisual image={p.image} name={p.name} category={p.category} fit="blend" sizes="(min-width:735px) 300px, 50vw" className="absolute inset-0"/>
           </Link>
           <h2 className="mt-5 text-[19px] leading-[1.21] font-semibold tablet:text-2xl">{p.name}</h2>
-          <p className="mt-1 text-sm">{fromSoum(p.fromPrice)}</p>
+          <p className="mt-1 text-sm">{formatFrom(p.fromPrice)}</p>
           <Link className={cn(pill({size:"sm"}),"mt-4")} href={productHref(p.id)}>Tanlash</Link>
         </div>)}
         {cols>products.length&&<AddColumn siblings={siblings} onAdd={id=>go([...ids,id])}/>}
@@ -146,7 +147,7 @@ function AddColumn({siblings,onAdd}:{siblings:Sibling[];onAdd:(id:string)=>void}
       {top.map(s=><li key={s.id}>
         <button type="button" onClick={()=>onAdd(s.id)} className="group flex w-full cursor-pointer items-center gap-3 rounded-xl p-1.5 text-left transition-colors hover:bg-sf-alt">
           <span data-tone className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-sf-alt"><ProductVisual image={s.image} name={s.name} category={s.category} fit="blend" sizes="44px" cutoutPadding={false} className="absolute inset-0"/></span>
-          <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{s.name}</span><span className="block text-xs text-sf-ink-2">{fromSoum(s.fromPrice)}</span></span>
+          <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{s.name}</span><span className="block text-xs text-sf-ink-2">{formatFrom(s.fromPrice)}</span></span>
           <PlusIcon className="size-4 shrink-0 text-sf-blue" aria-hidden="true"/>
         </button>
       </li>)}

@@ -7,12 +7,13 @@ import {ProductVisual} from "../../components/store/product-visual";
 import {Shelf} from "../../components/store/shelf";
 import {Availability,eyebrow,pill,wrap} from "../../components/store/bits";
 import {listProducts,sortCategories,type StoreProduct,type Tone} from "../../lib/server/storefront";
-import {STORE_NAME,STORE_TAGLINE,TELEGRAM_URL,catalogHref,fromSoum,productHref} from "../../lib/storefront";
+import {STORE_NAME,STORE_TAGLINE,TELEGRAM_URL,catalogHref,productHref} from "../../lib/storefront";
 import {pageMeta} from "../../lib/server/seo";
+import {formatFrom} from "../../lib/money";
 
 export const dynamic="force-dynamic";
 export const metadata=pageMeta({title:STORE_NAME+". "+STORE_TAGLINE,absoluteTitle:true,path:"/",
-  description:"iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar bir joyda. Narxlar so‘mda, buyurtma saytda, sotuvchi qo‘ng‘iroq qilib tasdiqlaydi."});
+  description:"iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar bir joyda. Narxlar dollarda, buyurtma saytda, sotuvchi qo‘ng‘iroq qilib tasdiqlaydi."});
 
 // Uploaded photos lend their edge colour to the tile, so the photo bleeds into it.
 const toneStyle=(tone:Tone|null,fallback:string)=>({"--tile-bg":tone?.background??fallback}) as CSSProperties;
@@ -50,7 +51,7 @@ export default async function Home(){
       <div className="flex flex-col items-center gap-1.5 px-4">
         <p className={cn(eyebrow,"text-sm",heroDark&&"text-[#a1a1a6]")}>{hero.category}</p>
         <h1 id="hero-title" className="text-[40px] leading-[1.1] font-semibold tracking-normal tablet:text-[56px] tablet:leading-[1.07] tablet:tracking-[-0.005em]">{hero.product.name}</h1>
-        <p className="mb-4 text-[21px] leading-[1.19] tracking-[0.011em] tablet:text-[28px] tablet:leading-[1.14]">{fromSoum(hero.product.fromPrice)}. Savatga qo‘shing yoki bir bosishda xarid qiling.</p>
+        <p className="mb-4 text-[21px] leading-[1.19] tracking-[0.011em] tablet:text-[28px] tablet:leading-[1.14]">{formatFrom(hero.product.fromPrice)}. Savatga qo‘shing yoki bir bosishda xarid qiling.</p>
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-3">
           <Link className={pill()} href={productHref(hero.product.id)}>Batafsil</Link>
           <Link className={pill({tone:"ghost",dark:heroDark})} href={catalogHref(hero.category)}>Barcha {hero.category}</Link>
@@ -71,7 +72,7 @@ export default async function Home(){
           <div className="flex flex-1 flex-col items-center gap-1 px-4 pt-11">
             <p className={cn(eyebrow,dark&&"text-[#a1a1a6]")}>{category}</p>
             <h2 className="text-[32px] leading-[1.125] font-semibold tracking-[0.004em] tablet:text-[40px] tablet:leading-[1.1] tablet:tracking-normal">{product.name}</h2>
-            <p className="mb-4 text-[19px] leading-[1.21] tracking-[0.012em] tablet:text-[21px]">{fromSoum(product.fromPrice)}{count>1?`. Turkumda ${count} ta model.`:"."}</p>
+            <p className="mb-4 text-[19px] leading-[1.21] tracking-[0.012em] tablet:text-[21px]">{formatFrom(product.fromPrice)}{count>1?`. Turkumda ${count} ta model.`:"."}</p>
             <div className="flex flex-wrap justify-center gap-x-3 gap-y-2">
               <Link className={pill({size:"sm"})} href={productHref(product.id)} aria-label={product.name+" haqida batafsil"}>Batafsil</Link>
               <Link className={pill({tone:"ghost",size:"sm",dark})} href={catalogHref(category)} aria-label={"Barcha "+category+" mahsulotlari"}>Barchasi</Link>
@@ -100,7 +101,7 @@ export default async function Home(){
             <div className="flex flex-col gap-1 px-6 pt-5 pb-6">
               <p className={eyebrow}>{p.category}</p>
               <h3 className="mb-1 text-[21px] leading-[1.19] font-semibold tracking-[0.011em]">{p.name}</h3>
-              <p className="text-sm">{fromSoum(p.fromPrice)}</p>
+              <p className="text-sm">{formatFrom(p.fromPrice)}</p>
               <Availability inStock={p.inStock} className="mt-1"/>
             </div>
           </Card>
