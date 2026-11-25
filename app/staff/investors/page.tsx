@@ -1,16 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
-import { InvestorReport } from "@/components/admin/investor-report";
 import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, PageHeader, RefreshButton, Section, SubmitButton, SummaryList, TableFrame, TextField, errorText, isAmount } from "@/components/admin/kit";
 import { PeerPortfolioSetting } from "@/components/admin/peer-portfolio-setting";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { staffFetch } from "@/lib/staff-client";
 
@@ -19,7 +18,6 @@ const labels: Record<string, string> = { contribution: "Kapital kiritilishi", wi
 
 export default function Investors() {
   const [data, setData] = useState<{ items: Investor[]; enabled: boolean } | null>(null);
-  const [reportId, setReportId] = useState("");
   const [id, setId] = useState("");
   const [type, setType] = useState("contribution");
   const [amount, setAmount] = useState("");
@@ -54,7 +52,6 @@ export default function Investors() {
   const selected = data?.items.find(i => i.account_id === id);
   const overAvailable = !!selected && type === "withdrawal" && isAmount(amount) && BigInt(amount) > BigInt(selected.available);
   const valid = !!selected && isAmount(amount) && (type !== "withdrawal" || BigInt(amount) <= BigInt(selected.available)) && !!data?.enabled && !loading && !busy;
-  const reportOf = data?.items.find(i => i.account_id === reportId);
 
   async function post() {
     if (!valid || pending.current || !confirm) return;
@@ -122,7 +119,7 @@ export default function Investors() {
         <ErrorState message={loadError || "Yuklab bo‘lmadi"} onRetry={() => void load()} />
       ) : (
         <>
-          <Section title="Kapital hisoboti" description="Davriy hisobotni ochish uchun investor nomini bosing. Kapital va foyda qaytimlarini tizim o‘zi hisoblaydi.">
+          <Section title="Kapital hisoboti" description="Investor sahifasini ochish uchun nomini bosing. Kapital va foyda qaytimlarini tizim o‘zi hisoblaydi.">
             {data.items.length ? (
               <TableFrame>
                 <Table>
@@ -143,9 +140,9 @@ export default function Investors() {
                     {data.items.map(i => (
                       <TableRow key={i.account_id}>
                         <TableCell>
-                          <Button type="button" variant="link" className="h-auto p-0" aria-label={i.name + " hisoboti"} onClick={() => setReportId(i.account_id)}>
+                          <Link href={"/staff/investors/" + i.account_id} className="font-medium underline underline-offset-4" aria-label={i.name + " hisoboti"}>
                             {i.name}
-                          </Button>
+                          </Link>
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           <Money value={BigInt(i.contributed) - BigInt(i.withdrawn)} />
@@ -301,15 +298,6 @@ export default function Investors() {
         </DialogContent>
       </Dialog>
 
-      <Sheet open={!!reportOf} onOpenChange={next => !next && setReportId("")}>
-        <SheetContent className="w-full gap-0 overflow-y-auto overscroll-contain sm:max-w-2xl">
-          <SheetHeader>
-            <SheetTitle>{reportOf?.name}</SheetTitle>
-            <SheetDescription>Davriy hisobot. Faqat ko‘rish uchun.</SheetDescription>
-          </SheetHeader>
-          <div className="px-4 pb-6">{reportOf && <InvestorReport key={reportOf.account_id} accountId={reportOf.account_id} />}</div>
-        </SheetContent>
-      </Sheet>
     </>
   );
 }

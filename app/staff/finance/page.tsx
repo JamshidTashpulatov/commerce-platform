@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ErrorState, LoadingBlock, Money, PageHeader, RefreshButton, Section, Stat, StatGrid, errorText } from "@/components/admin/kit";
+import { AmountBars, ShareDonut, chartColors } from "@/components/admin/charts";
+import { ErrorState, LoadingBlock, Money, PageHeader, RefreshButton, Section, Stat, StatGrid, errorText, formatSum } from "@/components/admin/kit";
 import { buttonVariants } from "@/components/ui/button";
 import { staffFetch } from "@/lib/staff-client";
 
@@ -47,6 +48,14 @@ export default function Finance() {
               <Stat label="Oylik tushum" value={<Money value={data.scheduled_receipts_uzs} />} />
               <Stat label="Foyda taqsimoti qaydlari" value={<Money value={data.recorded_distributions_uzs} />} />
             </StatGrid>
+            <AmountBars
+              label="Qayd etilgan tushumlar turi bo‘yicha"
+              data={[
+                { name: "Boshlang‘ich va to‘liq to‘lovlar", value: Number(data.manual_receipts_uzs), color: chartColors[0] },
+                { name: "Oylik tushum", value: Number(data.scheduled_receipts_uzs), color: chartColors[1] },
+                { name: "Foyda taqsimoti qaydlari", value: Number(data.recorded_distributions_uzs), color: chartColors[2] },
+              ]}
+            />
             <Link className={linkClass} href="/staff/cashbook">
               Kassa hisoboti
             </Link>
@@ -59,6 +68,15 @@ export default function Finance() {
               <Stat label="Aylanmadagi kapital" value={<Money value={data.outstanding_principal_uzs} />} />
               <Stat label="Bo‘sh kapital" value={<Money value={data.available_principal_uzs} />} />
             </StatGrid>
+            <ShareDonut
+              label="Investor kapitali tuzilmasi"
+              totalLabel="Sof kapital"
+              total={formatSum(data.net_contributed_capital_uzs)}
+              data={[
+                { key: "outstanding", name: "Aylanmadagi kapital", value: Number(data.outstanding_principal_uzs), color: chartColors[0] },
+                { key: "available", name: "Bo‘sh kapital", value: Number(data.available_principal_uzs), color: chartColors[1] },
+              ]}
+            />
             <Link className={linkClass} href="/staff/investors">
               Investorlar hisoboti
             </Link>
@@ -69,6 +87,14 @@ export default function Finance() {
               <Stat label="Muddati o‘tgan to‘lovlar" value={<Money value={data.overdue_schedule_balance_uzs} />} tone={data.overdue_schedule_balance_uzs !== "0" ? "danger" : "default"} />
               <Stat label="Yetkazib beruvchilarga qarz" value={<Money value={data.supplier_invoice_balance_uzs} />} />
             </StatGrid>
+            <AmountBars
+              label="Qarzdorlik turlari"
+              data={[
+                { name: "Faol nasiya jadvallari qoldig‘i", value: Number(data.installment_schedule_balance_uzs), color: chartColors[0] },
+                { name: "Shundan muddati o‘tgan", value: Number(data.overdue_schedule_balance_uzs), color: "var(--destructive)" },
+                { name: "Yetkazib beruvchilarga qarz", value: Number(data.supplier_invoice_balance_uzs), color: chartColors[2] },
+              ]}
+            />
           </Section>
         </>
       )}

@@ -166,6 +166,7 @@ function AccountMenu({ role }: { role: StaffRole }) {
 
 function currentTitle(pathname: string) {
   if (pathname.startsWith("/staff/orders/")) return "Buyurtma";
+  if (pathname.startsWith("/staff/investors/")) return "Investor";
   for (const group of groups) for (const item of group.items) if (pathname === item.href) return item.label;
   return "Ish maydoni";
 }
