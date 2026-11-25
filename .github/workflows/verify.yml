@@ -71,4 +71,5 @@ jobs:
           done
           curl -fsS http://127.0.0.1:3100/ >/dev/null
           node --test tests/staff-api.integration.mjs
+          node --test tests/investor-allocation.integration.mjs
           node --test tests/workspace.browser.mjs
