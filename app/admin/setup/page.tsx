@@ -1,2 +1,10 @@
-import {AdminLogin} from "../../../components/admin-login";
-export default function Setup(){return <main className="container order-workspace"><h1>Admin hisobini faollashtirish</h1><AdminLogin activate/></main>;}
+import { AuthFrame } from "@/components/admin/auth-frame";
+import { AdminLogin } from "@/components/admin-login";
+
+export default function Setup() {
+  return (
+    <AuthFrame>
+      <AdminLogin activate />
+    </AuthFrame>
+  );
+}
