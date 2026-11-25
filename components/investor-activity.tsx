@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 import {staffFetch,formatUzs,formatDate} from "../lib/staff-client";
 type Month={month:string;contributed:string;withdrawn:string;distributed:string;returned:string;received_profit:string};
 type Activity={from:string;to:string;months:Month[];entries:{id:string;event_type:string;amount_uzs:string;created_at:string}[];truncated:boolean};
-const labels:Record<string,string>={principal_return:"Kapital qaytimi",received_profit:"Tushgan foyda",contribution:"Kapital kiritildi",withdrawal:"Kapitaldan yechildi",distribution:"Foyda taqsimoti qaydi"};
+const labels:Record<string,string>={principal_correction:"Kapital qaytimi tuzatildi",profit_correction:"Foyda tuzatildi",principal_return:"Kapital qaytimi",received_profit:"Tushgan foyda",contribution:"Kapital kiritildi",withdrawal:"Kapitaldan yechildi",distribution:"Foyda taqsimoti qaydi"};
 function currentDate(){const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tashkent",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());return ["year","month","day"].map(k=>parts.find(p=>p.type===k)?.value).join("-");}
 export function InvestorActivity({accountId}:{accountId?:string}){
  const [from,setFrom]=useState("");const [to,setTo]=useState("");

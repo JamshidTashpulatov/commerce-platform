@@ -333,6 +333,19 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.ok(secondPage.items.every(o=>!seen.has(o.id)));
   const match = await call("/api/admin/orders?q="+id+"&status=in_progress","GET",undefined,seller);
   assert.deepEqual(match.data.items.map(o=>o.id),[id]);
+  const temporary={...monthly,key:randomUUID(),amount:"100"};
+  assert.equal((await call(schedulePath,"POST",temporary,seller)).status,201);
+  const temporaryId=(await call(schedulePath,"POST",temporary,seller)).data.id;
+  const reviewPath=nextPath+"/reviews";
+  const review={kind:"monthly",receiptId:temporaryId,reason:"Verify fixture receipt"};
+  assert.equal((await call(reviewPath,"POST",review,seller)).status,403);
+  assert.equal((await call(reviewPath,"POST",review,admin)).status,201);
+  assert.equal((await call(reviewPath,"POST",review,admin)).status,200);
+  const reverseTemporary={action:"reverse",receiptId:temporaryId,reason:"Duplicate fixture entry"};
+  assert.equal((await call(schedulePath,"POST",reverseTemporary,admin)).status,201);
+  assert.equal((await call(schedulePath,"POST",reverseTemporary,admin)).status,409);
+  const closedReview=(await call(cashPath,"GET",undefined,admin)).data.reviews.find(r=>r.reason===review.reason);
+  assert.ok(closedReview.resolved_at);
   const fundedReceipt = {...monthly,key:randomUUID(),amount:"100"};
   assert.equal((await call(schedulePath,"POST",fundedReceipt,seller)).status,201);
   const retryFunded = await call(schedulePath,"POST",fundedReceipt,seller);
@@ -347,7 +360,7 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   const partner = await call("/api/investor/summary","GET",undefined,secondInvestor);
   assert.equal(BigInt(earnings.data.received_profit_uzs)+BigInt(partner.data.received_profit_uzs),11n);
   assert.equal(BigInt(earnings.data.returned_uzs)+BigInt(partner.data.returned_uzs),389n);
-  assert.equal((await call(schedulePath,"POST",{action:"reverse",receiptId:retryFunded.data.id,reason:"Correction"},admin)).status,409);
+
   for (const [i,row] of schedule.data.schedule.entries()) {
     const remainingAmount=BigInt(row.amount_uzs)-(i===0?100n:0n);
     assert.equal((await call(schedulePath,"POST",{...monthly,scheduleId:row.id,key:randomUUID(),amount:String(remainingAmount)},seller)).status,201);
@@ -365,6 +378,17 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   const postedReceipt=postedSchedule.receipts.find(r=>r.id===retryFunded.data.id);
   assert.equal(postedReceipt.principal_uzs,"89");
   assert.equal(postedReceipt.profit_uzs,"11");
+  const lastReceipt=postedSchedule.receipts.find(r=>!r.reversed&&r.sequence_no===3);
+  assert.equal((await call(investorPath,"POST",{accountId:investorId,type:"withdrawal",amount:settledOwn.available_uzs,key:randomUUID()},admin)).status,201);
+  assert.equal((await call(schedulePath,"POST",{action:"reverse",receiptId:lastReceipt.id,reason:"Test reused capital"},admin)).status,409);
+  assert.equal((await call(investorPath,"POST",{accountId:investorId,type:"contribution",amount:settledOwn.available_uzs,key:randomUUID()},admin)).status,201);
+  assert.equal((await call(investorPath,"POST",{accountId:secondId,type:"distribution",amount:"1",key:randomUUID()},admin)).status,201);
+  assert.equal((await call(schedulePath,"POST",{action:"reverse",receiptId:lastReceipt.id,reason:"Test distributed profit"},admin)).status,409);
+  assert.equal((await call(reviewPath,"POST",{...review,receiptId:lastReceipt.id,reason:"Evidence pending"},admin)).status,201);
+  const unresolved=(await call(cashPath,"GET",undefined,admin)).data.reviews.find(r=>r.reason==="Evidence pending");
+  assert.equal(unresolved.resolved_at,null);
+  assert.equal((await call(reviewPath,"POST",{action:"resolve",reviewId:unresolved.id,reason:"Approved correction record TEST-1"},admin)).status,200);
+  assert.equal((await call(schedulePath,"GET",undefined,seller)).data.contract.status,"settled");
   // Product pages keep variants together and filter across the full published catalog.
   await pool.query(`WITH added AS (
     INSERT INTO products(store_id,name,category,published)

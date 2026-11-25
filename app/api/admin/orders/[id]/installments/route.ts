@@ -3,7 +3,7 @@ import {database,configuredStoreId} from "../../../../../../lib/server/db";
 import {requireStoreRole} from "../../../../../../lib/server/auth";
 import {isUuid,sameOrigin,smallJson,privateHeaders} from "../../../../../../lib/server/http";
 import {buildSchedule,validDate} from "../../../../../../lib/installment-schedule";
-import {postMonthlyAllocation} from "../../../../../../lib/server/monthly-posting";
+import {postMonthlyAllocation,validateMonthlyReversal} from "../../../../../../lib/server/monthly-posting";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const reply=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:privateHeaders});
@@ -12,7 +12,7 @@ const amount=(v:unknown):v is string=>typeof v==="string"&&/^[1-9][0-9]{0,11}$/.
 export async function GET(_request:Request,{params}:Ctx){
  try{
  const {id}=await params;if(!isUuid(id))return reply({error:"Buyurtma topilmadi"},404);
- const store=configuredStoreId();if(!await requireStoreRole(store,["owner","admin","seller"]))return reply({error:"Ruxsat yo‘q"},403);
+ const store=configuredStoreId();const actor=await requireStoreRole(store,["owner","admin","seller"]);if(!actor)return reply({error:"Ruxsat yo‘q"},403);
  const c=await database().connect();
  try{
  await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
@@ -28,7 +28,7 @@ export async function GET(_request:Request,{params}:Ctx){
  WHERE s.store_id=$1 AND s.contract_id=$2 GROUP BY s.id ORDER BY s.sequence_no`,[store,cid]):{rows:[]};
  const receipts=cid?await c.query("SELECT r.id,s.sequence_no,r.amount_uzs::text,r.received_on::text,r.method,(SELECT SUM(a.principal_uzs)::text FROM investor_monthly_allocations a WHERE a.store_id=r.store_id AND a.receipt_id=r.id) AS principal_uzs,(SELECT SUM(a.profit_uzs)::text FROM investor_monthly_allocations a WHERE a.store_id=r.store_id AND a.receipt_id=r.id) AS profit_uzs,(v.receipt_id IS NOT NULL) AS reversed FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE s.store_id=$1 AND s.contract_id=$2 ORDER BY r.received_at DESC",[store,cid]):{rows:[]};
  await c.query("COMMIT");
- return reply({terms:t.rows[0]??null,initial_received_uzs:paid.rows[0].amount,has_passport:o.rows[0].has_passport,contract:contract.rows[0]??null,schedule:schedule.rows,receipts:receipts.rows});
+ return reply({can_review:actor.role==="admin"||actor.role==="owner",terms:t.rows[0]??null,initial_received_uzs:paid.rows[0].amount,has_passport:o.rows[0].has_passport,contract:contract.rows[0]??null,schedule:schedule.rows,receipts:receipts.rows});
  }catch{await c.query("ROLLBACK");return reply({error:"Nasiya jadvalini yuklab bo‘lmadi"},503);}finally{c.release();}
  }catch{return reply({error:"Xizmat vaqtincha ishlamayapti"},503);}
 }
@@ -97,10 +97,11 @@ export async function POST(request:Request,{params}:Ctx){
  }else{
  const r=await c.query("SELECT r.id FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id WHERE r.store_id=$1 AND s.contract_id=$2 AND r.id=$3",[store,existing.id,b.receiptId]);
  if(!r.rowCount)return await fail("To‘lov topilmadi",404);
- const posted=await c.query("SELECT 1 FROM investor_monthly_allocations WHERE store_id=$1 AND receipt_id=$2 LIMIT 1",[store,b.receiptId]);
- if(posted.rowCount)return await fail("Investorlar hisobiga yozilgan tushum uchun kapital va foyda tuzatishi kerak");
  const reversal=await c.query("INSERT INTO installment_receipt_reversals(store_id,receipt_id,reversed_by,reason) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING receipt_id",[store,b.receiptId,member.account_id,String(b.reason).trim()]);
- if(!reversal.rowCount)return await fail("To‘lov avval bekor qilingan");event="installment_receipt_reversed";
+ if(!reversal.rowCount)return await fail("To‘lov avval bekor qilingan");const issue=await validateMonthlyReversal(c,store,id,String(b.receiptId));
+ if(issue)return await fail(issue);
+ await c.query("UPDATE receipt_reviews SET resolved_at=now(),resolved_by=$3,resolution=$4 WHERE store_id=$1 AND monthly_id=$2 AND resolved_at IS NULL",[store,b.receiptId,member.account_id,b.reason]);
+ event="installment_receipt_reversed";
  }
  await c.query(`UPDATE installment_contracts c SET status=CASE WHEN NOT EXISTS(
  SELECT 1 FROM installment_schedule s LEFT JOIN installment_receipts r ON r.store_id=s.store_id AND r.schedule_id=s.id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE s.store_id=c.store_id AND s.contract_id=c.id GROUP BY s.id HAVING COALESCE(SUM(r.amount_uzs) FILTER(WHERE v.receipt_id IS NULL),0)<s.amount_uzs

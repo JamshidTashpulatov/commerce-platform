@@ -45,3 +45,31 @@ export async function postMonthlyAllocation(c: PoolClient, store: string, order:
   }
   return null;
 }
+
+// The order and investor membership locks are held until commit. The reversal is provisional.
+export async function validateMonthlyReversal(c:PoolClient,store:string,order:string,receipt:string){
+  const affected=await c.query(`SELECT m.account_id FROM memberships m JOIN investor_monthly_allocations a
+    ON a.store_id=m.store_id AND a.investor_account_id=m.account_id
+    WHERE a.store_id=$1 AND a.receipt_id=$2 ORDER BY m.account_id FOR UPDATE OF m`,[store,receipt]);
+  if(!affected.rowCount)return null;
+  const rows=(await c.query(`SELECT a.investor_account_id AS id,b.amount_uzs AS invested,b.returned_uzs,
+      t.financed_principal_uzs,t.markup_uzs, credits.capital,credits.profit,
+      (SELECT COALESCE(SUM(CASE event_type WHEN 'contribution' THEN amount_uzs WHEN 'withdrawal' THEN -amount_uzs ELSE 0 END),0)
+         FROM investor_capital_events WHERE store_id=a.store_id AND investor_account_id=a.investor_account_id)
+      -(SELECT SUM(outstanding_uzs) FROM investor_funding_balances WHERE store_id=a.store_id AND investor_account_id=a.investor_account_id) AS free,
+      a.profit_uzs>0 AND EXISTS(SELECT 1 FROM investor_capital_events WHERE store_id=a.store_id
+        AND investor_account_id=a.investor_account_id AND event_type='distribution') AS distribution_needs_review
+    FROM investor_monthly_allocations a JOIN investor_funding_balances b USING(store_id,order_id,investor_account_id)
+    JOIN order_payment_terms t USING(store_id,order_id)
+    CROSS JOIN LATERAL(SELECT COALESCE(SUM(principal_uzs),0) AS capital,COALESCE(SUM(profit_uzs),0) AS profit
+      FROM active_monthly_allocations WHERE store_id=a.store_id AND order_id=a.order_id AND investor_account_id=a.investor_account_id) credits
+    WHERE a.store_id=$1 AND a.order_id=$2 AND a.receipt_id=$3 ORDER BY a.investor_account_id`,[store,order,receipt])).rows;
+  if(rows.some(r=>BigInt(r.free)<BigInt(0)))return "Bo‘sh kapital yetarli emas. Tafovut oching.";
+  if(rows.some(r=>r.distribution_needs_review))return "Investorga foyda berilgan. To‘lov manbasini solishtirish uchun tafovut oching.";
+  const paid=rows.reduce((n,r)=>n+BigInt(r.capital)+BigInt(r.profit),BigInt(0));
+  const targets=cumulativeMonthlyShares(paid,BigInt(rows[0].financed_principal_uzs),BigInt(rows[0].markup_uzs),
+    rows.map(r=>({id:r.id,invested:BigInt(r.invested),initial:BigInt(r.returned_uzs)-BigInt(r.capital)})));
+  if(targets.some((t,i)=>t.principal!==BigInt(rows[i].capital)||t.profit!==BigInt(rows[i].profit)))
+    return "Keyingi tushumlarning ulushlari ham o‘zgaradi. Solishtirish uchun tafovut oching.";
+  return null;
+}

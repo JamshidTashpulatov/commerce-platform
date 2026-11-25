@@ -2,7 +2,7 @@ name: Verify
 on:
   pull_request:
   push:
-    branches: [foundation]
+    branches: [main, foundation]
 permissions:
   contents: read
 concurrency:

@@ -26,8 +26,8 @@ export async function GET(request:Request){
  COALESCE(SUM(amount_uzs) FILTER(WHERE event_type='contribution'),0)::text AS contributed,
  COALESCE(SUM(amount_uzs) FILTER(WHERE event_type='withdrawal'),0)::text AS withdrawn,
  COALESCE(SUM(amount_uzs) FILTER(WHERE event_type='distribution'),0)::text AS distributed,
- COALESCE(SUM(amount_uzs) FILTER(WHERE event_type='principal_return'),0)::text AS returned,
- COALESCE(SUM(amount_uzs) FILTER(WHERE event_type='received_profit'),0)::text AS received_profit
+ COALESCE(SUM(amount_uzs) FILTER(WHERE event_type IN ('principal_return','principal_correction')),0)::text AS returned,
+ COALESCE(SUM(amount_uzs) FILTER(WHERE event_type IN ('received_profit','profit_correction')),0)::text AS received_profit
  FROM investor_report_movements WHERE ${filter} GROUP BY 1 ORDER BY 1`,values);
  const entries=await c.query(`SELECT id,event_type,amount_uzs::text,created_at FROM investor_report_movements WHERE ${filter} ORDER BY created_at DESC,id DESC,event_type LIMIT 201`,values);
  await c.query("COMMIT");

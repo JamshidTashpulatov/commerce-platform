@@ -13,7 +13,7 @@ const validDate=(v:unknown):v is string=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2
 export async function GET(_request:Request,{params}:Ctx){
  try{
  const {id}=await params;if(!isUuid(id))return reply({error:"Buyurtma topilmadi"},404);
- const store=configuredStoreId();if(!await requireStoreRole(store,["owner","admin","seller"]))return reply({error:"Ruxsat yo‘q"},403);
+ const store=configuredStoreId();const actor=await requireStoreRole(store,["owner","admin","seller"]);if(!actor)return reply({error:"Ruxsat yo‘q"},403);
  const c=await database().connect();
  try{
  await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
@@ -26,7 +26,7 @@ export async function GET(_request:Request,{params}:Ctx){
  await c.query("COMMIT");
  const received=r.rows.reduce((sum,row)=>sum+(row.reversed?BigInt(0):BigInt(row.amount_uzs)),BigInt(0));
  const combined=received+BigInt(scheduled.rows[0].paid);
- return reply({terms:t.rows[0]??null,receipts:r.rows,manual_received_uzs:received.toString(),received_uzs:combined.toString(),remaining_uzs:t.rows[0]?(BigInt(t.rows[0].agreed_total_uzs)-combined).toString():null,has_schedule:!!contract.rowCount,pricing_policy:installmentPolicy()});
+ return reply({can_review:actor.role==="admin"||actor.role==="owner",terms:t.rows[0]??null,receipts:r.rows,manual_received_uzs:received.toString(),received_uzs:combined.toString(),remaining_uzs:t.rows[0]?(BigInt(t.rows[0].agreed_total_uzs)-combined).toString():null,has_schedule:!!contract.rowCount,pricing_policy:installmentPolicy()});
  }catch{await c.query("ROLLBACK");return reply({error:"To‘lovlarni yuklab bo‘lmadi"},503);}finally{c.release();}
  }catch{return reply({error:"Xizmat vaqtincha ishlamayapti"},503);}
 }
@@ -93,6 +93,7 @@ export async function POST(request:Request,{params}:Ctx){
   if(!receipt.rowCount)return await fail("To‘lov topilmadi",404);
   const result=await c.query("INSERT INTO order_receipt_reversals(store_id,receipt_id,reversed_by,reason) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING receipt_id",[store,b.receiptId,member.account_id,String(b.reason).trim()]);
   if(!result.rowCount)return await fail("To‘lov avval bekor qilingan");
+  await c.query("UPDATE receipt_reviews SET resolved_at=now(),resolved_by=$3,resolution=$4 WHERE store_id=$1 AND manual_id=$2 AND resolved_at IS NULL",[store,b.receiptId,member.account_id,b.reason]);
   event="manual_receipt_reversed";
  }
  await c.query("INSERT INTO audit_events(store_id,actor_id,action,entity_type,entity_id) VALUES($1,$2,$3,'order',$4)",[store,member.account_id,event,id]);
