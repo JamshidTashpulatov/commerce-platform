@@ -42,28 +42,27 @@ export function CartLines({lines,quotes,loading,editable=true}:{lines:CartLine[]
       </Link>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {quote?<>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <Link href={productHref(line.productId)} className="font-semibold hover:underline">{quote.name||"Mahsulot"}</Link>
-              {quote.options&&<p className="text-sm text-sf-ink-2">{quote.options}</p>}
-            </div>
-            <p className="shrink-0 text-right font-semibold tabular-nums">{quote.available?soum(BigInt(quote.unitPrice)*BigInt(line.quantity)):"—"}</p>
+          <div className="min-w-0">
+            <Link href={productHref(line.productId)} className="font-semibold hover:underline">{quote.name||"Mahsulot"}</Link>
+            {quote.options&&<p className="text-sm text-sf-ink-2">{quote.options}</p>}
           </div>
           {!quote.available?<p className="flex items-start gap-1.5 text-sm text-red-700"><AlertTriangleIcon className="mt-0.5 size-4 shrink-0"/>Endi sotuvda yo‘q. Savatdan olib tashlang.</p>
           :<>
-            <p className="text-xs text-sf-ink-2 tabular-nums">{line.quantity>1?`${soum(quote.unitPrice)} × ${line.quantity}`:soum(quote.unitPrice)}{quote.inStock?"":". Buyurtma asosida: sotuvchi muddatini aytadi"}</p>
+            <p className="text-xs text-sf-ink-2 tabular-nums">{line.quantity>1?`${soum(quote.unitPrice)} × ${line.quantity}. `:""}{quote.inStock?"Mavjud":"Buyurtma asosida: sotuvchi muddatini aytadi"}</p>
             {quote.unitPrice!==line.seenPrice&&<p className="flex items-start gap-1.5 text-xs text-amber-800"><AlertTriangleIcon className="mt-px size-3.5 shrink-0"/>Narx o‘zgardi: avval {soum(line.seenPrice)} edi.</p>}
           </>}
         </>:loading?<div className="flex flex-col gap-2"><Skeleton className="h-4 w-2/3 bg-sf-alt"/><Skeleton className="h-3 w-1/3 bg-sf-alt"/></div>
           :<p className="text-sm text-sf-ink-2">Ma’lumot yuklanmadi.</p>}
-        {editable&&<div className="mt-2 flex items-center justify-between">
+        {editable&&<div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="inline-flex items-center rounded-full border border-sf-line" role="group" aria-label="Miqdor">
             <button type="button" className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-sf-ink-2 hover:text-sf-ink disabled:opacity-30" aria-label="Kamaytirish" disabled={line.quantity<=1} onClick={()=>setQuantity(line.variantId,line.quantity-1)}><MinusIcon className="size-3.5"/></button>
             <span className="w-7 text-center text-sm tabular-nums" aria-live="polite">{line.quantity}</span>
             <button type="button" className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-sf-ink-2 hover:text-sf-ink disabled:opacity-30" aria-label="Ko‘paytirish" disabled={line.quantity>=CART_MAX_QTY||!quote?.available} onClick={()=>setQuantity(line.variantId,line.quantity+1)}><PlusIcon className="size-3.5"/></button>
           </div>
-          <button type="button" className="inline-flex cursor-pointer items-center gap-1.5 text-sm text-sf-ink-2 hover:text-red-700" onClick={()=>removeLine(line.variantId)}><Trash2Icon className="size-3.5"/>O‘chirish</button>
+          <button type="button" aria-label="O‘chirish" title="O‘chirish" className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-sf-ink-2 hover:bg-sf-alt hover:text-red-700" onClick={()=>removeLine(line.variantId)}><Trash2Icon className="size-4"/></button>
+          <p className="ml-auto font-semibold tabular-nums">{quote?.available?soum(BigInt(quote.unitPrice)*BigInt(line.quantity)):"—"}</p>
         </div>}
+        {!editable&&quote?.available&&<p className="mt-1 font-semibold tabular-nums">{soum(BigInt(quote.unitPrice)*BigInt(line.quantity))}</p>}
       </div>
     </li>)}
   </ul>;
@@ -80,7 +79,7 @@ export function CartSheet(){
   const acknowledge=()=>cartStore.set(list=>list.map(l=>{const q=quotes.find(x=>x.variantId===l.variantId);return q?.available?{...l,seenPrice:q.unitPrice}:l;}));
 
   return <Sheet open={open} onOpenChange={cartUi.set}>
-    <SheetContent showCloseButton={false} className="w-full gap-0 bg-white p-0 font-sf text-sf-ink data-[side=right]:sm:max-w-[440px]">
+    <SheetContent showCloseButton={false} className="w-full data-[side=right]:w-full gap-0 bg-white p-0 font-sf text-sf-ink data-[side=right]:sm:max-w-[440px]">
       <div className="relative border-b border-sf-line/70 px-6 pt-6 pb-4">
         <SheetClose aria-label="Savatni yopish" className="absolute top-5 right-5 inline-flex size-8 cursor-pointer items-center justify-center rounded-full bg-sf-alt text-sf-ink-2 hover:text-sf-ink"><XIcon className="size-4"/></SheetClose>
         <SheetTitle className="text-2xl font-semibold">Savat</SheetTitle>
