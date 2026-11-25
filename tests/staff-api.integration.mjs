@@ -169,6 +169,28 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal((await call(period+"&accountId="+secondId,"GET",undefined,investor)).status,403);
   assert.equal((await call(settingsPath,"PUT",{allowPeerPortfolios:false},admin)).status,200);
   assert.deepEqual((await call(peerPath,"GET",undefined,investor)).data,{enabled:false,items:[]});
+  const returnPath=nextPath+"/capital-returns";
+  const initialReceipt=(await call(returnPath,"GET",undefined,admin)).data.receipts[0];
+  const credit={receiptId:initialReceipt.id,entries:[{accountId:investorId,amount:"210"},{accountId:secondId,amount:"90"}]};
+  assert.equal((await call(returnPath,"POST",credit,admin)).status,409);
+  const readySale=await call(nextPath,"GET",undefined,seller);
+  assert.equal((await call(nextPath+"/sale","POST",{revision:readySale.data.order.revision},seller)).status,200);
+  assert.equal((await call(returnPath,"POST",credit,investor)).status,403);
+  assert.equal((await call(returnPath,"POST",credit,seller)).status,403);
+  assert.equal((await call(returnPath,"POST",{...credit,entries:[{accountId:investorId,amount:"299"}]},admin)).status,400);
+  assert.equal((await call(returnPath,"POST",credit,admin)).status,201);
+  assert.equal((await call(returnPath,"POST",credit,admin)).status,200);
+  const returned=await call("/api/investor/summary","GET",undefined,investor);
+  assert.equal(returned.data.returned_uzs,"210");
+  assert.equal(returned.data.outstanding_uzs,"490");
+  assert.equal(returned.data.available_uzs,"510");
+  assert.equal(returned.data.contributions_uzs,"1000");
+  const returnedOther=await call("/api/investor/summary","GET",undefined,secondInvestor);
+  assert.equal(returnedOther.data.available_uzs,"190");
+  assert.equal((await call(investorPath,"POST",{accountId:investorId,type:"withdrawal",amount:"511",key:randomUUID()},admin)).status,409);
+  assert.equal((await call(investorPath,"POST",{accountId:investorId,type:"withdrawal",amount:"400",key:randomUUID()},admin)).status,201);
+  assert.equal((await call("/api/investor/summary","GET",undefined,investor)).data.available_uzs,"110");
+
 
  }finally{await pool.end();}
 });
