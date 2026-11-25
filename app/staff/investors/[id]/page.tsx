@@ -7,8 +7,9 @@ import { ArrowLeftIcon } from "lucide-react";
 import { ShareDonut, chartColors } from "@/components/admin/charts";
 import { InvestorReport } from "@/components/admin/investor-report";
 import { toast } from "sonner";
-import { ConfirmDialog, ErrorState, InlineError, LoadingBlock, Money, PageHeader, RefreshButton, Section, Stat, StatGrid, StatusBadge, errorText, formatSum } from "@/components/admin/kit";
+import { ConfirmDialog, ErrorState, InlineError, LoadingBlock, Money, PageHeader, RefreshButton, Section, Stat, StatGrid, StatusBadge, SubmitButton, TextField, errorText, formatSum } from "@/components/admin/kit";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import { staffFetch } from "@/lib/staff-client";
 
@@ -22,6 +23,8 @@ export default function InvestorPage() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState("");
+  const [phone, setPhone] = useState("");
+  const [savingPhone, setSavingPhone] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,6 +61,23 @@ export default function InvestorPage() {
     }
   }
 
+  const phoneDigits = phone.replace(/[^0-9]/g, "").replace(/^998(?=\d{9})/, "").slice(0, 9);
+  async function savePhone() {
+    if (savingPhone || phoneDigits.length !== 9) return;
+    setSavingPhone(true);
+    setResetError("");
+    try {
+      await staffFetch("/api/admin/investors/accounts", "POST", { action: "setSignInPhone", accountId: id, phone: "+998" + phoneDigits });
+      setPhone("");
+      toast.success("Telefon raqam saqlandi. Investor birinchi kirishda uni tasdiqlaydi.");
+      await load();
+    } catch (e) {
+      setResetError(errorText(e, "Telefon raqamni saqlab bo‘lmadi"));
+    } finally {
+      setSavingPhone(false);
+    }
+  }
+
   const back = (
     <Link href="/staff/investors" className={buttonVariants({ variant: "ghost", className: "self-start" })}>
       <ArrowLeftIcon data-icon="inline-start" />
@@ -90,7 +110,7 @@ export default function InvestorPage() {
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-muted-foreground">Telefon</dt>
-            <dd className="font-medium tabular-nums">{investor.phone_masked ?? "Telegram ID orqali yaratilgan"}</dd>
+            <dd className="font-medium tabular-nums">{investor.phone_masked ?? (investor.sign_in === "linked" ? "Telegram ID orqali yaratilgan" : "Kiritilmagan")}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Holat</dt>
@@ -99,6 +119,29 @@ export default function InvestorPage() {
             </dd>
           </div>
         </dl>
+        {!investor.by_phone && investor.sign_in === "none" && (
+          <form
+            className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-end"
+            onSubmit={e => {
+              e.preventDefault();
+              void savePhone();
+            }}
+          >
+            <TextField label="Telefon raqam qo‘shish" description="Bu investor hali kira olmaydi. Raqam qo‘shilgach, u mini ilovada uni Telegram orqali tasdiqlaydi." className="sm:max-w-sm">
+              {fieldId => (
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-muted-foreground" aria-hidden="true">
+                    +998
+                  </span>
+                  <Input id={fieldId} name="phone" type="tel" inputMode="numeric" autoComplete="off" required className="pl-12 tabular-nums" placeholder="90 123 45 67" value={[phoneDigits.slice(0, 2), phoneDigits.slice(2, 5), phoneDigits.slice(5, 7), phoneDigits.slice(7, 9)].filter(Boolean).join(" ")} disabled={savingPhone} onChange={e => setPhone(e.target.value)} />
+                </div>
+              )}
+            </TextField>
+            <SubmitButton variant="outline" busy={savingPhone} disabled={phoneDigits.length !== 9} className="sm:mb-12">
+              Raqamni saqlash
+            </SubmitButton>
+          </form>
+        )}
         <InlineError message={resetError} />
         {investor.by_phone && investor.sign_in === "linked" && (
           <Button type="button" variant="outline" className="self-start" disabled={resetting} onClick={() => setConfirmReset(true)}>

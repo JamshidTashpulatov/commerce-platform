@@ -137,5 +137,22 @@ test("an investor created by phone signs in only after Telegram delivers their o
     const rebound=await login(initData(other));
     assert.equal(rebound.status,200);assert.equal(rebound.data.role,"investor");
     assert.equal((await login(initData(tg))).status,403);
+
+    // An investor provisioned with neither a Telegram id nor a phone gets a phone later, then binds like any other.
+    const bare=await session("investor");
+    const barePhone="+998"+String(Math.floor(Math.random()*1e9)).padStart(9,"0");
+    const fourth=tg+3;
+    const bareListed=(await call("/api/admin/investors","GET",undefined,admin.cookie)).data.items.find(i=>i.account_id===bare.id);
+    assert.equal(bareListed.sign_in,"none");assert.equal(bareListed.phone_masked,null);
+    assert.equal((await call(accounts,"POST",{action:"setSignInPhone",accountId:bare.id,phone:barePhone},seller.cookie)).status,403);
+    assert.equal((await call(accounts,"POST",{action:"setSignInPhone",accountId:bare.id,phone:"12345"},admin.cookie)).status,400);
+    assert.equal((await call(accounts,"POST",{action:"setSignInPhone",accountId:bare.id,phone},admin.cookie)).status,409);
+    assert.equal((await call(accounts,"POST",{action:"setSignInPhone",accountId:seller.id,phone:barePhone},admin.cookie)).status,404);
+    assert.equal((await call(accounts,"POST",{action:"setSignInPhone",accountId:bare.id,phone:barePhone},admin.cookie)).status,201);
+    assert.equal((await call(accounts,"POST",{action:"setSignInPhone",accountId:bare.id,phone:barePhone},admin.cookie)).status,409);
+    assert.equal((await call(accounts,"POST",{action:"setSignInPhone",accountId:investorId,phone:"+998"+String(Math.floor(Math.random()*1e9)).padStart(9,"0")},admin.cookie)).status,409);
+    assert.equal((await contact({from:fourth,phone:barePhone})).status,200);
+    assert.equal(await linked(bare.id),String(fourth));
+    assert.equal((await login(initData(fourth))).data.role,"investor");
   }finally{await pool.end();}
 });
