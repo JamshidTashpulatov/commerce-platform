@@ -46,3 +46,20 @@ jobs:
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/tests/finance_constraints.sql
 
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/tests/order_workflow.sql
+      - name: Verify staff API lifecycle
+        env:
+          COMMERCE_TEST_MODE: "1"
+          DATABASE_URL: postgresql://test:test_only@127.0.0.1:5432/commerce_test
+          STORE_ID: 00000000-0000-4000-8000-000000000001
+          APP_ORIGIN: http://127.0.0.1:3100
+          STAFF_WORKSPACE_ENABLED: "true"
+        run: |
+          npm run start -- --hostname 127.0.0.1 --port 3100 > /tmp/commerce-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; cat /tmp/commerce-server.log' EXIT
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3100/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3100/ >/dev/null
+          node --test tests/staff-api.integration.mjs
