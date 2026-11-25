@@ -30,7 +30,7 @@ export function OneClick({variantId,productName,options,enabled,telegram,disable
     </button>
     {reason&&<p id="one-click-reason" className="-mt-1 text-center text-xs text-sf-ink-3">{reason}</p>}
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent showCloseButton={false} className="top-auto bottom-0 left-0 max-h-[92dvh] w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-t-[22px] rounded-b-none bg-white p-6 font-sf text-sf-ink tablet:top-1/2 tablet:bottom-auto tablet:left-1/2 tablet:max-w-[440px] tablet:-translate-x-1/2 tablet:-translate-y-1/2 tablet:rounded-[22px] sm:max-w-none">
+      <DialogContent showCloseButton={false} className="top-auto bottom-0 left-0 max-h-[92dvh] w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-t-[22px] rounded-b-none bg-white p-6 font-sf text-sf-ink sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-w-[440px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[22px]">
         <DialogClose aria-label="Yopish" className="absolute top-4 right-4 inline-flex size-8 cursor-pointer items-center justify-center rounded-full bg-sf-alt text-sf-ink-2 hover:text-sf-ink"><XIcon className="size-4"/></DialogClose>
         <DialogTitle className="text-[21px] font-semibold">Bir bosishda xarid</DialogTitle>
         <DialogDescription className="mt-1 text-sm text-sf-ink-2">Savat o‘zgarmaydi. Sotuvchi qo‘ng‘iroq qilib tasdiqlaydi.</DialogDescription>
