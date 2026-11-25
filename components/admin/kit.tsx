@@ -248,13 +248,14 @@ export function SubmitButton({ busy, children, ...props }: React.ComponentProps<
 export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, destructive, busy, disabled, onConfirm, children }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; description?: ReactNode; confirmLabel: string; destructive?: boolean; busy?: boolean; disabled?: boolean; onConfirm: () => void; children?: ReactNode }) {
   return (
     <AlertDialog open={open} onOpenChange={next => !busy && onOpenChange(next)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
+      {/* Title and buttons stay on screen; only the content between them scrolls, so a long investor list never hides the confirm button. */}
+      <AlertDialogContent className="flex flex-col overflow-hidden">
+        <AlertDialogHeader className="shrink-0">
           <AlertDialogTitle>{title}</AlertDialogTitle>
           {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
         </AlertDialogHeader>
-        {children}
-        <AlertDialogFooter>
+        {children && <div className="-mx-6 min-h-0 overflow-y-auto overscroll-contain px-6">{children}</div>}
+        <AlertDialogFooter className="shrink-0">
           <AlertDialogCancel disabled={busy}>Ortga</AlertDialogCancel>
           <AlertDialogAction variant={destructive ? "destructive" : "default"} disabled={busy || disabled} onClick={onConfirm}>
             {busy && <Spinner data-icon="inline-start" />}
