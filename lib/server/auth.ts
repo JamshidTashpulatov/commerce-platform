@@ -14,4 +14,4 @@ export async function requireStoreRole(storeId: string, allowed: readonly Role[]
   const membership = rows[0];
   return membership && allowed.includes(membership.role) ? membership : null;
 }
-// Session issuance is deliberately unavailable until identity verification is configured.
+// Sessions are issued only by configured, server-verified authentication endpoints.
