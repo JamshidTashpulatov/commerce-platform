@@ -55,8 +55,6 @@ jobs:
           CUSTOMER_RECORDS_ENABLED: "true"
           INSTALLMENT_SCHEDULE_ENABLED: "true"
           INVESTOR_FUNDING_ENABLED: "true"
-          SUPPLIER_POSTING_ENABLED: "true"
-          STOCK_RECEIPTS_ENABLED: "true"
           CATALOG_ADMIN_ENABLED: "true"
           WEBSITE_CHECKOUT_ENABLED: "true"
           CATALOG_IMAGE_HOSTS: "images.example.com"

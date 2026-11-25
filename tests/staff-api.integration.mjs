@@ -271,53 +271,48 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal(fundReport.data.returned_principal_uzs,"300");
   assert.equal(fundReport.data.outstanding_principal_uzs,"700");
   assert.equal(fundReport.data.available_principal_uzs,"300");
-  const supplierPath="/api/admin/suppliers";
-  const supplierBody={action:"supplier",name:"Fixture supplier",key:randomUUID()};
-  assert.equal((await call(supplierPath,"POST",supplierBody,seller)).status,403);
-  assert.equal((await call(supplierPath,"GET",undefined,investor)).status,403);
-  const supplier=await call(supplierPath,"POST",supplierBody,admin);
-  assert.equal(supplier.status,201);
-  assert.equal((await call(supplierPath,"POST",supplierBody,admin)).status,200);
-  const invoiceBody={action:"invoice",supplierId:supplier.data.id,amount:"1000",reference:"Fixture acquisition",dueDate:null,key:randomUUID()};
-  const invoice=await call(supplierPath,"POST",invoiceBody,admin);
-  assert.equal(invoice.status,201);
-  assert.equal((await call(supplierPath,"POST",invoiceBody,admin)).status,200);
-  assert.equal((await call("/api/admin/finance","GET",undefined,admin)).data.supplier_invoice_balance_uzs,"1000");
-  const supplierPayment={action:"payment",invoiceId:invoice.data.id,amount:"400",date,method:"cash",key:randomUUID()};
-  assert.equal((await call(supplierPath,"POST",{...supplierPayment,amount:"1001"},admin)).status,409);
-  const paidSupplier=await call(supplierPath,"POST",supplierPayment,admin);
-  assert.equal(paidSupplier.status,201);
-  assert.equal((await call(supplierPath,"POST",supplierPayment,admin)).status,200);
-  assert.equal((await call("/api/admin/finance","GET",undefined,admin)).data.supplier_invoice_balance_uzs,"600");
-  const supplierCash=await call(cashPath,"GET",undefined,admin);
-  assert.equal(supplierCash.data.groups.find(g=>g.kind==="supplier_payment").amount_uzs,"-400");
-  const reversalSupplier={action:"reverse",paymentId:paidSupplier.data.id,reason:"Fixture correction"};
-  assert.equal((await call(supplierPath,"POST",reversalSupplier,admin)).status,201);
-  assert.equal((await call(supplierPath,"POST",reversalSupplier,admin)).status,409);
-  assert.equal((await call("/api/admin/finance","GET",undefined,admin)).data.supplier_invoice_balance_uzs,"1000");
-  const correctedSupplier=await call(cashPath,"GET",undefined,admin);
-  assert.equal(correctedSupplier.data.groups.find(g=>g.kind==="supplier_payment_reversal").amount_uzs,"400");
+  // The suppliers section is gone: its API no longer exists and the fund report carries no supplier debt.
+  assert.equal((await fetch(origin+"/api/admin/suppliers",{headers:{Cookie:admin.cookie}})).status,404);
+  assert.equal((await fetch(origin+"/staff/suppliers",{headers:{Cookie:admin.cookie},redirect:"manual"})).status,404);
+  assert.equal("supplier_invoice_balance_uzs" in (await call("/api/admin/finance","GET",undefined,admin)).data,false);
+  // Stock is set by a plain adjustment: a new quantity and a reason, administrator only.
   const inventoryPath="/api/admin/inventory";
   const beforeStock=await stock();
-  const stockReceipt={invoiceId:invoice.data.id,variantId:variant,quantity:2,unitCost:"300",date,key:randomUUID()};
+  const beforeCash=(await call(cashPath,"GET",undefined,admin)).data.closing_uzs;
+  const adjustment={variantId:variant,quantity:beforeStock+2,expected:beforeStock,note:"Fixture: yangi tovar keldi",key:randomUUID()};
   assert.equal((await call(inventoryPath,"GET",undefined,investor)).status,403);
-  assert.equal((await call(inventoryPath,"POST",stockReceipt,seller)).status,403);
-  assert.equal((await call(inventoryPath,"POST",{...stockReceipt,quantity:4},admin)).status,409);
+  assert.equal((await call(inventoryPath,"GET",undefined,seller)).status,403);
+  assert.equal((await call(inventoryPath,"POST",adjustment,seller)).status,403);
+  assert.equal((await call(inventoryPath,"POST",adjustment,investor)).status,403);
+  for(const bad of [{note:"x"},{quantity:-1},{quantity:1.5},{quantity:100001},{quantity:beforeStock},{expected:undefined},{variantId:"nope"}])
+    assert.equal((await call(inventoryPath,"POST",{...adjustment,...bad,key:randomUUID()},admin)).status,400,JSON.stringify(bad));
+  // The administrator saw a different quantity than is in stock now: refused, nothing changes.
+  const stale=await call(inventoryPath,"POST",{...adjustment,expected:beforeStock+1,key:randomUUID()},admin);
+  assert.equal(stale.status,409);assert.match(stale.data.error,/Qoldiq o‘zgargan/);
+  assert.equal((await call(inventoryPath,"POST",{...adjustment,variantId:randomUUID(),key:randomUUID()},admin)).status,404);
   assert.equal(await stock(),beforeStock);
-  const stockPosted=await call(inventoryPath,"POST",stockReceipt,admin);
-  assert.equal(stockPosted.status,201);
-  assert.equal((await call(inventoryPath,"POST",stockReceipt,admin)).status,200);
+  const adjusted=await call(inventoryPath,"POST",adjustment,admin);
+  assert.equal(adjusted.status,201);
   assert.equal(await stock(),beforeStock+2);
+  // Repeating the request changes nothing; the same key with other values is refused.
+  const sameAgain=await call(inventoryPath,"POST",adjustment,admin);
+  assert.equal(sameAgain.status,200);assert.equal(sameAgain.data.id,adjusted.data.id);
+  assert.equal((await call(inventoryPath,"POST",{...adjustment,quantity:beforeStock+5},admin)).status,409);
+  assert.equal(await stock(),beforeStock+2);
+  // Down again, with its own reason: stock can be corrected in both directions, also to zero and back.
+  assert.equal((await call(inventoryPath,"POST",{variantId:variant,quantity:beforeStock+1,expected:beforeStock+2,note:"Fixture: sanoqda farq",key:randomUUID()},admin)).status,201);
+  assert.equal(await stock(),beforeStock+1);
   const inventoryReport=await call(inventoryPath,"GET",undefined,admin);
   assert.equal(inventoryReport.status,200);
-  assert.equal(inventoryReport.data.invoices.find(i=>i.id===invoice.data.id).received_uzs,"600");
-  assert.equal(inventoryReport.data.invoices.find(i=>i.id===invoice.data.id).unreceived_uzs,"400");
-  assert.equal((await call(inventoryPath,"POST",{...stockReceipt,key:randomUUID()},admin)).status,409);
-  assert.equal((await call(inventoryPath,"POST",{...stockReceipt,quantity:1,unitCost:"400",key:randomUUID()},admin)).status,201);
-  assert.equal(await stock(),beforeStock+3);
-  assert.equal((await call("/api/admin/finance","GET",undefined,admin)).data.supplier_invoice_balance_uzs,"1000");
-  const afterStockCash=await call(cashPath,"GET",undefined,admin);
-  assert.equal(afterStockCash.data.closing_uzs,correctedSupplier.data.closing_uzs);
+  assert.equal(inventoryReport.data.variants.find(v=>v.id===variant).quantity,beforeStock+1);
+  assert.deepEqual(inventoryReport.data.adjustments.filter(a=>a.variant_id===variant).map(a=>[a.quantity_before,a.quantity_after,a.note]),
+    [[beforeStock+2,beforeStock+1,"Fixture: sanoqda farq"],[beforeStock,beforeStock+2,"Fixture: yangi tovar keldi"]]);
+  assert.equal("invoices" in inventoryReport.data,false);
+  const moves=(await pool.query("SELECT delta,reason FROM stock_movements WHERE store_id=$1 AND variant_id=$2 AND reason='adjustment' ORDER BY created_at",[storeId,variant])).rows;
+  assert.deepEqual(moves,[{delta:2,reason:"adjustment"},{delta:-1,reason:"adjustment"}]);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM audit_events WHERE store_id=$1 AND action='stock_adjusted'",[storeId])).rows[0].n,2);
+  // A stock adjustment is not money: the cashbook does not move.
+  assert.equal((await call(cashPath,"GET",undefined,admin)).data.closing_uzs,beforeCash);
   // Synthetic product media; no external image or real user data.
   const sharp=(await import("sharp")).default;
   const png=await sharp({create:{width:16,height:16,channels:3,background:"#547890"}}).png().toBuffer();
