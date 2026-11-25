@@ -33,7 +33,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run build
-      - run: node --experimental-strip-types --test tests/telegram-verify.test.mjs tests/customer-crypto.test.mjs tests/installment-schedule.test.mjs tests/installment-pricing.test.mjs tests/profit-split.test.mjs tests/catalog-options.test.mjs
+      - run: npm test
       - name: Verify PostgreSQL schema
         env:
           PGPASSWORD: test_only
