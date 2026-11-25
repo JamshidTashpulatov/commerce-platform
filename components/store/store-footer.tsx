@@ -2,6 +2,7 @@ import Link from "next/link";
 import {Separator} from "@/components/ui/separator";
 import {STORE_NAME,TELEGRAM_URL,catalogHref} from "../../lib/storefront";
 import {wrap} from "./bits";
+import {BrandMark} from "@/components/brand-mark";
 
 const link="text-black/70 hover:text-black/90 hover:underline";
 
@@ -34,7 +35,7 @@ export function StoreFooter({categories}:{categories:string[]}){
       </nav>
       <Separator className="bg-sf-line"/>
       <div className="flex flex-wrap justify-between gap-2 pt-4">
-        <p>© {year} {STORE_NAME}. Barcha huquqlar himoyalangan.</p>
+        <p className="inline-flex items-center gap-2"><BrandMark className="size-4 text-black/70"/>© {year} {STORE_NAME}. Barcha huquqlar himoyalangan.</p>
         <p>O‘zbekiston</p>
       </div>
     </div>
