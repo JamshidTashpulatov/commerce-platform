@@ -10,10 +10,10 @@ export async function GET(){
  const store=configuredStoreId();if(!await requireStoreRole(store,["owner","admin"]))return reply({error:"Ruxsat yo‘q"},403);
  const {rows}=await database().query(`SELECT m.account_id,COALESCE(p.display_name,'Investor '||left(m.account_id::text,8)) AS name,
  COALESCE(e.contributed,0)::text AS contributed,COALESCE(e.withdrawn,0)::text AS withdrawn,COALESCE(e.distributed,0)::text AS distributed,
- COALESCE(a.allocated,0)::text AS allocated,(COALESCE(e.contributed,0)-COALESCE(e.withdrawn,0)-COALESCE(a.allocated,0))::text AS available
+ COALESCE(a.allocated,0)::text AS allocated,COALESCE(a.returned,0)::text AS returned,COALESCE(a.outstanding,0)::text AS outstanding,(COALESCE(e.contributed,0)-COALESCE(e.withdrawn,0)-COALESCE(a.outstanding,0))::text AS available
  FROM memberships m LEFT JOIN investor_profiles p ON p.store_id=m.store_id AND p.account_id=m.account_id
  LEFT JOIN LATERAL (SELECT SUM(amount_uzs) FILTER(WHERE event_type='contribution') AS contributed,SUM(amount_uzs) FILTER(WHERE event_type='withdrawal') AS withdrawn,SUM(amount_uzs) FILTER(WHERE event_type='distribution') AS distributed FROM investor_capital_events WHERE store_id=m.store_id AND investor_account_id=m.account_id) e ON true
- LEFT JOIN LATERAL (SELECT SUM(amount_uzs) AS allocated FROM order_funding_allocations WHERE store_id=m.store_id AND investor_account_id=m.account_id) a ON true
+ LEFT JOIN LATERAL (SELECT SUM(amount_uzs) AS allocated,SUM(returned_uzs) AS returned,SUM(outstanding_uzs) AS outstanding FROM investor_funding_balances WHERE store_id=m.store_id AND investor_account_id=m.account_id) a ON true
  WHERE m.store_id=$1 AND m.role='investor' ORDER BY name LIMIT 200`,[store]);
  return reply({items:rows,enabled:process.env.INVESTOR_FUNDING_ENABLED==="true"});
  }catch{return reply({error:"Investorlarni yuklab bo‘lmadi"},503);}
@@ -34,7 +34,7 @@ export async function POST(request:Request){
  const duplicate=await c.query("SELECT id,investor_account_id,event_type,amount_uzs::text FROM investor_capital_events WHERE store_id=$1 AND idempotency_key=$2",[store,b.key]);
  if(duplicate.rowCount){const d=duplicate.rows[0];await c.query("ROLLBACK");return d.investor_account_id===String(b.accountId).toLowerCase()&&d.event_type===b.type&&d.amount_uzs===b.amount?reply({id:d.id,repeated:true}):reply({error:"So‘rov kaliti band"},409);}
  if(b.type==="withdrawal"){
- const available=await c.query("SELECT (COALESCE((SELECT SUM(CASE event_type WHEN 'contribution' THEN amount_uzs WHEN 'withdrawal' THEN -amount_uzs ELSE 0 END) FROM investor_capital_events WHERE store_id=$1 AND investor_account_id=$2),0)-COALESCE((SELECT SUM(amount_uzs) FROM order_funding_allocations WHERE store_id=$1 AND investor_account_id=$2),0))::text AS value",[store,b.accountId]);
+ const available=await c.query("SELECT (COALESCE((SELECT SUM(CASE event_type WHEN 'contribution' THEN amount_uzs WHEN 'withdrawal' THEN -amount_uzs ELSE 0 END) FROM investor_capital_events WHERE store_id=$1 AND investor_account_id=$2),0)-COALESCE((SELECT SUM(outstanding_uzs) FROM investor_funding_balances WHERE store_id=$1 AND investor_account_id=$2),0))::text AS value",[store,b.accountId]);
  if(BigInt(b.amount)>BigInt(available.rows[0].value))return await fail("Bo‘sh kapital yetarli emas");
  }
  const result=await c.query("INSERT INTO investor_capital_events(store_id,investor_account_id,event_type,amount_uzs,idempotency_key) VALUES($1,$2,$3,$4,$5) ON CONFLICT(store_id,idempotency_key) DO NOTHING RETURNING id",[store,b.accountId,b.type,b.amount,b.key]);
