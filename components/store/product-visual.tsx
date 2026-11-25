@@ -1,6 +1,7 @@
 import type {ReactNode} from "react";
 import {cn} from "@/lib/utils";
 import {glyphFor,type Glyph} from "../../lib/storefront";
+import {ToneImage} from "./tone-image";
 
 export type ImageSources={src:string;srcSet?:string;hiRes:string;alpha:boolean;ratio:number|null};
 
@@ -25,7 +26,7 @@ export function imageSources(raw:string):ImageSources{
  * A product photo, or a quiet line drawing when the product has no image yet.
  * "cover": the photo fills its frame (the product gallery sizes the frame to
  * the photo, so nothing is cut). "blend": for fixed tiles and cards, the whole
- * product stays visible and a white studio background melts into the tile.
+ * product stays visible; the tile takes the studio background's colour.
  * Uploaded marketing photos always cover. Transparent cut-outs are shown
  * whole, since there is no background to fill.
  */
@@ -35,10 +36,12 @@ export function ProductVisual({image,name,category,className,priority=false,size
   if(image){
     const s=imageSources(image);
     const studio=s.ratio!==null&&!s.alpha;
-    const mode=s.alpha?"object-contain":fit==="blend"&&studio?"object-contain mix-blend-multiply":"object-cover";
-    return <img className={cn("block size-full",mode,s.alpha&&cutoutPadding&&"p-[5%]",className)}
-      src={s.src} srcSet={s.srcSet} sizes={s.srcSet?sizes:undefined} alt={name} referrerPolicy="no-referrer"
-      loading={priority?"eager":"lazy"} fetchPriority={priority?"high":"auto"} decoding="async"/>;
+    const mode=s.alpha||(fit==="blend"&&studio)?"object-contain":"object-cover";
+    const attrs={className:cn("block size-full transition-opacity",mode,s.alpha&&cutoutPadding&&"p-[5%]",className),
+      src:s.src,srcSet:s.srcSet,sizes:s.srcSet?sizes:undefined,alt:name,referrerPolicy:"no-referrer" as const,
+      loading:priority?"eager" as const:"lazy" as const,fetchPriority:priority?"high" as const:"auto" as const,decoding:"async" as const};
+    // Studio shots: the surrounding [data-tone] container takes the photo's background colour.
+    return studio?<ToneImage {...attrs}/>:<img {...attrs}/>;
   }
   return <div className={cn("flex size-full items-center justify-center bg-linear-to-b from-[#fafafc] to-[#ececf0] text-[#b0b0b6]",className)}
     role="img" aria-label={name+". Rasm tez orada qo‘shiladi"}>

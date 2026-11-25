@@ -19,7 +19,7 @@ export function CompareTray(){
       <div className="hidden shrink-0 text-sm tablet:block"><p className="font-semibold">Solishtirish</p><p className="text-xs text-sf-ink-2">{list[0].category}, {list.length}/{COMPARE_MAX}</p></div>
       <ul className="flex min-w-0 flex-1 gap-2">
         {list.map(i=><li key={i.id} className="relative">
-          <div className="relative size-12 overflow-hidden rounded-xl bg-sf-alt ring-1 ring-black/5" title={i.name}>
+          <div data-tone className="relative size-12 overflow-hidden rounded-xl bg-sf-alt ring-1 ring-black/5" title={i.name}>
             <ProductVisual image={i.image} name={i.name} category={i.category} fit="blend" sizes="48px" cutoutPadding={false} className="absolute inset-0"/>
           </div>
           <button type="button" aria-label={i.name+"ni ro‘yxatdan olib tashlash"} onClick={()=>compareStore.set(l=>l.filter(x=>x.id!==i.id))}

@@ -42,7 +42,7 @@ export default async function Home(){
 
   const heroDark=!!hero.product.tone?.dark;
   return <>
-    <section className={cn("flex flex-col items-center overflow-hidden bg-(--tile-bg) pt-12 text-center tablet:pt-14",heroDark&&"text-[#f5f5f7]")}
+    <section data-tone className={cn("flex flex-col items-center overflow-hidden bg-(--tile-bg) pt-12 text-center tablet:pt-14",heroDark&&"text-[#f5f5f7]")}
       style={toneStyle(hero.product.tone,"#fff")} aria-labelledby="hero-title">
       <div className="flex flex-col items-center gap-1.5 px-4">
         <p className={cn(eyebrow,"text-sm",heroDark&&"text-[#a1a1a6]")}>{hero.category}</p>
@@ -63,7 +63,7 @@ export default async function Home(){
       {tiles.map(({category,count,product},i)=>{
         const dark=!!product.tone?.dark;
         const wide=tiles.length%2===1&&i===tiles.length-1;
-        return <article key={category} style={toneStyle(product.tone,"#f5f5f7")}
+        return <article key={category} data-tone style={toneStyle(product.tone,"#f5f5f7")}
           className={cn("sf-reveal group flex flex-col items-center overflow-hidden bg-(--tile-bg) text-center",wide&&"desktop:col-span-2",dark&&"text-[#f5f5f7]")}>
           <div className="flex flex-1 flex-col items-center gap-1 px-4 pt-11">
             <p className={cn(eyebrow,dark&&"text-[#a1a1a6]")}>{category}</p>
@@ -90,9 +90,9 @@ export default async function Home(){
       </div>
       <Shelf label="Katalogdan">
         {shelf.map(p=><Link key={p.id} href={productHref(p.id)} className="block h-full">
-          <Card className="h-full w-[min(72vw,300px)] gap-0 overflow-hidden rounded-[18px] py-0 shadow-[2px_4px_12px_rgba(0,0,0,0.08)] ring-0 transition-[box-shadow,scale] duration-300 ease-sf pointer-fine:hover:scale-[1.01] pointer-fine:hover:shadow-[2px_4px_16px_rgba(0,0,0,0.16)]">
+          <Card className="h-full w-[min(72vw,300px)] gap-0 overflow-hidden rounded-[18px] bg-sf-alt py-0 shadow-none ring-0">
             <div className="relative aspect-3/2 bg-(--tile-bg)" style={toneStyle(p.tone,"#f5f5f7")}>
-              <ProductVisual image={p.image} name={p.name} category={p.category} sizes="300px" fit="blend" className="absolute inset-0"/>
+              <ProductVisual image={p.image} name={p.name} category={p.category} sizes="300px" className="absolute inset-0"/>
             </div>
             <div className="flex flex-col gap-1 px-6 pt-5 pb-6">
               <p className={eyebrow}>{p.category}</p>

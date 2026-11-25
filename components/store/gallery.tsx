@@ -70,7 +70,7 @@ export function Gallery({images,index,onIndex,name,category,tones}:{
     {count>1&&<div className="sf-no-scrollbar mt-4 flex gap-2.5 overflow-x-auto p-0.5" role="group" aria-label="Rasmlar">
       {images.map((u,i)=><button type="button" key={u} aria-pressed={i===index} aria-label={`${i+1}-rasm`} onClick={()=>onIndex(i)}
         style={{"--tile-bg":tones[u]?.background??"#f5f5f7"} as CSSProperties}
-        className="relative aspect-4/3 w-[76px] flex-none cursor-pointer overflow-hidden rounded-[10px] bg-(--tile-bg) opacity-70 ring-1 ring-black/5 transition-[opacity,box-shadow] duration-200 hover:opacity-100 aria-pressed:opacity-100 aria-pressed:ring-2 aria-pressed:ring-sf-blue">
+        data-tone className="relative aspect-4/3 w-[76px] flex-none cursor-pointer overflow-hidden rounded-[10px] bg-(--tile-bg) opacity-70 ring-1 ring-black/5 transition-[opacity,box-shadow] duration-200 hover:opacity-100 aria-pressed:opacity-100 aria-pressed:ring-2 aria-pressed:ring-sf-blue">
         <ProductVisual image={u} name="" category={category} sizes="76px" cutoutPadding={false} fit="blend" className="absolute inset-0"/>
       </button>)}
     </div>}

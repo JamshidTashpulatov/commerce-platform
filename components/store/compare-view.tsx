@@ -101,7 +101,7 @@ export function CompareView({products,siblings,max}:{products:CompareProduct[];s
         {products.map(p=><div key={p.id} className="relative flex snap-start flex-col items-center text-center">
           <button type="button" aria-label={p.name+"ni solishtirishdan olib tashlash"} onClick={()=>go(ids.filter(i=>i!==p.id))}
             className="absolute top-2 right-2 z-10 inline-flex size-8 cursor-pointer items-center justify-center rounded-full bg-white/90 text-sf-ink-2 shadow-sm ring-1 ring-black/5 hover:text-sf-ink"><XIcon className="size-4"/></button>
-          <Link href={productHref(p.id)} className="relative block aspect-square w-full overflow-hidden rounded-[18px] bg-sf-alt">
+          <Link href={productHref(p.id)} data-tone className="relative block aspect-square w-full overflow-hidden rounded-[18px] bg-sf-alt">
             <ProductVisual image={p.image} name={p.name} category={p.category} fit="blend" sizes="(min-width:735px) 300px, 50vw" className="absolute inset-0"/>
           </Link>
           <h2 className="mt-5 text-[19px] leading-[1.21] font-semibold tablet:text-2xl">{p.name}</h2>
@@ -145,7 +145,7 @@ function AddColumn({siblings,onAdd}:{siblings:Sibling[];onAdd:(id:string)=>void}
     <ul className="mt-4 flex flex-col gap-2">
       {top.map(s=><li key={s.id}>
         <button type="button" onClick={()=>onAdd(s.id)} className="group flex w-full cursor-pointer items-center gap-3 rounded-xl p-1.5 text-left transition-colors hover:bg-sf-alt">
-          <span className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-sf-alt"><ProductVisual image={s.image} name={s.name} category={s.category} fit="blend" sizes="44px" cutoutPadding={false} className="absolute inset-0"/></span>
+          <span data-tone className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-sf-alt"><ProductVisual image={s.image} name={s.name} category={s.category} fit="blend" sizes="44px" cutoutPadding={false} className="absolute inset-0"/></span>
           <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{s.name}</span><span className="block text-xs text-sf-ink-2">{fromSoum(s.fromPrice)}</span></span>
           <PlusIcon className="size-4 shrink-0 text-sf-blue" aria-hidden="true"/>
         </button>

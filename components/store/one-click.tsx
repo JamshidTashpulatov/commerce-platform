@@ -35,7 +35,7 @@ export function OneClick({variantId,productName,options,enabled,telegram,disable
         <DialogTitle className="text-[21px] font-semibold">Bir bosishda xarid</DialogTitle>
         <DialogDescription className="mt-1 text-sm text-sf-ink-2">Savat o‘zgarmaydi. Sotuvchi qo‘ng‘iroq qilib tasdiqlaydi.</DialogDescription>
         <div className="mt-5 flex items-center gap-4 rounded-xl bg-sf-alt p-3">
-          <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-white">
+          <div data-tone className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-white">
             {q?<ProductVisual image={q.image} name={q.name} category={q.category} fit="blend" sizes="64px" cutoutPadding={false} className="absolute inset-0"/>:<Skeleton className="size-full"/>}
           </div>
           <div className="min-w-0 flex-1">

@@ -37,7 +37,7 @@ export function CartLines({lines,quotes,loading,editable=true}:{lines:CartLine[]
   const {rows}=summarize(lines,quotes);
   return <ul className="flex flex-col divide-y divide-sf-line/70">
     {rows.map(({line,quote})=><li key={line.variantId} className="flex gap-4 py-5">
-      <Link href={productHref(line.productId)} className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-sf-alt">
+      <Link href={productHref(line.productId)} data-tone className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-sf-alt">
         {quote?<ProductVisual image={quote.image} name={quote.name} category={quote.category} fit="blend" sizes="80px" cutoutPadding={false} className="absolute inset-0"/>:<Skeleton className="size-full bg-sf-alt"/>}
       </Link>
       <div className="flex min-w-0 flex-1 flex-col gap-1">

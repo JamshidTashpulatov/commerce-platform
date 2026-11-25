@@ -13,7 +13,7 @@ import {setLenis} from "../../lib/smooth-scroll";
 export function SmoothScroll(){
   useEffect(()=>{
     if(!window.matchMedia("(pointer: fine)").matches)return;
-    const instance=new Lenis({autoRaf:true,lerp:0.1,smoothWheel:true,syncTouch:false,anchors:{offset:-64},
+    const instance=new Lenis({autoRaf:true,lerp:0.06,wheelMultiplier:0.9,smoothWheel:true,syncTouch:false,anchors:{offset:-64},
       autoToggle:true,allowNestedScroll:true,stopInertiaOnNavigate:true});
     setLenis(instance);
     return ()=>{setLenis(null);instance.destroy();};
