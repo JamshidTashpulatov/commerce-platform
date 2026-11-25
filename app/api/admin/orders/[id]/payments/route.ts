@@ -61,6 +61,8 @@ export async function POST(request:Request,{params}:Ctx){
  const activeContract=await c.query("SELECT 1 FROM installment_contracts WHERE store_id=$1 AND order_id=$2 AND status IN ('active','settled')",[store,id]);
  if(activeContract.rowCount)return await fail("Faol nasiya shartnomasi mavjud. Ushbu to‘lovlar alohida boshqariladi.");
  if(action==="terms"){
+  const funding=await c.query("SELECT 1 FROM order_funding_allocations WHERE store_id=$1 AND order_id=$2 LIMIT 1",[store,id]);
+  if(funding.rowCount)return await fail("Avval investor taqsimotini olib tashlang");
   const existing=await c.query("SELECT 1 FROM order_manual_receipts WHERE store_id=$1 AND order_id=$2 LIMIT 1",[store,id]);
   if(existing.rowCount)return await fail("To‘lov qayd etilgan. Shartlarni o‘zgartirish bloklangan.");
   const contract=await c.query("SELECT 1 FROM installment_contracts WHERE store_id=$1 AND order_id=$2",[store,id]);
