@@ -9,3 +9,7 @@ The protected routes use server-verified staff sessions and store scope. Configu
 - PUT /api/admin/orders/:id: set fulfillment with revision and fulfillment. Delivery requires confirmed sale.
 
 The revision is an optimistic concurrency guard. Do not use these endpoints with real transactions until security, authorization, end-to-end tests, audit/reversal procedures and business policies are reviewed. Confirming a sale records inventory movement only; it does not record a payment or finalize contractual terms. Staff role access currently covers store-wide orders; assignment rules are not yet decided. Website OIDC, customer records, funding allocation writes, manual receipt posting and staff UI connection remain pending. No real customer details are collected.
+
+## Server-connected staff preview
+
+The separate /staff workspace supports listing, filtering, opening and creating staff order requests and updating sale and delivery status using the protected API. It is disabled by default; STAFF_WORKSPACE_ENABLED=true exposes the UI only to an existing authorized staff session. The /dashboard route remains fictional-data preview. The flag gates the UI, not the underlying authenticated API. Test with a disposable database, not real inventory or customers. Login bootstrap, production readiness, financial details, returns and end-to-end UI testing remain pending. The list currently displays the latest 100 orders and filters those loaded records only.
