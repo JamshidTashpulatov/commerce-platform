@@ -16,12 +16,16 @@
 // - Runs once per store: --apply records an audit event (catalog_prices_converted_to_usd) and refuses
 //   to run again if one exists. Each row is updated only if it still holds the price that was read.
 // - Refuses when prices already look like dollars (the cheapest active price is under 10,000).
-// - Lists every other column ending in _uzs that holds amounts for the store, so nothing stays
-//   mixed. It never changes those: orders, receipts and capital events need a decision first.
+// - Changes nothing but variants.price_uzs. Every other column ending in _uzs is listed, found from
+//   the schema, in two groups: order amounts (orders, order_items), which still hold so'm from test
+//   orders and need a decision; and finance amounts (capital events, receipts, allocations, ...),
+//   which are already whole US dollars, entered after the dollar decision, and are never converted.
 import pg from "pg";
 import {pathToFileURL} from "node:url";
 
 export const MARKER="catalog_prices_converted_to_usd";
+/** Tables whose amounts may still be so'm from before the dollar decision. Every other money column is already dollars. */
+export const SOM_ERA_TABLES=new Set(["orders","order_items"]);
 
 /** So'm to a retail whole-dollar price, as described above. */
 export function retailDollars(soum,rate){
@@ -92,15 +96,20 @@ async function main(){
     // Every other money column, found from the schema rather than a hand-kept list.
     const columns=(await client.query(`SELECT c.table_name,c.column_name FROM information_schema.columns c
       JOIN information_schema.columns s ON s.table_schema=c.table_schema AND s.table_name=c.table_name AND s.column_name='store_id'
+      JOIN information_schema.tables t ON t.table_schema=c.table_schema AND t.table_name=c.table_name AND t.table_type='BASE TABLE'
       WHERE c.table_schema='public' AND c.column_name LIKE '%\\_uzs' AND NOT (c.table_name='variants' AND c.column_name='price_uzs')
       ORDER BY c.table_name,c.column_name`)).rows;
     const others=[];
     for(const {table_name:t,column_name:c} of columns){
       const r=(await client.query(`SELECT count(*)::int AS rows,count("${c}")::int AS filled,coalesce(sum("${c}"),0)::text AS total FROM "${t}" WHERE store_id=$1`,[STORE_ID])).rows[0];
-      if(r.filled)others.push({table:t,column:c,rows:r.rows,"non-null":r.filled,"sum (so'm, unchanged)":fmt(r.total)});
+      if(r.filled)others.push({table:t,column:c,rows:r.rows,"non-null":r.filled,sum:fmt(r.total),som:SOM_ERA_TABLES.has(t)});
     }
-    console.log(others.length?"\nOther tables holding so'm amounts (NOT converted, need a decision):":"\nNo other table holds amounts for this store.");
-    if(others.length)console.table(others);
+    const pending=others.filter(o=>o.som),dollars=others.filter(o=>!o.som);
+    const view=list=>list.map(({som,...o})=>o);
+    console.log(pending.length?"\nOrder amounts still in so'm (NOT converted, need a decision):":"\nNo order amounts in so'm.");
+    if(pending.length)console.table(view(pending));
+    console.log(dollars.length?"\nFinance amounts already in whole US dollars (never converted by this script):":"\nNo finance amounts recorded yet.");
+    if(dollars.length)console.table(view(dollars));
     const orders=(await client.query(`SELECT o.id,o.source,o.status,o.request_status,o.created_at,p.name,i.quantity,i.unit_price_uzs::text AS unit
       FROM order_items i JOIN orders o ON o.store_id=i.store_id AND o.id=i.order_id
       LEFT JOIN variants v ON v.store_id=i.store_id AND v.id=i.variant_id LEFT JOIN products p ON p.store_id=v.store_id AND p.id=v.product_id

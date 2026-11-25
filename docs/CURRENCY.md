@@ -29,7 +29,9 @@ DATABASE_URL=... STORE_ID=... node scripts/convert-prices-to-usd.mjs --rate=1265
   - from $100, round to the nearest $10 and take $1 off, so prices end in 9 and move by at most $6 ($803.40 → $799, $1,247.20 → $1,249).
 - **Scope.** Only `variants.price_uzs` is converted. Option groups hold no price amounts (only an `affectsPrice` flag); the script checks this and lists any number it finds.
 - **Runs once.** `--apply` records the audit event `catalog_prices_converted_to_usd` and refuses to run again. Each row is updated only if it still holds the price that was read. It also stops when the cheapest active price is under 10,000, since that already looks like dollars.
-- **Other amounts.** It lists every other `*_uzs` column with amounts for the store and does not change them.
+- **Other amounts.** It lists every other `*_uzs` column with amounts for the store (base tables, found from the schema) and changes none of them. They are listed in two groups:
+  - **Order amounts** (`orders`, `order_items`): these may still hold so'm from test orders, and need a decision.
+  - **Finance amounts** (capital events, receipts, allocations and the rest): already whole US dollars, never converted. Investor capital imported after the dollar decision belongs here.
 
 Tested on a copy of the local catalog: 475 variants converted, a second run refused, and a run with the marker removed refused on the dollar check.
 
@@ -49,7 +51,7 @@ Between steps 3 and 4 the old site shows dollar numbers with "so‘m". Keep that
 
 ### The two test orders in production
 
-At the time of writing, production holds two test orders whose `order_items.unit_price_uzs` are in so'm. There are no capital events, receipts or other amounts. Options, for Jamik to choose before the conversion runs:
+At the time of writing, production holds two test orders whose `order_items.unit_price_uzs` are in so'm. Those, and the catalog prices, are the only so'm amounts; finance records are already in dollars. Options, for Jamik to choose before the conversion runs:
 
 1. **Recommended: cancel them through the staff workspace and leave the rows as a so'm-era record.** They are test orders, nothing was paid, and cancelled orders do not enter any total.
 2. Convert their `unit_price_uzs` with the same rate, by hand, in the same maintenance window, so every stored amount is in dollars.
