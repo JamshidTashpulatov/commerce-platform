@@ -14,7 +14,7 @@ export async function GET(_request:Request,{params}:Ctx){
  const c=await database().connect();
  try{
  await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
- const o=await c.query("SELECT o.request_status,t.financed_principal_uzs::text AS principal FROM orders o LEFT JOIN order_payment_terms t ON t.store_id=o.store_id AND t.order_id=o.id WHERE o.store_id=$1 AND o.id=$2",[store,id]);
+ const o=await c.query("SELECT o.request_status,t.cost_uzs::text AS principal FROM orders o LEFT JOIN order_payment_terms t ON t.store_id=o.store_id AND t.order_id=o.id WHERE o.store_id=$1 AND o.id=$2",[store,id]);
  if(!o.rowCount){await c.query("ROLLBACK");return reply({error:"Buyurtma topilmadi"},404);}
  const allocations=await c.query("SELECT investor_account_id AS account_id,amount_uzs::text FROM order_funding_allocations WHERE store_id=$1 AND order_id=$2 ORDER BY investor_account_id",[store,id]);
  const investors=await c.query(`
@@ -47,11 +47,11 @@ export async function PUT(request:Request,{params}:Ctx){
  const o=await c.query("SELECT request_status,sale_status FROM orders WHERE store_id=$1 AND id=$2 FOR UPDATE",[store,id]);
  if(!o.rowCount)return await fail("Buyurtma topilmadi",404);
  if(o.rows[0].request_status==="cancelled"||o.rows[0].sale_status==="sold")return await fail("Sotilgan yoki bekor qilingan buyurtmaning moliyalashtirishini o‘zgartirib bo‘lmaydi");
- const t=await c.query("SELECT financed_principal_uzs FROM order_payment_terms WHERE store_id=$1 AND order_id=$2 AND payment_type='installment'",[store,id]);
- if(!t.rows[0]?.financed_principal_uzs)return await fail("Avval nasiya shartlarini saqlang");
- const principal=BigInt(t.rows[0].financed_principal_uzs);
+ const t=await c.query("SELECT cost_uzs FROM order_payment_terms WHERE store_id=$1 AND order_id=$2 AND payment_type='installment'",[store,id]);
+ if(!t.rows[0]?.cost_uzs)return await fail("Avval nasiya shartlarini saqlang");
+ const principal=BigInt(t.rows[0].cost_uzs);
  const sum=allocations.reduce((n,a)=>n+BigInt(a.amount),BigInt(0));
- if(sum>principal)return await fail("Ajratilgan kapital qolgan tan narxidan oshmoqda",400);
+ if(sum>principal)return await fail("Ajratilgan kapital mahsulotning to‘liq tan narxidan oshmoqda",400);
  const previous=await c.query("SELECT investor_account_id FROM order_funding_allocations WHERE store_id=$1 AND order_id=$2",[store,id]);
  const ids=[...new Set([...allocations.map(a=>a.accountId),...previous.rows.map(r=>String(r.investor_account_id))])].sort();
  for(const accountId of ids){
