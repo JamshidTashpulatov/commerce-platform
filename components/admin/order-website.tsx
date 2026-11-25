@@ -6,6 +6,7 @@ import { Section, StatusBadge, formatStamp } from "./kit";
 import type { WebsiteRequest } from "./order-progress";
 import { RequestBadge, SaleBadge } from "./status";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const channelLabels = { cart: "Savat orqali", one_click: "Bir bosishda xarid" } as const;
 
@@ -43,7 +44,7 @@ export function OrderWebsite({ request }: { request: WebsiteRequest }) {
       </dl>
       <div className="flex flex-wrap items-center gap-2">
         {/* Green on the owner's request: the call button is the one thing to do with this block. */}
-        <a href={"tel:" + c.phone} className={buttonVariants({ className: "bg-green-600 text-white hover:bg-green-700" })}>
+        <a href={"tel:" + c.phone} className={cn(buttonVariants(), "bg-green-600 text-white hover:bg-green-700")}>
           <PhoneIcon data-icon="inline-start" />
           Qo‘ng‘iroq qilish
         </a>
