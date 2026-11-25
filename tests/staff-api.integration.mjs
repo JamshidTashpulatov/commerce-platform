@@ -112,6 +112,28 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal((await call(schedulePath,"POST",reverseMonthly,seller)).status,403);
   assert.equal((await call(schedulePath,"POST",reverseMonthly,admin)).status,201);
   assert.equal((await call(nextPath+"/payments","GET",undefined,seller)).data.remaining_uzs,"784");
+  const investorId=(await pool.query("SELECT account_id FROM memberships WHERE store_id=$1 AND role='investor'",[storeId])).rows[0].account_id;
+  const secondInvestor=await session("investor");
+  const secondId=(await pool.query("SELECT account_id FROM memberships WHERE store_id=$1 AND role='investor' AND account_id<>$2",[storeId,investorId])).rows[0].account_id;
+  const investorPath="/api/admin/investors";
+  const contribution={accountId:investorId,type:"contribution",amount:"1000",key:randomUUID()};
+  assert.equal((await call(investorPath,"POST",contribution,seller)).status,403);
+  assert.equal((await call(investorPath,"POST",contribution,admin)).status,201);
+  assert.equal((await call(investorPath,"POST",contribution,admin)).status,200);
+  assert.equal((await call(investorPath,"POST",{accountId:secondId,type:"contribution",amount:"400",key:randomUUID()},admin)).status,201);
+  const fundingPath=nextPath+"/funding";
+  const allocation={allocations:[{accountId:investorId,amount:"400"},{accountId:secondId,amount:"300"}]};
+  assert.equal((await call(fundingPath,"PUT",allocation,investor)).status,403);
+  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:investorId,amount:"701"}]},seller)).status,400);
+  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:secondId,amount:"401"}]},seller)).status,409);
+  assert.equal((await call(fundingPath,"PUT",allocation,seller)).status,200);
+  assert.equal((await call(fundingPath,"GET",undefined,seller)).data.allocations.length,2);
+  const own=await call("/api/investor/summary","GET",undefined,investor);
+  assert.equal(own.status,200);assert.equal(own.data.allocated_uzs,"400");assert.equal(own.data.available_uzs,"600");
+  const other=await call("/api/investor/summary","GET",undefined,secondInvestor);
+  assert.equal(other.data.allocated_uzs,"300");assert.equal(other.data.available_uzs,"100");
+  assert.equal((await call(investorPath,"POST",{accountId:investorId,type:"withdrawal",amount:"601",key:randomUUID()},admin)).status,409);
+  assert.equal((await call(investorPath,"GET",undefined,investor)).status,403);
 
  }finally{await pool.end();}
 });
