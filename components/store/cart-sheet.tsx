@@ -9,7 +9,7 @@ import {Skeleton} from "@/components/ui/skeleton";
 import {CART_MAX_QTY,cartCount,cartStore,removeLine,setQuantity,type CartLine} from "../../lib/cart-store";
 import {cartUi} from "../../lib/cart-ui";
 import {useQuote,type Quote} from "../../lib/use-cart-quote";
-import {TELEGRAM_URL,productHref,soum} from "../../lib/storefront";
+import {productHref,soum} from "../../lib/storefront";
 import {ProductVisual} from "./product-visual";
 import {pill} from "./bits";
 
@@ -107,7 +107,6 @@ export function CartSheet(){
           <p className="mt-1 text-xs text-sf-ink-3">Yetkazib berish narxi yo‘q. To‘lov sotuvchi bilan kelishiladi.</p>
           <Link href="/checkout" aria-disabled={!payable.length} onClick={e=>{if(!payable.length)e.preventDefault();}}
             className={pill({className:cn("mt-4 w-full",!payable.length&&"pointer-events-none opacity-40")})}>Rasmiylashtirish</Link>
-          <a href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" className="mt-3 block text-center text-sm text-sf-link hover:underline">Yoki Telegram orqali yozish</a>
         </div>
       </>}
     </SheetContent>

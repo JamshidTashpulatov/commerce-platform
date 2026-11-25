@@ -21,9 +21,15 @@ export function ToneImage(props:React.ImgHTMLAttributes<HTMLImageElement>){
       const px:number[][]=[];
       for(let x=0;x<w;x++){px.push([...d.slice(x*4,x*4+3)],[...d.slice(((h-1)*w+x)*4,((h-1)*w+x)*4+3)]);}
       for(let y=0;y<h;y++){px.push([...d.slice(y*w*4,y*w*4+3)],[...d.slice((y*w+w-1)*4,(y*w+w-1)*4+3)]);}
-      const avg=[0,1,2].map(c=>px.reduce((s,p)=>s+p[c],0)/px.length);
-      const spread=Math.sqrt(px.reduce((s,p)=>s+(p[0]-avg[0])**2+(p[1]-avg[1])**2+(p[2]-avg[2])**2,0)/px.length);
-      if(spread>10)return;
+      // Use the most common edge colour, so a product touching one edge does not
+      // spoil it; give up when the edge has no dominant plain colour.
+      const key=(p:number[])=>p.map(v=>v>>2).join(",");
+      const counts=new Map<string,number[][]>();
+      for(const p of px){const k=key(p);counts.set(k,[...(counts.get(k)??[]),p]);}
+      const top=[...counts.values()].sort((a,b)=>b.length-a.length)[0];
+      const near=px.filter(p=>Math.hypot(p[0]-top[0][0],p[1]-top[0][1],p[2]-top[0][2])<=10);
+      if(near.length<px.length*0.6)return;
+      const avg=[0,1,2].map(c=>near.reduce((s,p)=>s+p[c],0)/near.length);
       target.style.backgroundColor=`rgb(${avg.map(Math.round).join(",")})`;
     }catch{/* tainted canvas or decode issue: keep the default tile colour */}
   };
