@@ -45,7 +45,7 @@ export function StoreNav({categories}:{categories:string[]}){
         </button>
       </div>
     </nav>
-    <div id="sf-menu" inert={!open} className={cn("fixed inset-x-0 top-12 bottom-0 overflow-y-auto bg-[#fafafc] px-8 pt-4 pb-12 transition-[opacity,visibility] duration-200 navbar:hidden",
+    <div id="sf-menu" data-lenis-prevent inert={!open} className={cn("fixed inset-x-0 top-12 bottom-0 overflow-y-auto bg-[#fafafc] px-8 pt-4 pb-12 transition-[opacity,visibility] duration-200 navbar:hidden",
       open?"visible opacity-100":"invisible opacity-0")}>
       <ul>
         {[{href:"/catalog",label:"Barcha mahsulotlar"},...categories.map(c=>({href:catalogHref(c),label:c}))].map((l,i)=>

@@ -121,7 +121,7 @@ export function Lightbox({images,index,onIndex,open,onOpenChange,name}:{
   const iconBtn="size-10 rounded-full bg-black/[0.06] text-sf-ink hover:bg-black/10 disabled:opacity-30 [&_svg:not([class*='size-'])]:size-5";
 
   return <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent showCloseButton={false}
+    <DialogContent data-lenis-prevent showCloseButton={false}
       className="top-0 left-0 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none bg-white p-0 font-sf text-sf-ink ring-0 sm:max-w-none">
       <DialogTitle className="sr-only">{name}. Rasmlar</DialogTitle>
       <DialogDescription className="sr-only">Kattalashtirish uchun ikki marta bosing yoki g‘ildirakdan foydalaning. Rasmlar orasida strelkalar bilan o‘ting.</DialogDescription>

@@ -7,6 +7,7 @@ import {StoreFooter} from "../../components/store/store-footer";
 import {CompareTray} from "../../components/store/compare-tray";
 import {CartSheet} from "../../components/store/cart-sheet";
 import {MiniAppSignIn} from "../../components/store/mini-app-signin";
+import {SmoothScroll} from "../../components/store/smooth-scroll";
 import {listCategories} from "../../lib/server/storefront";
 import {STORE_NAME} from "../../lib/storefront";
 
@@ -30,5 +31,6 @@ export default async function StoreLayout({children}:{children:ReactNode}){
     <main id="sf-main" className="min-w-0 flex-1">{children}</main>
     <StoreFooter categories={categories}/>
     <Suspense><CompareTray/><CartSheet/><MiniAppSignIn/></Suspense>
+    <SmoothScroll/>
   </div>;
 }

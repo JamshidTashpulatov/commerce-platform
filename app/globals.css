@@ -336,3 +336,21 @@ html.sf-locked { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .sf *, .sf *::before, .sf *::after { animation: none !important; transition-property: opacity, background-color, border-color, color, box-shadow !important; }
 }
+
+/* Smooth in-page jumps where Lenis is not running (touch screens). */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.sf):not(.lenis) { scroll-behavior: smooth; }
+}
+
+/* Storefront: everything clickable shows a pointer (Tailwind's preflight resets buttons to the
+   default cursor). In the base layer so utilities such as cursor-zoom-in still win. Dialogs and
+   drawers render outside .sf, so the rule keys on the page rather than the subtree. */
+@layer base {
+  html:has(.sf) :where(a[href], button, [role="button"], [role="radio"], [role="tab"], select, summary,
+    input[type="checkbox"], input[type="radio"], label:has(> input[type="checkbox"]), label:has(> input[type="radio"])) {
+    cursor: pointer;
+  }
+  html:has(.sf) :where(button:disabled, [role="radio"]:disabled, [aria-disabled="true"], select:disabled, input:disabled) {
+    cursor: not-allowed;
+  }
+}

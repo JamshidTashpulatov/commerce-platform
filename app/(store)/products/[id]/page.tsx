@@ -8,7 +8,6 @@ import {pill,wrap} from "../../../../components/store/bits";
 import {getProduct} from "../../../../lib/server/storefront";
 import {checkoutEnabled} from "../../../../lib/server/checkout";
 import {telegramLoginState} from "../../../../lib/server/telegram-login-config";
-import {InfoIcon} from "lucide-react";
 import {catalogHref,fromSoum,soum,splitDescription} from "../../../../lib/storefront";
 
 export const dynamic="force-dynamic";
@@ -40,8 +39,8 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
         <CompareToggle size="md" item={{id:product.id,name:product.name,category:product.category,image:product.image}}/>
       </div>
     </header>
-    <BuyPanel product={product} demo={!!about.demoNote} checkout={{enabled:checkoutEnabled(),telegram:await telegramLoginState("/products/"+product.id)}}/>
-    {(about.body||config.length>0||about.demoNote)&&<section className="mt-20 max-w-[692px] border-t border-sf-line pt-12" aria-labelledby="about-title">
+    <BuyPanel product={product} checkout={{enabled:checkoutEnabled(),telegram:await telegramLoginState("/products/"+product.id)}}/>
+    {(about.body||config.length>0)&&<section className="mt-20 max-w-[692px] border-t border-sf-line pt-12" aria-labelledby="about-title">
       <h2 id="about-title" className="mb-4 text-2xl leading-[1.17] font-semibold">Mahsulot haqida.</h2>
       {about.body&&<p className="text-[17px] leading-[1.6] whitespace-pre-line text-sf-ink-2">{about.body}</p>}
       {config.length>0&&<dl className="mt-6 divide-y divide-sf-line/70 border-y border-sf-line/70">
@@ -49,9 +48,6 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
           <dt className="text-sm font-semibold">{c.name}</dt><dd className="text-sm text-sf-ink-2">{c.values}</dd>
         </div>)}
       </dl>}
-      {about.demoNote&&<p className="mt-6 flex items-start gap-2.5 rounded-xl bg-sf-alt px-4 py-3 text-xs leading-[1.5] text-sf-ink-2">
-        <InfoIcon className="mt-px size-4 shrink-0" aria-hidden="true"/><span><strong className="font-semibold text-sf-ink">Demo mahsulot.</strong> {about.demoNote}</span>
-      </p>}
     </section>}
   </div>;
 }

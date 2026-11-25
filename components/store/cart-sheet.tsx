@@ -91,7 +91,7 @@ export function CartSheet(){
         <p className="text-sf-ink-2">Mahsulot sahifasida variantni tanlab, “Savatga qo‘shish” tugmasini bosing.</p>
         <Link href="/catalog" className={pill({size:"sm"})}>Katalogga o‘tish</Link>
       </div>:<>
-        <div className="flex-1 overflow-y-auto px-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-6" data-lenis-prevent>
           {error&&<p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}. <button type="button" className="cursor-pointer font-semibold underline" onClick={retry}>Qayta urinish</button></p>}
           <CartLines lines={lines} quotes={quotes} loading={loading}/>
         </div>

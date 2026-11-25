@@ -15,6 +15,7 @@ import {CompareToggle} from "./compare-toggle";
 import {ShoppingBagIcon} from "lucide-react";
 import {addToCart} from "../../lib/cart-store";
 import {cartUi} from "../../lib/cart-ui";
+import {scrollToElement} from "../../lib/smooth-scroll";
 
 type Row={id:string;name:string;category:string;description:string;image_url:string|null;variant_id:string;color:string;
   storage_label:string|null;price_uzs:string;in_stock:boolean;option_groups:OptionGroup[];option_values:OptionSelection};
@@ -94,7 +95,7 @@ export function CatalogView(){
   };
   const turn=(dir:1|-1)=>{
     setPaging({key:filterKey,pages:dir>0&&next?[...pages,next]:pages.slice(0,-1)});
-    top.current?.scrollIntoView({block:"start",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
+    if(top.current)scrollToElement(top.current);
   };
 
   return <>
