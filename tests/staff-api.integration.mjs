@@ -134,6 +134,17 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal(other.data.allocated_uzs,"300");assert.equal(other.data.available_uzs,"100");
   assert.equal((await call(investorPath,"POST",{accountId:investorId,type:"withdrawal",amount:"301",key:randomUUID()},admin)).status,409);
   assert.equal((await call(investorPath,"GET",undefined,investor)).status,403);
+  const period="/api/investor/activity?from="+date+"&to="+date;
+  const activity=await call(period,"GET",undefined,investor);
+  assert.equal(activity.status,200);
+  assert.equal(activity.data.months[0].contributed,"1000");
+  assert.equal(activity.data.months[0].withdrawn,"0");
+  assert.equal((await call(period+"&accountId="+secondId,"GET",undefined,investor)).status,403);
+  assert.equal((await call(period+"&accountId="+secondId,"GET",undefined,seller)).status,403);
+  const adminReport=await call(period+"&accountId="+secondId,"GET",undefined,admin);
+  assert.equal(adminReport.status,200);
+  assert.equal(adminReport.data.months[0].contributed,"400");
+  assert.equal((await call("/api/investor/activity?from=2027-02-30&to=2027-03-01","GET",undefined,investor)).status,400);
 
  }finally{await pool.end();}
 });
