@@ -8,7 +8,6 @@ import {getProduct,listProducts} from "../../lib/server/storefront";
 import {imageSources} from "../../lib/image-sources";
 import {STORE_NAME,STORE_TAGLINE} from "../../lib/storefront";
 import {BRAND_MARK_D,BRAND_MARK_ROTATIONS} from "../../lib/brand-mark";
-import {formatFrom,formatMoney} from "../../lib/money";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -72,13 +71,14 @@ function DefaultCard(){
   return <div style={{...frame,flexDirection:"column",justifyContent:"center",alignItems:"center",gap:28}}>
     <Mark size={120}/>
     <div style={{fontSize:84,fontWeight:700,letterSpacing:-2}}>{STORE_NAME}</div>
-    <div style={{fontSize:38,fontWeight:600,color:"#6e6e73"}}>{`${STORE_TAGLINE}. Narxlar dollarda.`}</div>
+    <div style={{fontSize:38,fontWeight:600,color:"#6e6e73"}}>{STORE_TAGLINE}</div>
   </div>;
 }
 
 // GET /og            branded default
-// GET /og?p=<id>     product: photo, name, category, starting price
-// GET /og?c=<name>   category: up to three photos, model count, starting price
+// GET /og?p=<id>     product: photo, name and the brand
+// GET /og?c=<name>   category: up to three photos, its name and the brand
+// No prices on any card (Jamik's decision).
 // Unknown or unpublished ids fall back to the default image.
 export async function GET(request:Request){
   const params=new URL(request.url).searchParams;
@@ -88,16 +88,10 @@ export async function GET(request:Request){
       const p=await getProduct(productId);
       if(p){
         const img=await imageData(p.image);
-        const oneprice=new Set(p.skus.map(s=>s.price)).size===1;
         return render(<div style={{...frame,padding:64,gap:48}}>
           <div style={{display:"flex",flexDirection:"column",justifyContent:"space-between",width:520}}>
             <Brand/>
-            <div style={{display:"flex",flexDirection:"column",gap:16}}>
-              <div style={{fontSize:30,fontWeight:600,color:"#6e6e73"}}>{p.category}</div>
-              <div style={{fontSize:p.name.length>18?60:74,fontWeight:700,lineHeight:1.05,letterSpacing:-1.5}}>{p.name}</div>
-              <div style={{fontSize:40,fontWeight:600}}>{oneprice?formatMoney(p.fromPrice):formatFrom(p.fromPrice)}</div>
-            </div>
-            <div style={{fontSize:24,fontWeight:600,color:"#6e6e73"}}>Buyurtma saytda. Sotuvchi tasdiqlaydi.</div>
+            <div style={{fontSize:p.name.length>18?64:80,fontWeight:700,lineHeight:1.05,letterSpacing:-1.5}}>{p.name}</div>
           </div>
           <div style={{display:"flex",flex:1,alignItems:"center",justifyContent:"center",background:img?.bg??"#f5f5f7",borderRadius:40,overflow:"hidden"}}>
             {img?<img src={img.src} style={{maxWidth:"86%",maxHeight:"86%",objectFit:"contain"}}/>:<Mark size={160}/>}
@@ -110,14 +104,10 @@ export async function GET(request:Request){
       if(list.length){
         const picks=[...list].filter(p=>p.image).sort((a,b)=>BigInt(b.fromPrice)>BigInt(a.fromPrice)?1:-1).slice(0,3);
         const imgs=(await Promise.all(picks.map(p=>imageData(p.image)))).filter(x=>x!==null);
-        const from=list.reduce((m,p)=>BigInt(p.fromPrice)<BigInt(m)?p.fromPrice:m,list[0].fromPrice);
         return render(<div style={{...frame,flexDirection:"column",padding:64,justifyContent:"space-between"}}>
           <Brand/>
           <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:32}}>
-            <div style={{display:"flex",flexDirection:"column",gap:12,flexShrink:1}}>
-              <div style={{fontSize:category.length>9?68:96,fontWeight:700,letterSpacing:-2,lineHeight:1}}>{category}</div>
-              <div style={{fontSize:36,fontWeight:600,color:"#6e6e73"}}>{`${list.length} ta model. ${formatFrom(from)}.`}</div>
-            </div>
+            <div style={{display:"flex",flexShrink:1,fontSize:category.length>9?68:96,fontWeight:700,letterSpacing:-2,lineHeight:1}}>{category}</div>
             <div style={{display:"flex",gap:14,flexShrink:0}}>
               {imgs.map((img,i)=><div key={i} style={{display:"flex",width:168,height:220,alignItems:"center",justifyContent:"center",background:img.bg,borderRadius:28,border:"1px solid #ececf0"}}>
                 <img src={img.src} style={{maxWidth:"86%",maxHeight:"86%",objectFit:"contain"}}/></div>)}
