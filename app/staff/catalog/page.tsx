@@ -37,6 +37,9 @@ export default function CatalogAdmin() {
   const [variantOpen, setVariantOpen] = useState(false);
   const [variantEditing, setVariantEditing] = useState<Variant | null>(null);
   const [variantForm, setVariantForm] = useState(emptyVariant);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
+  const [addedCategories, setAddedCategories] = useState<string[]>([]);
   const last = useRef<{ signature: string; key: string } | null>(null);
   const pending = useRef(false);
 
@@ -110,6 +113,17 @@ export default function CatalogAdmin() {
     }
   }
 
+  // Categories are the distinct values already used by products, plus ones added in this session.
+  const categories = [...new Set([...(data?.products.map(p => p.category) ?? []), ...addedCategories, productForm.category].filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const categoryName = newCategory.trim();
+  const categoryExists = categories.some(c => c.toLowerCase() === categoryName.toLowerCase());
+  function addCategory() {
+    if (!categoryName) return;
+    const existing = categories.find(c => c.toLowerCase() === categoryName.toLowerCase());
+    if (!existing) setAddedCategories(list => [...list, categoryName]);
+    setProductForm(p => ({ ...p, category: existing ?? categoryName }));
+    setCategoryOpen(false);
+  }
   const productValid = !!productForm.name.trim() && !!productForm.category.trim();
   const variantValid = !!product && !!variantForm.sku.trim() && (product.option_groups.length ? validSelection(product.option_groups, variantForm.optionValues) : !!variantForm.color.trim()) && /^[1-9][0-9]{0,11}$/.test(variantForm.price);
 
@@ -188,7 +202,32 @@ export default function CatalogAdmin() {
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField label="Nomi">{id => <Input id={id} name="name" required maxLength={120} disabled={locked} value={productForm.name} onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))} />}</TextField>
-            <TextField label="Kategoriya">{id => <Input id={id} name="category" required maxLength={80} disabled={locked} value={productForm.category} onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} />}</TextField>
+            <TextField label="Kategoriya">
+              {id => (
+                <div className="flex gap-2">
+                  <NativeSelect id={id} name="category" className="w-full min-w-0 flex-1" required disabled={locked} value={productForm.category} onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))}>
+                    <NativeSelectOption value="">Tanlang</NativeSelectOption>
+                    {categories.map(c => (
+                      <NativeSelectOption key={c} value={c}>
+                        {c}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={locked}
+                    onClick={() => {
+                      setNewCategory("");
+                      setCategoryOpen(true);
+                    }}
+                  >
+                    <PlusIcon data-icon="inline-start" />
+                    Kategoriya
+                  </Button>
+                </div>
+              )}
+            </TextField>
             <CatalogImageUpload key={editing?.id ?? "draft"} label="Asosiy rasm" value={productForm.imageUrl} disabled={locked || !data.enabled} onBusy={setUploading} onChange={imageUrl => setProductForm(p => ({ ...p, imageUrl }))} />
             <TextField label="E’lon holati" description={editing ? "E’lon qilish uchun kamida bitta faol variant kerak." : "Yangi mahsulot qoralama sifatida saqlanadi."}>
               {id => (
@@ -259,6 +298,35 @@ export default function CatalogAdmin() {
           )}
         </Section>
       )}
+
+      <Dialog open={categoryOpen} onOpenChange={setCategoryOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Yangi kategoriya</DialogTitle>
+            <DialogDescription>Kategoriya mahsulot saqlanganda katalogga qo‘shiladi.</DialogDescription>
+          </DialogHeader>
+          <form
+            id="category-form"
+            onSubmit={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              addCategory();
+            }}
+          >
+            <TextField label="Kategoriya nomi" description={categoryExists ? "Bunday kategoriya bor, u tanlanadi." : undefined}>
+              {id => <Input id={id} name="newCategory" required maxLength={80} autoFocus value={newCategory} placeholder="Masalan: Telefonlar" onChange={e => setNewCategory(e.target.value)} />}
+            </TextField>
+          </form>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCategoryOpen(false)}>
+              Ortga
+            </Button>
+            <Button type="submit" form="category-form" disabled={!categoryName}>
+              {categoryExists ? "Tanlash" : "Qo‘shish"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={variantOpen && !!product} onOpenChange={next => !next && !locked && setVariantOpen(false)}>
         <DialogContent className="max-h-[90svh] overflow-y-auto overscroll-contain sm:max-w-lg">

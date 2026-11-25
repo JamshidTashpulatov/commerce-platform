@@ -1,6 +1,0 @@
-export function ProductArt({symbol}:{symbol:string}) {
-return <div className="product-art" aria-hidden="true"><svg viewBox="0 0 240 180" width="100%" height="100%" fill="none">
-<defs><linearGradient id={"metal-"+symbol} x1="0" x2="1" y1="0" y2="1"><stop stopColor="#d9dce2"/><stop offset="1" stopColor="#777b86"/></linearGradient></defs>
-{symbol==="phone"?<><rect x="79" y="13" width="82" height="154" rx="16" fill="#26272b"/><rect x="84" y="18" width="72" height="144" rx="12" fill="#9daab7"/><path d="M84 116Q115 45 156 55V162H84Z" fill="#65778c"/><rect x="106" y="24" width="28" height="6" rx="3" fill="#25262a"/></>:symbol==="laptop"?<><rect x="33" y="27" width="174" height="111" rx="8" fill="#24252a"/><rect x="39" y="33" width="162" height="98" rx="4" fill="#8798ac"/><path d="M39 103Q110 20 201 75V131H39Z" fill="#596d85"/><path d="M12 139H228L213 148H27Z" fill="#a6a9af"/></>:symbol==="tablet"?<><rect x="48" y="12" width="144" height="156" rx="12" fill="#25262a"/><rect x="54" y="18" width="132" height="144" rx="8" fill="#a6b4c4"/><path d="M54 140Q92 26 186 63V162H54Z" fill="#65778c"/></>:<><path d="M65 100V76a55 55 0 0 1 110 0v24" stroke="#8b909b" strokeWidth="13" strokeLinecap="round"/><rect x="48" y="86" width="37" height="60" rx="16" fill="#d0d3da"/><rect x="155" y="86" width="37" height="60" rx="16" fill="#d0d3da"/></>}
-</svg></div>
-}

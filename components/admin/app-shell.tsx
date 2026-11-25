@@ -41,7 +41,9 @@ import {
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { brandName } from "@/lib/brand";
 import { staffFetch } from "@/lib/staff-client";
+import { BrandMark } from "@/components/brand-mark";
 import { RoleProvider, isAdminRole, roleLabels, type StaffRole } from "./kit";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; match?: string[] };
@@ -166,6 +168,7 @@ function AccountMenu({ role }: { role: StaffRole }) {
 
 function currentTitle(pathname: string) {
   if (pathname.startsWith("/staff/orders/")) return "Buyurtma";
+  if (pathname.startsWith("/staff/investors/")) return "Investor";
   for (const group of groups) for (const item of group.items) if (pathname === item.href) return item.label;
   return "Ish maydoni";
 }
@@ -181,9 +184,11 @@ export function AppShell({ role, children }: { role: StaffRole; children: ReactN
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton size="lg" render={<Link href="/staff" />}>
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary font-heading text-sm font-semibold text-primary-foreground">D</span>
+                    <span className="flex size-8 shrink-0 items-center justify-center">
+                      <BrandMark className="size-7" />
+                    </span>
                     <span className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">Do‘kon</span>
+                      <span className="truncate font-semibold">{brandName}</span>
                       <span className="truncate text-xs text-muted-foreground">Ish maydoni</span>
                     </span>
                   </SidebarMenuButton>
@@ -198,8 +203,8 @@ export function AppShell({ role, children }: { role: StaffRole; children: ReactN
             </SidebarFooter>
             <SidebarRail />
           </Sidebar>
-          <SidebarInset className="min-w-0">
-            <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-background px-3 sm:px-4">
+          <SidebarInset className="min-w-0 bg-card">
+            <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-card px-3 sm:px-4">
               <SidebarTrigger aria-label="Menyuni ochish yoki yopish" />
               <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4 data-[orientation=vertical]:self-center" />
               <p className="truncate text-sm font-medium">{currentTitle(pathname)}</p>

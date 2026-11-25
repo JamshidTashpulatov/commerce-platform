@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AmountBars, MoneyBars, chartColors } from "@/components/admin/charts";
 import { CashbookReconciliation } from "@/components/admin/cashbook-reconciliation";
 import { EmptyState, ErrorState, LoadingBlock, Money, Notice, PageHeader, Section, Stat, StatGrid, SubmitButton, TableFrame, TextField, errorText, formatDay, tashkentToday } from "@/components/admin/kit";
 import { ReviewList, type ReceiptReview } from "@/components/admin/reviews";
@@ -41,6 +42,17 @@ export default function Cashbook() {
     };
   }, [period]);
 
+  const daily = (() => {
+    const days = new Map<string, { day: string; incoming: number; outgoing: number }>();
+    for (const e of [...(data?.entries ?? [])].reverse()) {
+      const row = days.get(e.movement_date) ?? { day: formatDay(e.movement_date).slice(0, 5), incoming: 0, outgoing: 0 };
+      const n = Number(e.amount_uzs);
+      if (n >= 0) row.incoming += n;
+      else row.outgoing -= n;
+      days.set(e.movement_date, row);
+    }
+    return [...days.values()];
+  })();
   const reload = () => period && setPeriod({ ...period });
   const openReviews = data?.reviews.filter(r => !r.resolved_at).length ?? 0;
   return (
@@ -77,6 +89,21 @@ export default function Cashbook() {
               <Stat label="Chiqim va tuzatishlar" value={<Money value={data.outgoing_uzs} />} />
               <Stat label="Davr oxiridagi qoldiq" value={<Money value={data.closing_uzs} />} />
             </StatGrid>
+            {daily.length > 0 && (
+              <>
+                <h3 className="text-sm font-medium">Kunlik kirim va chiqim</h3>
+                <MoneyBars
+                  label="Kunlik kirim va chiqim"
+                  data={daily}
+                  xKey="day"
+                  series={[
+                    { key: "incoming", label: "Kirim", color: chartColors[1] },
+                    { key: "outgoing", label: "Chiqim va tuzatishlar", color: chartColors[2] },
+                  ]}
+                />
+                {data.truncated && <p className="text-sm text-muted-foreground">Diagramma oxirgi 200 ta qayd asosida chizilgan. Yuqoridagi jami summalar to‘liq.</p>}
+              </>
+            )}
           </Section>
 
           <Section title={openReviews ? `To‘lov tafovutlari (${openReviews} ta ochiq)` : "To‘lov tafovutlari"} description="Bekor qilib bo‘lmaydigan xato to‘lov qaydlari. Har birini haqiqiy qaytim yoki tuzatish hujjati bilan yoping.">
@@ -86,6 +113,7 @@ export default function Cashbook() {
           <CashbookReconciliation key={data.from + data.to} opening={data.opening_uzs} groups={data.groups} />
 
           <Section title="Operatsiya turi bo‘yicha">
+            {data.groups.length > 0 && <AmountBars label="Operatsiya turi bo‘yicha summa" data={data.groups.map(g => ({ name: labels[g.kind] ?? g.kind, value: Math.abs(Number(g.amount_uzs)), color: g.amount_uzs.startsWith("-") ? chartColors[2] : chartColors[1] }))} />}
             {data.groups.length ? (
               <TableFrame>
                 <Table>

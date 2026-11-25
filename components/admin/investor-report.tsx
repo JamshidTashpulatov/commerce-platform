@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MoneyBars, chartColors } from "./charts";
 import { EmptyState, ErrorState, LoadingBlock, Money, Notice, Stat, StatGrid, SubmitButton, TableFrame, TextField, errorText, tashkentToday, formatStamp } from "./kit";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -66,7 +67,7 @@ export function InvestorReport({ accountId }: { accountId: string }) {
         <ErrorState message={error} onRetry={() => applied && setApplied({ ...applied })} />
       ) : data ? (
         <>
-          <StatGrid className="sm:grid-cols-2 xl:grid-cols-2">
+          <StatGrid className="xl:grid-cols-5">
             <Stat label="Kiritilgan kapital" value={<Money value={sum("contributed")} />} />
             <Stat label="Kapitaldan yechilgan" value={<Money value={sum("withdrawn")} />} />
             <Stat label="Qaytgan kapital" value={<Money value={sum("returned")} />} />
@@ -74,6 +75,19 @@ export function InvestorReport({ accountId }: { accountId: string }) {
             <Stat label="Foyda taqsimoti qaydlari" value={<Money value={sum("distributed")} />} />
           </StatGrid>
           <h3 className="text-sm font-medium">Oylik kesim</h3>
+          {data.months.length > 0 && (
+            <MoneyBars
+              label="Oylik kesim"
+              data={data.months.map(m => ({ month: m.month, contributed: Number(m.contributed), returned: Number(m.returned), profit: Number(m.received_profit), withdrawn: Number(m.withdrawn) }))}
+              xKey="month"
+              series={[
+                { key: "contributed", label: "Kiritilgan", color: chartColors[0] },
+                { key: "returned", label: "Qaytgan kapital", color: chartColors[1] },
+                { key: "profit", label: "Tushgan foyda", color: chartColors[2] },
+                { key: "withdrawn", label: "Yechilgan", color: chartColors[3] },
+              ]}
+            />
+          )}
           {data.months.length ? (
             <TableFrame>
               <Table>

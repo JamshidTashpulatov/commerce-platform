@@ -57,6 +57,7 @@ jobs:
           SUPPLIER_POSTING_ENABLED: "true"
           STOCK_RECEIPTS_ENABLED: "true"
           CATALOG_ADMIN_ENABLED: "true"
+          WEBSITE_CHECKOUT_ENABLED: "true"
           CATALOG_IMAGE_HOSTS: "images.example.com"
           INSTALLMENT_MIN_INITIAL_BPS: "2500"
           INSTALLMENT_MONTHLY_MARKUP_BPS: "400"
@@ -72,4 +73,5 @@ jobs:
           curl -fsS http://127.0.0.1:3100/ >/dev/null
           node --test tests/staff-api.integration.mjs
           node --test tests/investor-allocation.integration.mjs
+          node --test tests/checkout.integration.mjs
           node --test tests/workspace.browser.mjs

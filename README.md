@@ -4,8 +4,9 @@ A Next.js and PostgreSQL application for a store with staff-managed orders, inve
 
 | Route | Purpose |
 | --- | --- |
-| `/`, `/dashboard` | Fictional storefront and management demo |
-| `/catalog` | Published products, SKU availability, option photos and prices |
+| `/` | Public storefront home built from published catalog products |
+| `/catalog`, `/products/[id]` | Public catalog with search, category filter and paging; product page with option pickers, live price and stock. Ordering goes to the store's Telegram bot; there is no online checkout |
+| `/dashboard` | Fictional management demo |
 | `/login` | Email/password login for admins and owners, Telegram Mini App login for sellers and investors |
 | `/staff` | Protected order inbox and role-specific administration |
 | `/investor` | Read-only portfolio and permitted peer summaries |
