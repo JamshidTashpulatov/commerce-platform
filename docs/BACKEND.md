@@ -5,3 +5,5 @@ Apply all migrations in filename order on an empty PostgreSQL database. The CI w
 The staff and investor Mini App launch URL is `/login`. The client passes Telegram's signed launch data to `POST /api/auth/telegram-mini-app`. The server verifies signature and freshness, requires an existing store membership, consumes the assertion once and issues an eight-hour secure HttpOnly session cookie. Each protected request checks the current membership. Logout sends a same-origin JSON POST to `/api/auth/logout`, revokes that session in PostgreSQL and expires the cookie. Configure the bot and an HTTPS origin separately for a real launch.
 
 The public catalog reads published products and active variants. Staff and investor APIs serve their role-specific workspaces. See [implementation status](NEXT-STEPS.md) for remaining work, including customer website login, private data handling and operational controls.
+
+Run `node scripts/prune-expired-auth.mjs` with the intended database connection to remove up to 1,000 expired sessions and 1,000 expired replay assertions per run. It prints record counts. Scheduling this maintenance in production belongs to deployment configuration.

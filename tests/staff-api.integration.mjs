@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {randomBytes,randomUUID,createHash,createHmac} from "node:crypto";
 import pg from "pg";
+import {pruneExpiredAuth} from "../scripts/prune-expired-auth.mjs";
 const origin="http://127.0.0.1:3100";
 const storeId="00000000-0000-4000-8000-000000000001";
 test("staff requests, role checks, stock movement and delivery lifecycle",async()=>{
@@ -51,6 +52,14 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal((await call("/api/investor/summary","GET",undefined,issued)).status,403);
   assert.equal((await call("/api/auth/logout","POST",{},issued)).status,200);
   assert.equal((await call("/api/investor/summary","GET",undefined,investor)).status,200);
+  const maintenance = await pool.connect();
+  try {
+    await maintenance.query("INSERT INTO sessions(token_hash,account_id,expires_at) SELECT $1,id,now()-interval '1 day' FROM accounts WHERE telegram_user_id=$2",["a".repeat(64),telegramId]);
+    await maintenance.query("INSERT INTO telegram_auth_assertions(assertion_hash,expires_at) VALUES($1,now()-interval '1 day')",["b".repeat(64)]);
+    assert.deepEqual(await pruneExpiredAuth(maintenance),{sessions:1,assertions:1});
+    assert.deepEqual(await pruneExpiredAuth(maintenance),{sessions:0,assertions:0});
+    assert.equal((await call("/api/auth/telegram-mini-app","POST",loginBody)).status,409);
+  } finally {maintenance.release();}
   const stock=async()=>Number((await pool.query("SELECT quantity FROM variants WHERE id=$1",[variant])).rows[0].quantity);
   assert.equal((await call("/api/admin/orders")).status,403);
   assert.equal((await call("/api/admin/orders","GET",undefined,investor)).status,403);
