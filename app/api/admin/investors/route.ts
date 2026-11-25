@@ -2,6 +2,7 @@ import {NextResponse} from "next/server";
 import {database,configuredStoreId} from "../../../../lib/server/db";
 import {requireStoreRole} from "../../../../lib/server/auth";
 import {isUuid,sameOrigin,smallJson,privateHeaders} from "../../../../lib/server/http";
+import {maskedSignInPhone} from "../../../../lib/server/sign-in-phone";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const reply=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:privateHeaders});
@@ -10,12 +11,19 @@ export async function GET(){
  const store=configuredStoreId();if(!await requireStoreRole(store,["owner","admin"]))return reply({error:"Ruxsat yo‘q"},403);
  const {rows}=await database().query(`SELECT m.account_id,COALESCE(p.display_name,'Investor '||left(m.account_id::text,8)) AS name,
  COALESCE(e.contributed,0)::text AS contributed,COALESCE(e.withdrawn,0)::text AS withdrawn,COALESCE(e.distributed,0)::text AS distributed,
- COALESCE(a.allocated,0)::text AS allocated,COALESCE(a.returned,0)::text AS returned,COALESCE(a.outstanding,0)::text AS outstanding,(COALESCE(e.contributed,0)-COALESCE(e.withdrawn,0)-COALESCE(a.outstanding,0))::text AS available
+ COALESCE(a.allocated,0)::text AS allocated,COALESCE(a.returned,0)::text AS returned,COALESCE(a.outstanding,0)::text AS outstanding,(COALESCE(e.contributed,0)-COALESCE(e.withdrawn,0)-COALESCE(a.outstanding,0))::text AS available,
+ s.phone_cipher,(acc.telegram_user_id IS NOT NULL) AS telegram_linked,(s.account_id IS NOT NULL) AS by_phone
  FROM memberships m LEFT JOIN investor_profiles p ON p.store_id=m.store_id AND p.account_id=m.account_id
+ JOIN accounts acc ON acc.id=m.account_id
+ LEFT JOIN account_sign_in_phones s ON s.store_id=m.store_id AND s.account_id=m.account_id
  LEFT JOIN LATERAL (SELECT SUM(amount_uzs) FILTER(WHERE event_type='contribution') AS contributed,SUM(amount_uzs) FILTER(WHERE event_type='withdrawal') AS withdrawn,SUM(amount_uzs) FILTER(WHERE event_type='distribution') AS distributed FROM investor_capital_events WHERE store_id=m.store_id AND investor_account_id=m.account_id) e ON true
  LEFT JOIN LATERAL (SELECT SUM(amount_uzs) AS allocated,SUM(returned_uzs) AS returned,SUM(outstanding_uzs) AS outstanding FROM investor_funding_balances WHERE store_id=m.store_id AND investor_account_id=m.account_id) a ON true
  WHERE m.store_id=$1 AND m.role='investor' ORDER BY name LIMIT 200`,[store]);
- return reply({items:rows,enabled:process.env.INVESTOR_FUNDING_ENABLED==="true"});
+ // The sign-in phone leaves the server masked only; sign_in tells the admin whether Telegram is linked yet.
+ const items=rows.map(({phone_cipher,telegram_linked,by_phone,...row})=>({...row,
+  phone_masked:phone_cipher?maskedSignInPhone(store,row.account_id,phone_cipher):null,
+  sign_in:telegram_linked?"linked":by_phone?"pending":"none",by_phone}));
+ return reply({items,enabled:process.env.INVESTOR_FUNDING_ENABLED==="true"});
  }catch{return reply({error:"Investorlarni yuklab bo‘lmadi"},503);}
 }
 export async function POST(request:Request){

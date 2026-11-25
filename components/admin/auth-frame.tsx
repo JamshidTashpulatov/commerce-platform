@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { brandName } from "@/lib/brand";
+import { UzbekValidation } from "./uzbek-validation";
 import { BrandMark } from "@/components/brand-mark";
 
 /** Centered frame shared by the sign-in, activation and password pages (shadcn login block layout). */
@@ -12,6 +13,7 @@ export function AuthFrame({ children }: { children: ReactNode }) {
           {brandName}
         </div>
         {children}
+        <UzbekValidation />
       </div>
     </div>
   );
