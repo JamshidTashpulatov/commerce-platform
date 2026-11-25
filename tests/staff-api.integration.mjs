@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {randomBytes,randomUUID,createHash} from "node:crypto";
+import {randomBytes,randomUUID,createHash,createHmac} from "node:crypto";
 import pg from "pg";
 const origin="http://127.0.0.1:3100";
 const storeId="00000000-0000-4000-8000-000000000001";
@@ -26,6 +26,31 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
    const res=await fetch(origin+path,{method,headers:{...(auth?{Cookie:auth}:{}),...(body===undefined?{}:{"Content-Type":"application/json",Origin:requestOrigin})},...(body===undefined?{}:{body:JSON.stringify(body)})});
    return {status:res.status,data:await res.json()};
   }
+  // Verify the complete login and logout path using a synthetic Telegram identity.
+  const telegramId = "1000001";
+  await pool.query("UPDATE accounts SET telegram_user_id=$1 WHERE id=(SELECT account_id FROM sessions WHERE token_hash=$2)", [
+    telegramId, createHash("sha256").update(investor.split("=")[1]).digest("hex")
+  ]);
+  const fields = new URLSearchParams({auth_date:String(Math.floor(Date.now()/1000)),user:JSON.stringify({id:Number(telegramId)})});
+  const signingKey = createHmac("sha256","WebAppData").update(process.env.TELEGRAM_BOT_TOKEN).digest();
+  fields.set("hash", createHmac("sha256",signingKey).update([...fields].map(([k,v])=>k+"="+v).join("\n")).digest("hex"));
+  const loginBody = {initData:fields.toString()};
+  const login = await fetch(origin+"/api/auth/telegram-mini-app", {
+    method:"POST",headers:{Origin:origin,"Content-Type":"application/json"},body:JSON.stringify(loginBody)
+  });
+  assert.equal(login.status,200);
+  assert.equal((await login.json()).role,"investor");
+  const issuedCookie = login.headers.get("set-cookie");
+  assert.match(issuedCookie,/HttpOnly/i);
+  assert.match(issuedCookie,/Secure/i);
+  const issued = issuedCookie.split(";")[0];
+  assert.equal((await call("/api/auth/telegram-mini-app","POST",loginBody)).status,409);
+  assert.equal((await call("/api/auth/logout","POST",{},issued,"https://invalid.example")).status,403);
+  assert.equal((await call("/api/investor/summary","GET",undefined,issued)).status,200);
+  assert.equal((await call("/api/auth/logout","POST",{},issued)).status,200);
+  assert.equal((await call("/api/investor/summary","GET",undefined,issued)).status,403);
+  assert.equal((await call("/api/auth/logout","POST",{},issued)).status,200);
+  assert.equal((await call("/api/investor/summary","GET",undefined,investor)).status,200);
   const stock=async()=>Number((await pool.query("SELECT quantity FROM variants WHERE id=$1",[variant])).rows[0].quantity);
   assert.equal((await call("/api/admin/orders")).status,403);
   assert.equal((await call("/api/admin/orders","GET",undefined,investor)).status,403);

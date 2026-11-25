@@ -43,6 +43,7 @@ jobs:
           done
       - name: Verify staff API lifecycle
         env:
+          TELEGRAM_BOT_TOKEN: "ci-only-token"
           COMMERCE_TEST_MODE: "1"
           DATABASE_URL: postgresql://test:test_only@127.0.0.1:5432/commerce_test
           STORE_ID: 00000000-0000-4000-8000-000000000001
