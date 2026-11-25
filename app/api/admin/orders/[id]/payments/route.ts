@@ -87,6 +87,8 @@ export async function POST(request:Request,{params}:Ctx){
   if(!result.rowCount)return await fail("So‘rov takrorlandi. Yangilang.");
   event="manual_receipt_recorded";
  }else{
+  const credited=await c.query("SELECT 1 FROM investor_initial_returns WHERE store_id=$1 AND receipt_id=$2 LIMIT 1",[store,b.receiptId]);
+  if(credited.rowCount)return await fail("Investor kapitaliga qaytarilgan to‘lovni bekor qilish uchun alohida moliyaviy tuzatish kerak");
   const receipt=await c.query("SELECT id FROM order_manual_receipts WHERE store_id=$1 AND order_id=$2 AND id=$3",[store,id,b.receiptId]);
   if(!receipt.rowCount)return await fail("To‘lov topilmadi",404);
   const result=await c.query("INSERT INTO order_receipt_reversals(store_id,receipt_id,reversed_by,reason) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING receipt_id",[store,b.receiptId,member.account_id,String(b.reason).trim()]);
