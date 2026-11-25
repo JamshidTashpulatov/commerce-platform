@@ -65,7 +65,9 @@ export default async function Home(){
 
   const heroDark=!!hero.tone?.dark;
   return <>
-    <section data-tone className={cn("flex flex-col items-center overflow-hidden bg-(--tile-bg) pt-12 text-center tablet:pt-14",heroDark&&"text-[#f5f5f7]",!hero.image&&!hero.video&&"pb-16 tablet:pb-20")}
+    {/* From tablet width a video fills the first screen under the nav with the text over it; on phones and for images the media sits below the text. */}
+    <section data-tone className={cn("relative isolate flex flex-col items-center overflow-hidden bg-(--tile-bg) pt-12 text-center tablet:pt-14",heroDark&&"text-[#f5f5f7]",
+        hero.video&&"tablet:h-[calc(100svh-2.75rem)] tablet:max-h-[1000px] tablet:min-h-[560px]",!hero.image&&!hero.video&&"pb-16 tablet:pb-20")}
       style={toneStyle(hero.tone,"#fff")} aria-labelledby="hero-title">
       <div className="flex max-w-[980px] flex-col items-center gap-1.5 px-4">
         {hero.eyebrow&&<p className={cn(eyebrow,"text-sm",heroDark&&"text-[#a1a1a6]")}>{hero.eyebrow}</p>}
@@ -76,8 +78,10 @@ export default async function Home(){
           {hero.secondary&&<HeroButton link={hero.secondary} className={pill({tone:"ghost",dark:heroDark})}/>}
         </div>}
       </div>
-      {hero.video?<div className="relative mt-8 block aspect-4/3 w-full max-w-[1180px] tablet:aspect-video tablet:max-h-[72vh]">
+      {hero.video?<div className="relative mt-8 aspect-square w-full tablet:absolute tablet:inset-0 tablet:-z-10 tablet:mt-0 tablet:aspect-auto">
         <HeroVideo src={hero.video} poster={hero.image?imageSources(hero.image).src:null} dark={heroDark}/>
+        {/* Keeps the text readable where the video is bright behind it. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 hidden h-1/2 bg-linear-to-b tablet:block from-(--tile-bg)/70 to-transparent"/>
       </div>:hero.image&&(()=>{
         const art=<ProductVisual image={hero.image} name={hero.title} category={hero.category} priority fit="blend" sizes="(min-width:1180px) 1180px, 100vw" className="absolute inset-0"/>;
         const frame="relative mt-8 block aspect-4/3 w-full max-w-[1180px] tablet:aspect-video tablet:max-h-[72vh]";

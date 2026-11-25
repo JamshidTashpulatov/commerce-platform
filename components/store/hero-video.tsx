@@ -18,9 +18,9 @@ export function HeroVideo({src,poster,dark}:{src:string;poster:string|null;dark:
   const toggle=()=>{const v=video.current;if(!v)return;if(v.paused)v.play().catch(()=>{});else v.pause();};
   return <>
     <video ref={video} src={src} poster={poster??undefined} muted loop playsInline preload="metadata" aria-hidden="true"
-      onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} className="absolute inset-0 size-full object-contain"/>
+      onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} className="absolute inset-0 size-full object-cover"/>
     <button type="button" onClick={toggle} aria-label={playing?"Videoni to‘xtatish":"Videoni ijro etish"}
-      className={cn("absolute right-4 bottom-4 inline-flex size-9 cursor-pointer items-center justify-center rounded-full backdrop-blur transition-colors",
+      className={cn("absolute right-4 bottom-4 z-10 inline-flex size-9 cursor-pointer items-center justify-center rounded-full backdrop-blur transition-colors",
         dark?"bg-white/15 text-white hover:bg-white/25":"bg-black/[0.06] text-sf-ink hover:bg-black/10")}>
       {playing?<PauseIcon className="size-4" fill="currentColor" strokeWidth={0}/>:<PlayIcon className="size-4 translate-x-px" fill="currentColor" strokeWidth={0}/>}
     </button>
