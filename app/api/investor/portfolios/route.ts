@@ -16,12 +16,12 @@ export async function GET(){
  if(settings.rows[0]?.allow_peer_portfolios!==true){await c.query("COMMIT");return reply({enabled:false,items:[]});}
  const {rows}=await c.query(`SELECT m.account_id,COALESCE(p.display_name,'Investor '||left(m.account_id::text,8)) AS name,
  (COALESCE(e.contributed,0)-COALESCE(e.withdrawn,0))::text AS principal,
- COALESCE(a.allocated,0)::text AS allocated,
- (COALESCE(e.contributed,0)-COALESCE(e.withdrawn,0)-COALESCE(a.allocated,0))::text AS available,
+ COALESCE(a.allocated,0)::text AS allocated,COALESCE(a.returned,0)::text AS returned,COALESCE(a.outstanding,0)::text AS outstanding,
+ (COALESCE(e.contributed,0)-COALESCE(e.withdrawn,0)-COALESCE(a.outstanding,0))::text AS available,
  COALESCE(e.distributed,0)::text AS distributed
  FROM memberships m LEFT JOIN investor_profiles p ON p.store_id=m.store_id AND p.account_id=m.account_id
  LEFT JOIN LATERAL (SELECT SUM(amount_uzs) FILTER(WHERE event_type='contribution') AS contributed,SUM(amount_uzs) FILTER(WHERE event_type='withdrawal') AS withdrawn,SUM(amount_uzs) FILTER(WHERE event_type='distribution') AS distributed FROM investor_capital_events WHERE store_id=m.store_id AND investor_account_id=m.account_id) e ON true
- LEFT JOIN LATERAL (SELECT SUM(amount_uzs) AS allocated FROM order_funding_allocations WHERE store_id=m.store_id AND investor_account_id=m.account_id) a ON true
+ LEFT JOIN LATERAL (SELECT SUM(amount_uzs) AS allocated,SUM(returned_uzs) AS returned,SUM(outstanding_uzs) AS outstanding FROM investor_funding_balances WHERE store_id=m.store_id AND investor_account_id=m.account_id) a ON true
  WHERE m.store_id=$1 AND m.role='investor' AND m.account_id<>$2 ORDER BY name,m.account_id LIMIT 200`,[store,member.account_id]);
  await c.query("COMMIT");return reply({enabled:true,items:rows});
  }catch{await c.query("ROLLBACK");return reply({error:"Portfoliolarni yuklab bo‘lmadi"},503);}finally{c.release();}
