@@ -4,7 +4,7 @@ import Link from "next/link";
 import {usePathname,useSearchParams} from "next/navigation";
 import {SearchIcon} from "lucide-react";
 import {cn} from "@/lib/utils";
-import {STORE_NAME,catalogHref} from "../../lib/storefront";
+import {BRAND_MARK_PATH,STORE_NAME,catalogHref} from "../../lib/storefront";
 import {CartButton} from "./cart-sheet";
 
 export function StoreNav({categories}:{categories:string[]}){
@@ -61,6 +61,6 @@ export function StoreNav({categories}:{categories:string[]}){
 function BrandMark(){
   return <svg className="size-[22px] text-sf-ink" viewBox="0 0 24 24" aria-hidden="true">
     <rect x="1" y="1" width="22" height="22" rx="7" fill="currentColor"/>
-    <path d="M6.5 16.5V8l5.5 5.5L17.5 8v8.5" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d={BRAND_MARK_PATH} fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>;
 }

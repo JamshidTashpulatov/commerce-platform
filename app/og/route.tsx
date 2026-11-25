@@ -6,7 +6,7 @@ import {database,configuredStoreId} from "../../lib/server/db";
 import {approvedImageUrl,localMediaId} from "../../lib/server/catalog-media";
 import {getProduct,listProducts} from "../../lib/server/storefront";
 import {imageSources} from "../../lib/image-sources";
-import {STORE_NAME,STORE_TAGLINE,fromSoum,soum} from "../../lib/storefront";
+import {BRAND_MARK_PATH,STORE_NAME,STORE_TAGLINE,fromSoum,soum} from "../../lib/storefront";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -56,7 +56,7 @@ async function edgeColour(image:ReturnType<typeof sharp>){
 
 function Mark({size=56}:{size?:number}){
   return <svg width={size} height={size} viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="7" fill="#1d1d1f"/>
-    <path d="M6.5 16.5V8l5.5 5.5L17.5 8v8.5" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+    <path d={BRAND_MARK_PATH} fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 }
 function Brand(){
   return <div style={{display:"flex",alignItems:"center",gap:16}}><Mark size={48}/><span style={{fontSize:34,fontWeight:700,letterSpacing:-0.5}}>{STORE_NAME}</span></div>;

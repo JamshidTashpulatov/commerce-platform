@@ -1,6 +1,10 @@
 // Shared, client-safe storefront helpers.
 
-export const STORE_NAME="Malika Tech";
+/** The store's name, defined once. The admin side re-exports it from lib/brand.ts. */
+export const STORE_NAME="Tech Store";
+/** The brand mark's letter, drawn in a 24x24 box inside a rounded square (nav, favicons, OG images). */
+export const BRAND_MARK_PATH="M7.5 8h9M12 8v8.5";
+// The Telegram bot keeps its original handle; renaming the store does not change it.
 export const TELEGRAM_BOT="malika_tech_store_bot";
 export const TELEGRAM_URL="https://t.me/"+TELEGRAM_BOT;
 

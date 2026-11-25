@@ -1,5 +1,6 @@
 import "server-only";
 import type {Metadata} from "next";
+import {STORE_NAME} from "../storefront";
 
 export type OgTarget={product:string}|{category:string}|null;
 /** Canonical URL, Open Graph and Twitter tags for a storefront page, with its dynamic OG image. */
@@ -12,7 +13,8 @@ export function pageMeta({title,description,path,og=null,index=true,absoluteTitl
     title:absoluteTitle?{absolute:title}:title,description,
     alternates:{canonical:path},
     robots:index?{index:true,follow:true}:{index:false,follow:true},
-    openGraph:{title,description,url:path,type:"website",images:[image]},
+    // A page-level openGraph replaces the root one, so repeat site name and locale here.
+    openGraph:{title,description,url:path,type:"website",siteName:STORE_NAME,locale:"uz_UZ",images:[image]},
     twitter:{card:"summary_large_image",title,description,images:[image.url]},
   };
 }
