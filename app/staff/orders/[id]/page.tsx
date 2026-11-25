@@ -271,8 +271,8 @@ export default function StaffOrderDetails() {
     drafts.push({
       id: "returns",
       title: "Kapital qaytimi",
-      description: "Olingan boshlang‘ich to‘lovni investorlar kapitaliga qaytim sifatida yozing. Mablag‘ qayta moliyalashtirish uchun ochiladi.",
-      done: (p.returns.receipts.length > 0 && unposted === 0),
+      description: "Tizim boshlang‘ich to‘lovni investorlarga mahsulotga qo‘shgan puliga mutanosib hisoblaydi. Hisobni tasdiqlang, shunda mablag‘ qayta moliyalashtirish uchun ochiladi.",
+      done: p.returns.receipts.length > 0 && unposted === 0 && !p.returns.correction,
       blocked: !sold ? "Avval sotuvni tasdiqlang." : !fundingDone ? "Tan narxi investorlar kapitalidan to‘liq moliyalashtirilmagan." : !p.returns.receipts.length ? "Boshlang‘ich to‘lov hali qayd etilmagan." : undefined,
       summary: "Boshlang‘ich to‘lov investorlar kapitaliga qaytarilgan.",
       content: <OrderCapitalReturns plain endpoint={endpoint} onChanged={refreshQuiet} version={version} />,

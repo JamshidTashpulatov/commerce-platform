@@ -7,7 +7,7 @@ type Customer = { id: string; name: string; phone_masked: string; has_passport: 
 type Payments = { terms: { agreed_total_uzs: string; payment_type: "cash" | "installment"; initial_due_uzs: string; cost_uzs: string | null; term_months: number | null } | null; receipts: { reversed: boolean }[]; received_uzs: string; remaining_uzs: string | null; manual_received_uzs: string; has_schedule: boolean };
 type Funding = { principal: string | null; allocations: { amount_uzs: string }[]; enabled: boolean };
 type Installments = { contract: { status: string } | null; schedule: { state: string }[]; has_passport: boolean };
-type Returns = { cost: string | null; canPost: boolean; receipts: { posted: boolean }[] };
+type Returns = { cost: string | null; canPost: boolean; receipts: { posted: boolean }[]; correction: { allowed: boolean } | null };
 export type WebsiteRequest = {
   checkout: { reference: string; channel: "cart" | "one_click"; name: string; phone: string; comment: string | null; created_at: string; telegram_signed_in: boolean } | null;
   siblings?: { id: string; request_status: string; sale_status: string; quantity: number | null; name: string | null; color: string | null; storage_label: string | null }[];
