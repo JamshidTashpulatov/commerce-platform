@@ -54,6 +54,7 @@ jobs:
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/014_stock_receipts.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/015_catalog_admin.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/016_dynamic_options.sql
+          psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/017_catalog_media.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/tests/constraints.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/tests/finance_constraints.sql
 
