@@ -1,17 +1,150 @@
 "use client";
-import {useEffect,useState} from "react";
-import {CashbookReconciliation,type ReceiptReview} from "../../../components/cashbook-reconciliation";
-import {staffFetch,formatUzs} from "../../../lib/staff-client";
-type Data={reviews:ReceiptReview[];from:string;to:string;opening_uzs:string;incoming_uzs:string;outgoing_uzs:string;closing_uzs:string;groups:{kind:string;count:number;amount_uzs:string}[];entries:{source_id:string;kind:string;amount_uzs:string;movement_date:string}[];truncated:boolean;complete:boolean};
-const labels:Record<string,string>={capital_contribution:"Investor kapitali kiritildi",capital_withdrawal:"Kapitaldan yechildi",profit_distribution:"Foyda taqsimoti qaydi",initial_receipt:"Boshlang‘ich to‘lov",cash_sale_receipt:"To‘liq to‘lov",manual_receipt_reversal:"To‘lov qaydi bekor qilindi",monthly_receipt:"Oylik to‘lov",monthly_receipt_reversal:"Oylik to‘lov qaydi bekor qilindi",supplier_payment:"Ta’minotchiga tovar uchun to‘lov",supplier_payment_reversal:"Ta’minotchi to‘lov qaydi bekor qilindi"};
-function localDate(){const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tashkent",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());return ["year","month","day"].map(k=>parts.find(p=>p.type===k)?.value).join("-");}
-export default function Cashbook(){
- const [from,setFrom]=useState("");const [to,setTo]=useState("");const [period,setPeriod]=useState<{from:string;to:string}|null>(null);const [data,setData]=useState<Data|null>(null);const [loading,setLoading]=useState(true);const [error,setError]=useState("");
- useEffect(()=>{const today=localDate();const first=today.slice(0,7)+"-01";setFrom(first);setTo(today);setPeriod({from:first,to:today});},[]);
- useEffect(()=>{if(!period)return;let active=true;setLoading(true);setData(null);setError("");staffFetch<Data>("/api/admin/cashbook?"+new URLSearchParams(period).toString()).then(d=>{if(active)setData(d);}).catch(e=>{if(active)setError(e instanceof Error?e.message:"Hisobot yuklanmadi");}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[period]);
- return <><h1>Kassa.</h1><section className="surface"><p className="muted">Qayd etilgan kirim va chiqimlar hisoboti. Bu yakuniy naqd yoki bank qoldig‘i emas.</p><form className="form-grid" onSubmit={e=>{e.preventDefault();if(from&&to&&from<=to)setPeriod({from,to});}}><label>Boshlanish sanasi<input type="date" required value={from} onChange={e=>setFrom(e.target.value)}/></label><label>Tugash sanasi<input type="date" required min={from||undefined} value={to} onChange={e=>setTo(e.target.value)}/></label><button className="primary" disabled={loading||!from||!to||from>to} type="submit">Hisobotni ko‘rish</button></form></section>{loading&&<p role="status">Yuklanmoqda…</p>}{error&&<p role="alert">{error}</p>}{data&&<>
- <section className="surface"><h2>{data.from} — {data.to}</h2><div className="metrics">{[["Davr boshidagi qaydlar qoldig‘i",data.opening_uzs],["Kirim",data.incoming_uzs],["Chiqim va salbiy tuzatishlar",data.outgoing_uzs],["Davr oxiridagi qaydlar qoldig‘i",data.closing_uzs]].map(([label,value])=><div className="metric" key={label}><span>{label}</span><strong>{formatUzs(value)}</strong></div>)}</div><p className="muted">Kapitalni buyurtmaga ajratish va qaytimni investorga yozish ichki harakat bo‘lib, kassa kirimida takrorlanmaydi.</p></section>
- <CashbookReconciliation key={data.from+data.to} opening={data.opening_uzs} groups={data.groups} reviews={data.reviews} refresh={()=>setPeriod({from:data.from,to:data.to})}/>
- <section className="surface"><h2>Operatsiya turi bo‘yicha</h2><div className="table-scroll"><table><thead><tr><th>Turi</th><th>Soni</th><th>Summa</th></tr></thead><tbody>{data.groups.map(g=><tr key={g.kind}><td>{labels[g.kind]??g.kind}</td><td>{g.count}</td><td>{formatUzs(g.amount_uzs)}</td></tr>)}</tbody></table></div>{!data.groups.length&&<p>Ushbu davrda qaydlar yo‘q.</p>}</section>
- <section className="surface"><h2>Kirim-chiqim tarixi</h2><div className="table-scroll"><table><thead><tr><th>Sana</th><th>Operatsiya</th><th>Summa</th></tr></thead><tbody>{data.entries.map(r=><tr key={r.kind+":"+r.source_id}><td>{r.movement_date}</td><td>{labels[r.kind]??r.kind}</td><td>{formatUzs(r.amount_uzs)}</td></tr>)}</tbody></table></div>{data.truncated&&<p>Oxirgi 200 ta qayd ko‘rsatilmoqda. Jami barcha qaydlarni o‘z ichiga oladi.</p>}<p className="muted">Tuzatishlar haqiqiy pul qaytarilishi degani emas. Xarid xarajatlari, tarixiy qoldiq va barcha boshqa chiqimlar hali to‘liq ulanmagan.</p></section></>}</>;
+
+import { useEffect, useState } from "react";
+import { CashbookReconciliation } from "@/components/admin/cashbook-reconciliation";
+import { EmptyState, ErrorState, LoadingBlock, Money, Notice, PageHeader, Section, Stat, StatGrid, SubmitButton, TableFrame, TextField, errorText, formatDay, tashkentToday } from "@/components/admin/kit";
+import { ReviewList, type ReceiptReview } from "@/components/admin/reviews";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { staffFetch } from "@/lib/staff-client";
+
+type Data = { reviews: ReceiptReview[]; from: string; to: string; opening_uzs: string; incoming_uzs: string; outgoing_uzs: string; closing_uzs: string; groups: { kind: string; count: number; amount_uzs: string }[]; entries: { source_id: string; kind: string; amount_uzs: string; movement_date: string }[]; truncated: boolean; complete: boolean };
+const labels: Record<string, string> = { capital_contribution: "Investor kapitali kiritildi", capital_withdrawal: "Kapitaldan yechildi", profit_distribution: "Foyda taqsimoti qaydi", initial_receipt: "Boshlang‘ich to‘lov", cash_sale_receipt: "To‘liq to‘lov", manual_receipt_reversal: "To‘lov qaydi bekor qilindi", monthly_receipt: "Oylik to‘lov", monthly_receipt_reversal: "Oylik to‘lov qaydi bekor qilindi", supplier_payment: "Ta’minotchiga tovar uchun to‘lov", supplier_payment_reversal: "Ta’minotchi to‘lov qaydi bekor qilindi" };
+
+export default function Cashbook() {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
+  const [data, setData] = useState<Data | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const today = tashkentToday();
+    const first = today.slice(0, 7) + "-01";
+    setFrom(first);
+    setTo(today);
+    setPeriod({ from: first, to: today });
+  }, []);
+  useEffect(() => {
+    if (!period) return;
+    let active = true;
+    setLoading(true);
+    setData(null);
+    setError("");
+    staffFetch<Data>("/api/admin/cashbook?" + new URLSearchParams(period).toString())
+      .then(d => active && setData(d))
+      .catch(e => active && setError(errorText(e, "Hisobot yuklanmadi")))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [period]);
+
+  const reload = () => period && setPeriod({ ...period });
+  const openReviews = data?.reviews.filter(r => !r.resolved_at).length ?? 0;
+  return (
+    <>
+      <PageHeader title="Kassa" description="Qayd etilgan kirim va chiqimlar hisoboti. Bu yakuniy naqd yoki bank qoldig‘i emas." />
+      <form
+        className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap"
+        onSubmit={e => {
+          e.preventDefault();
+          if (from && to && from <= to) setPeriod({ from, to });
+        }}
+      >
+        <TextField label="Boshlanish sanasi" className="sm:w-44">
+          {id => <Input id={id} name="from" type="date" required value={from} onChange={e => setFrom(e.target.value)} />}
+        </TextField>
+        <TextField label="Tugash sanasi" className="sm:w-44">
+          {id => <Input id={id} name="to" type="date" required min={from || undefined} value={to} onChange={e => setTo(e.target.value)} />}
+        </TextField>
+        <SubmitButton variant="outline" busy={loading} disabled={!from || !to || from > to} className="col-span-2">
+          Hisobotni ko‘rish
+        </SubmitButton>
+      </form>
+
+      {loading ? (
+        <LoadingBlock rows={6} label="Kassa hisoboti yuklanmoqda" />
+      ) : error ? (
+        <ErrorState message={error} onRetry={reload} />
+      ) : data ? (
+        <>
+          <Section title={`${formatDay(data.from)} — ${formatDay(data.to)}`} description="Kapitalni buyurtmaga ajratish va qaytimni investorga yozish ichki harakat bo‘lib, kassa kirimida takrorlanmaydi.">
+            <StatGrid>
+              <Stat label="Davr boshidagi qoldiq" value={<Money value={data.opening_uzs} />} />
+              <Stat label="Kirim" value={<Money value={data.incoming_uzs} />} />
+              <Stat label="Chiqim va tuzatishlar" value={<Money value={data.outgoing_uzs} />} />
+              <Stat label="Davr oxiridagi qoldiq" value={<Money value={data.closing_uzs} />} />
+            </StatGrid>
+          </Section>
+
+          <Section title={openReviews ? `To‘lov tafovutlari (${openReviews} ta ochiq)` : "To‘lov tafovutlari"} description="Bekor qilib bo‘lmaydigan xato to‘lov qaydlari. Har birini haqiqiy qaytim yoki tuzatish hujjati bilan yoping.">
+            {data.reviews.length ? <ReviewList reviews={data.reviews} showOrder onResolved={reload} /> : <EmptyState title="Tafovut yo‘q" description="Ochiq yoki shu davrda yopilgan tafovut topilmadi." />}
+          </Section>
+
+          <CashbookReconciliation key={data.from + data.to} opening={data.opening_uzs} groups={data.groups} />
+
+          <Section title="Operatsiya turi bo‘yicha">
+            {data.groups.length ? (
+              <TableFrame>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Turi</TableHead>
+                      <TableHead className="text-right">Soni</TableHead>
+                      <TableHead className="text-right">Summa</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.groups.map(g => (
+                      <TableRow key={g.kind}>
+                        <TableCell className="font-medium">{labels[g.kind] ?? g.kind}</TableCell>
+                        <TableCell className="text-right tabular-nums">{g.count}</TableCell>
+                        <TableCell className="text-right">
+                          <Money value={g.amount_uzs} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableFrame>
+            ) : (
+              <EmptyState title="Ushbu davrda qaydlar yo‘q" />
+            )}
+          </Section>
+
+          <Section title="Kirim-chiqim tarixi" description="Tuzatishlar haqiqiy pul qaytarilishi degani emas. Xarid xarajatlari va tarixiy qoldiq hali to‘liq ulanmagan.">
+            {data.entries.length ? (
+              <TableFrame>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Sana</TableHead>
+                      <TableHead>Operatsiya</TableHead>
+                      <TableHead className="text-right">Summa</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.entries.map(r => (
+                      <TableRow key={r.kind + ":" + r.source_id}>
+                        <TableCell>{formatDay(r.movement_date)}</TableCell>
+                        <TableCell>{labels[r.kind] ?? r.kind}</TableCell>
+                        <TableCell className="text-right">
+                          <Money value={r.amount_uzs} className={r.amount_uzs.startsWith("-") ? "text-destructive" : undefined} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableFrame>
+            ) : (
+              <EmptyState title="Ushbu davrda qaydlar yo‘q" />
+            )}
+            {data.truncated && <Notice>Oxirgi 200 ta qayd ko‘rsatilmoqda. Jami summalar barcha qaydlarni o‘z ichiga oladi.</Notice>}
+          </Section>
+        </>
+      ) : null}
+    </>
+  );
 }
