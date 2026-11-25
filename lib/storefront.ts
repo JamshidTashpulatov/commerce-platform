@@ -1,7 +1,7 @@
 // Shared, client-safe storefront helpers.
 
 /** The store's name, defined once. The admin side re-exports it from lib/brand.ts. */
-export const STORE_NAME="Tech Store";
+export const STORE_NAME="Techs";
 // The logo lives in lib/brand-mark.ts and components/brand-mark.tsx.
 // The Telegram bot keeps its original handle; renaming the store does not change it.
 export const TELEGRAM_BOT="malika_tech_store_bot";
