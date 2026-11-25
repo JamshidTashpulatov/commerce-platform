@@ -10,7 +10,7 @@ import { staffFetch } from "@/lib/staff-client";
 
 type Data = { cost: string | null; sold: boolean; canPost: boolean; allocations: { account_id: string; name: string; amount_uzs: string; returned_uzs: string; outstanding_uzs: string }[]; receipts: { id: string; amount_uzs: string; received_on: string; posted: boolean }[] };
 
-export function OrderCapitalReturns({ endpoint, onChanged, version = 0 }: { version?: number; endpoint: string; onChanged: () => void }) {
+export function OrderCapitalReturns({ endpoint, onChanged, version = 0, plain }: { plain?: boolean; version?: number; endpoint: string; onChanged: () => void }) {
   const url = endpoint + "/capital-returns";
   const [data, setData] = useState<Data | null>(null);
   const [selected, setSelected] = useState("");
@@ -76,7 +76,7 @@ export function OrderCapitalReturns({ endpoint, onChanged, version = 0 }: { vers
 
   if ((!loading || data) && !loadError && !data?.cost) return null;
   return (
-    <Section title="Kapital qaytimi" description="Haqiqatan olingan boshlang‘ich to‘lov investorlarning asosiy kapitaliga qaytim sifatida yoziladi. Pul o‘tkazilmaydi." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
+    <Section plain={plain} title="Kapital qaytimi" description="Haqiqatan olingan boshlang‘ich to‘lov investorlarning asosiy kapitaliga qaytim sifatida yoziladi. Pul o‘tkazilmaydi." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
       {loading && !data ? (
         <LoadingBlock label="Kapital qaytimi yuklanmoqda" />
       ) : loadError ? (

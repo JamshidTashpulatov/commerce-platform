@@ -1,4 +1,4 @@
-export type StaffOrder={id:string;source:"staff"|"website";request_status:string;sale_status:string;fulfillment_status:string;revision:number;created_at:string;total_uzs?:string};
+export type StaffOrder={id:string;source:"staff"|"website";request_status:string;sale_status:string;fulfillment_status:string;revision:number;created_at:string;total_uzs?:string;website_reference?:string|null};
 export type StaffVariant={id:string;name:string;color:string;storage_label:string|null;quantity:number;price_uzs:string};
 export type StaffItem={variant_id:string;name:string;color:string;storage_label:string|null;quantity:number;unit_price_uzs:string};
 export const requestLabels:Record<string,string>={new:"Yangi",in_progress:"Jarayonda",cancelled:"Bekor qilingan"};

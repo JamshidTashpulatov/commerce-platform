@@ -126,7 +126,7 @@ export default function StaffInbox() {
                     <Money value={o.total_uzs ?? "0"} className="text-sm font-medium" />
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {formatStamp(o.created_at)} · {sourceLabels[o.source]}
+                    {formatStamp(o.created_at)} · {sourceLabels[o.source]}{o.website_reference ? " · " + o.website_reference : ""}
                   </span>
                   <span className="flex flex-wrap gap-1.5">
                     <RequestBadge status={o.request_status} />
@@ -168,7 +168,10 @@ export default function StaffInbox() {
                         </Link>
                       </TableCell>
                       <TableCell>{formatStamp(o.created_at)}</TableCell>
-                      <TableCell>{sourceLabels[o.source]}</TableCell>
+                      <TableCell>
+                        {sourceLabels[o.source]}
+                        {o.website_reference && <span className="ml-1.5 font-mono text-muted-foreground">{o.website_reference}</span>}
+                      </TableCell>
                       <TableCell className="text-right">
                         <Money value={o.total_uzs ?? "0"} />
                       </TableCell>

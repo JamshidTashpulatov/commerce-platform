@@ -30,13 +30,14 @@ function CustomerCard({ customer }: { customer: Customer }) {
   );
 }
 
-export function OrderCustomer({ endpoint, cancelled, onLinked }: { endpoint: string; cancelled: boolean; onLinked: () => void }) {
+export function OrderCustomer({ endpoint, cancelled, onLinked, plain, websiteContact }: { plain?: boolean; websiteContact?: { name: string; phone: string; existing: boolean } | null; endpoint: string; cancelled: boolean; onLinked: () => void }) {
   const url = endpoint + "/customer";
   const [linked, setLinked] = useState<Customer | null>(null);
   const [found, setFound] = useState<Customer | null>(null);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [passport, setPassport] = useState("");
+  const [sitePassport, setSitePassport] = useState("");
   const [stage, setStage] = useState<"find" | "create">("find");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -96,6 +97,13 @@ export function OrderCustomer({ endpoint, cancelled, onLinked }: { endpoint: str
       setStage("find");
       setNotice("Mijoz yaratildi. Endi uni buyurtmaga biriktiring.");
     });
+  const linkWebsite = () =>
+    run(async () => {
+      await staffFetch(endpoint + "/website", "POST", { action: "linkCustomer", ...(websiteContact?.existing ? {} : { passport: sitePassport }) });
+      toast.success("Mijoz buyurtmaga biriktirildi.");
+      await load();
+      onLinked();
+    });
   const attach = () =>
     found &&
     run(async () => {
@@ -110,7 +118,7 @@ export function OrderCustomer({ endpoint, cancelled, onLinked }: { endpoint: str
     });
 
   return (
-    <Section title="Mijoz" action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
+    <Section plain={plain} title="Mijoz" action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
       {loading ? (
         <LoadingBlock rows={2} label="Mijoz yuklanmoqda" />
       ) : loadError ? (
@@ -121,6 +129,23 @@ export function OrderCustomer({ endpoint, cancelled, onLinked }: { endpoint: str
         <Notice>Buyurtma bekor qilingan. Mijoz biriktirilmaydi.</Notice>
       ) : (
         <>
+          {websiteContact && (
+            <div className="flex flex-col gap-3 rounded-lg border p-3">
+              <p className="text-sm">
+                <span className="text-muted-foreground">Saytda qoldirilgan kontakt: </span>
+                <span className="font-medium">{websiteContact.name}</span>, <span className="tabular-nums">{websiteContact.phone}</span>
+              </p>
+              {!websiteContact.existing && (
+                <TextField label="Pasport yoki ID raqami (ixtiyoriy)" description="Nasiya rasmiylashtirilsa shart. Keyin qo‘shib bo‘lmaydi, shuning uchun nasiya bo‘lsa hozir kiriting." className="sm:max-w-xs">
+                  {id => <Input id={id} name="sitePassport" value={sitePassport} autoComplete="off" maxLength={20} disabled={busy} onChange={e => setSitePassport(e.target.value.toUpperCase())} />}
+                </TextField>
+              )}
+              <Button type="button" className="self-start" disabled={busy || (!!sitePassport && !/^[A-Z0-9]{6,20}$/.test(sitePassport))} onClick={() => void linkWebsite()}>
+                {websiteContact.existing ? "Shu raqamli mijozni biriktirish" : "Shu kontaktdan mijoz yaratib biriktirish"}
+              </Button>
+              <p className="text-sm text-muted-foreground">Boshqa mijozni biriktirish uchun pastda telefon bo‘yicha qidiring.</p>
+            </div>
+          )}
           <form
             className="flex flex-col gap-3 sm:flex-row sm:items-end"
             onSubmit={e => {

@@ -8,7 +8,7 @@ import { staffFetch } from "@/lib/staff-client";
 
 type Data = { principal: string | null; allocations: { account_id: string; amount_uzs: string }[]; investors: { account_id: string; name: string; available_for_order_uzs: string }[]; enabled: boolean };
 
-export function OrderFunding({ endpoint, locked, version = 0 }: { version?: number; endpoint: string; locked: boolean }) {
+export function OrderFunding({ endpoint, locked, version = 0, plain, onChanged }: { onChanged?: () => void; plain?: boolean; version?: number; endpoint: string; locked: boolean }) {
   const url = endpoint + "/funding";
   const [data, setData] = useState<Data | null>(null);
   const [entries, setEntries] = useState<Record<string, string>>({});
@@ -60,6 +60,7 @@ export function OrderFunding({ endpoint, locked, version = 0 }: { version?: numb
       setConfirm(false);
       await load();
       toast.success("Moliyalashtirish saqlandi.");
+      onChanged?.();
     } catch (e) {
       setConfirm(false);
       setError(errorText(e, "Saqlash imkoni bo‘lmadi"));
@@ -70,7 +71,7 @@ export function OrderFunding({ endpoint, locked, version = 0 }: { version?: numb
   }
 
   return (
-    <Section title="Investor moliyalashtirishi" description="Mahsulot tan narxi qaysi investor kapitalidan qoplanishini belgilang. Bu hisobga olish, pul o‘tkazilmaydi." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
+    <Section plain={plain} title="Investor moliyalashtirishi" description="Mahsulot tan narxi qaysi investor kapitalidan qoplanishini belgilang. Bu hisobga olish, pul o‘tkazilmaydi." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
       {loading && !data ? (
         <LoadingBlock label="Moliyalashtirish yuklanmoqda" />
       ) : loadError ? (
