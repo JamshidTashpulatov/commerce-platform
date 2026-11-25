@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ImageResponse } from "next/og";
+import { BRAND_MARK_ARM } from "@/components/admin/brand-mark";
 import { brandName } from "./brand";
 import { TITLE_TEMPLATE } from "./storefront";
 
@@ -31,7 +32,11 @@ export function privateOgImage(section: string) {
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 72, background: "#fafafa", color: "#171717", fontFamily: "sans-serif" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ width: 72, height: 72, borderRadius: 18, background: "#615fff", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, fontWeight: 700 }}>{brandName.slice(0, 1)}</div>
+          <svg width="72" height="72" viewBox="0 0 512 512" fill="#171717">
+            <path d={BRAND_MARK_ARM} />
+            <path d={BRAND_MARK_ARM} transform="rotate(120 256 256)" />
+            <path d={BRAND_MARK_ARM} transform="rotate(240 256 256)" />
+          </svg>
           <div style={{ display: "flex", fontSize: 40, fontWeight: 600 }}>{brandName}</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
