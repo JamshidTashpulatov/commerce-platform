@@ -6,7 +6,6 @@ import {StoreNav} from "../../components/store/store-nav";
 import {StoreFooter} from "../../components/store/store-footer";
 import {listCategories} from "../../lib/server/storefront";
 import {STORE_NAME} from "../../lib/storefront";
-import "./store.css";
 
 // Inter is only the fallback: Apple devices render the system font first.
 const inter=Inter({subsets:["latin","cyrillic"],variable:"--sf-inter",display:"swap"});
@@ -21,10 +20,11 @@ export const metadata:Metadata={
 
 export default async function StoreLayout({children}:{children:ReactNode}){
   const categories=await listCategories();
-  return <div className={"sf "+inter.variable}>
-    <a className="sf-skip" href="#sf-main">Asosiy qismga o‘tish</a>
-    <Suspense fallback={<div className="sf-nav sf-nav-placeholder"/>}><StoreNav categories={categories}/></Suspense>
-    <main id="sf-main" className="sf-main">{children}</main>
+  // data-ui="shadcn" switches the legacy globals.css rules off for these pages.
+  return <div data-ui="shadcn" className={"sf flex min-h-dvh flex-col bg-white font-sf text-[17px] leading-[1.47] tracking-[-0.022em] text-sf-ink antialiased "+inter.variable}>
+    <a className="absolute -top-16 left-3 z-50 rounded-lg bg-sf-ink px-3.5 py-2 text-sm text-white focus:top-2" href="#sf-main">Asosiy qismga o‘tish</a>
+    <Suspense fallback={<div className="sticky top-0 z-40 h-12 bg-[rgba(250,250,252,0.8)] tablet:h-11"/>}><StoreNav categories={categories}/></Suspense>
+    <main id="sf-main" className="min-w-0 flex-1">{children}</main>
     <StoreFooter categories={categories}/>
   </div>;
 }

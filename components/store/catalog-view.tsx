@@ -2,10 +2,15 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import Link from "next/link";
 import {usePathname,useRouter,useSearchParams} from "next/navigation";
+import {SearchIcon,XCircleIcon,SearchXIcon,WifiOffIcon} from "lucide-react";
+import {cn} from "@/lib/utils";
+import {Input} from "@/components/ui/input";
+import {Skeleton} from "@/components/ui/skeleton";
+import {Empty,EmptyContent,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle} from "@/components/ui/empty";
 import type {OptionGroup,OptionSelection} from "../../lib/catalog-options";
 import {fromSoum,isColorGroup,productHref,sortCategories,swatchColor} from "../../lib/storefront";
 import {ProductVisual} from "./product-visual";
-import {SearchIcon} from "./store-nav";
+import {Availability,eyebrow,pill} from "./bits";
 
 type Row={id:string;name:string;category:string;description:string;image_url:string|null;variant_id:string;color:string;
   storage_label:string|null;price_uzs:string;in_stock:boolean;option_groups:OptionGroup[];option_values:OptionSelection};
@@ -26,6 +31,8 @@ function toCards(rows:Row[]):Card[]{
       inStock:list.some(r=>r.in_stock),variants:list.length,swatches};
   });
 }
+
+const chip="h-9 flex-none cursor-pointer rounded-full border border-sf-line bg-white px-4 text-sm tracking-[-0.016em] text-sf-ink transition-[background-color,border-color,color,scale] duration-200 hover:border-sf-ink-3 active:scale-[0.97] aria-pressed:border-sf-ink aria-pressed:bg-sf-ink aria-pressed:text-white";
 
 export function CatalogView(){
   const router=useRouter();
@@ -87,61 +94,76 @@ export function CatalogView(){
   };
 
   return <>
-    <header className="sf-catalog-head">
-      <h1>{category||"Barcha mahsulotlar"}.</h1>
-      <p>{category?"Turkumdagi barcha modellar. Narxlar so‘mda.":"Katalogdagi barcha modellar bir joyda. Narxlar so‘mda."}</p>
+    <header className="pt-10 pb-5 tablet:pt-16 tablet:pb-7">
+      <h1 className="text-[40px] leading-[1.1] font-semibold tablet:text-5xl tablet:leading-[1.08] tablet:tracking-[-0.003em]">{category||"Barcha mahsulotlar"}.</h1>
+      <p className="mt-2 text-[19px] leading-[1.21] text-sf-ink-2 tablet:text-[21px]">{category?"Turkumdagi barcha modellar. Narxlar so‘mda.":"Katalogdagi barcha modellar bir joyda. Narxlar so‘mda."}</p>
     </header>
 
-    <div className="sf-filters" ref={top}>
-      <div className="sf-search">
-        <label htmlFor="qidiruv" className="sf-visually-hidden">Qidirish</label>
-        <SearchIcon/>
-        <input id="qidiruv" ref={search} type="search" value={query} maxLength={200} autoComplete="off"
-          placeholder="Model, rang yoki xotira" onChange={e=>setQuery(e.target.value)}/>
-        {query&&<button type="button" className="sf-search-clear" aria-label="Qidiruvni tozalash" onClick={()=>{setQuery("");search.current?.focus();}}>
-          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="currentColor"/><path d="M5.5 5.5l5 5m0-5l-5 5" stroke="var(--sf-bg)" strokeWidth="1.5" strokeLinecap="round"/></svg>
-        </button>}
+    <div ref={top} className="flex scroll-mt-16 flex-col gap-4 pb-7">
+      <div className="relative flex max-w-[520px] items-center text-sf-ink-2">
+        <label htmlFor="qidiruv" className="sr-only">Qidirish</label>
+        <SearchIcon className="pointer-events-none absolute left-3.5 size-[17px]" strokeWidth={1.6} aria-hidden="true"/>
+        <Input id="qidiruv" ref={search} type="search" value={query} maxLength={200} autoComplete="off"
+          placeholder="Model, rang yoki xotira" onChange={e=>setQuery(e.target.value)}
+          className="h-11 rounded-xl border-sf-line bg-white px-10 text-[17px] tracking-[-0.022em] text-sf-ink placeholder:text-sf-ink-3 focus-visible:border-sf-blue focus-visible:ring-sf-blue/20 md:text-[17px] [&::-webkit-search-cancel-button]:hidden"/>
+        {query&&<button type="button" className="absolute right-1.5 inline-flex size-8 cursor-pointer items-center justify-center text-sf-ink-3 hover:text-sf-ink-2"
+          aria-label="Qidiruvni tozalash" onClick={()=>{setQuery("");search.current?.focus();}}><XCircleIcon className="size-[18px]" aria-hidden="true"/></button>}
       </div>
-      <div className="sf-chips" role="group" aria-label="Turkum">
-        <button type="button" aria-pressed={!category} onClick={()=>setCategory("")}>Barchasi</button>
+      <div className="sf-no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 tablet:-mx-[22px] tablet:px-[22px]" role="group" aria-label="Turkum">
+        <button type="button" className={chip} aria-pressed={!category} onClick={()=>setCategory("")}>Barchasi</button>
         {(categories.length?sortCategories(categories):category?[category]:[]).map(c=>
-          <button type="button" key={c} aria-pressed={category===c} onClick={()=>setCategory(c)}>{c}</button>)}
+          <button type="button" key={c} className={chip} aria-pressed={category===c} onClick={()=>setCategory(c)}>{c}</button>)}
       </div>
     </div>
 
-    <p className="sf-visually-hidden" role="status" aria-live="polite">{loading?"Katalog yuklanmoqda":error?"":`${cards.length} ta mahsulot ko‘rsatildi`}</p>
+    <p className="sr-only" role="status" aria-live="polite">{loading?"Katalog yuklanmoqda":error?"":`${cards.length} ta mahsulot ko‘rsatildi`}</p>
 
-    {error?<div className="sf-state" role="alert">
-      <h2>Katalog yuklanmadi.</h2><p>{error}. Internet aloqasini tekshirib, qayta urinib ko‘ring.</p>
-      <button type="button" className="sf-btn" onClick={()=>setRetry(r=>r+1)}>Qayta urinish</button>
-    </div>:loading&&!cards.length?<div className="sf-grid" aria-hidden="true">
-      {Array.from({length:6},(_,i)=><div key={i} className="sf-card sf-skeleton"><div className="sf-card-media"/><div className="sf-card-body"><span/><span/><span/></div></div>)}
-    </div>:!cards.length?<div className="sf-state">
-      <h2>Hech narsa topilmadi.</h2>
-      <p>{query.trim()?`“${query.trim()}” bo‘yicha mos mahsulot yo‘q. Boshqa so‘z bilan qidirib ko‘ring.`:"Bu turkumda hozircha mahsulot yo‘q."}</p>
-      {(query||category)&&<button type="button" className="sf-btn sf-btn-ghost" onClick={()=>{setQuery("");setCategory("");}}>Filtrlarni tozalash</button>}
-    </div>:<div className={"sf-grid"+(loading?" is-loading":"")} aria-busy={loading}>
-      {cards.map(c=><article key={c.id} className="sf-card">
-        <Link href={productHref(c.id)} className="sf-card-link">
-          <div className="sf-card-media"><ProductVisual image={c.image} name={c.name} category={c.category}/></div>
-          <div className="sf-card-body">
-            {c.swatches.length>1&&<ul className="sf-dots" aria-label={c.swatches.length+" ta rang"}>
-              {c.swatches.slice(0,8).map(s=><li key={s.label} title={s.label} style={swatchStyle(s)}/>)}
+    {error?<Empty className="rounded-[18px] bg-sf-alt py-16" role="alert">
+      <EmptyHeader>
+        <EmptyMedia variant="icon"><WifiOffIcon/></EmptyMedia>
+        <EmptyTitle className="text-[28px] leading-[1.14] font-semibold">Katalog yuklanmadi.</EmptyTitle>
+        <EmptyDescription className="text-[17px] text-sf-ink-2">{error}. Internet aloqasini tekshirib, qayta urinib ko‘ring.</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent><button type="button" className={pill()} onClick={()=>setRetry(r=>r+1)}>Qayta urinish</button></EmptyContent>
+    </Empty>
+    :loading&&!cards.length?<div className="grid grid-cols-1 gap-5 sm:grid-cols-2 desktop:grid-cols-3" aria-hidden="true">
+      {Array.from({length:6},(_,i)=><div key={i} className="overflow-hidden rounded-[18px] bg-sf-alt">
+        <Skeleton className="aspect-3/2 rounded-none bg-[#ececf0]"/>
+        <div className="flex flex-col gap-3 px-6 pt-5 pb-6"><Skeleton className="h-3 w-1/3 bg-[#e6e6ea]"/><Skeleton className="h-5 w-2/3 bg-[#e6e6ea]"/><Skeleton className="h-3 w-1/2 bg-[#e6e6ea]"/></div>
+      </div>)}
+    </div>
+    :!cards.length?<Empty className="rounded-[18px] bg-sf-alt py-16">
+      <EmptyHeader>
+        <EmptyMedia variant="icon"><SearchXIcon/></EmptyMedia>
+        <EmptyTitle className="text-[28px] leading-[1.14] font-semibold">Hech narsa topilmadi.</EmptyTitle>
+        <EmptyDescription className="text-[17px] text-sf-ink-2">{query.trim()?`“${query.trim()}” bo‘yicha mos mahsulot yo‘q. Boshqa so‘z bilan qidirib ko‘ring.`:"Bu turkumda hozircha mahsulot yo‘q."}</EmptyDescription>
+      </EmptyHeader>
+      {(query||category)&&<EmptyContent><button type="button" className={pill({tone:"ghost"})} onClick={()=>{setQuery("");setCategory("");}}>Filtrlarni tozalash</button></EmptyContent>}
+    </Empty>
+    :<div className={cn("grid grid-cols-1 gap-5 transition-opacity duration-200 sm:grid-cols-2 desktop:grid-cols-3",loading&&"opacity-50")} aria-busy={loading}>
+      {cards.map(c=><article key={c.id} className="overflow-hidden rounded-[18px] bg-sf-alt transition-[translate,box-shadow] duration-300 ease-sf pointer-fine:hover:-translate-y-0.5 pointer-fine:hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+        <Link href={productHref(c.id)} className="flex h-full flex-col rounded-[18px] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sf-blue">
+          <div className="relative aspect-3/2 bg-sf-alt">
+            <ProductVisual image={c.image} name={c.name} category={c.category} fit="blend" sizes="(min-width:1069px) 320px, (min-width:640px) 50vw, 100vw" className="absolute inset-0"/>
+          </div>
+          <div className="flex flex-1 flex-col gap-1 px-6 pt-5 pb-6">
+            {c.swatches.length>1&&<ul className="mb-2.5 flex gap-1.5" aria-label={c.swatches.length+" ta rang"}>
+              {c.swatches.slice(0,8).map(s=><li key={s.label} title={s.label} className="size-3 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]" style={swatchStyle(s)}/>)}
             </ul>}
-            <p className="sf-eyebrow">{c.category}</p>
-            <h2>{c.name}</h2>
-            <p className="sf-price">{fromSoum(c.fromPrice)}</p>
-            <p className={"sf-stock"+(c.inStock?" is-in":"")}>{c.inStock?"Mavjud":"Hozircha mavjud emas"}</p>
-            {c.variants>1&&<p className="sf-card-meta">{c.variants} ta variant</p>}
+            <p className={eyebrow}>{c.category}</p>
+            <h2 className="mb-1.5 text-[21px] leading-[1.19] font-semibold tracking-[0.011em] [overflow-wrap:anywhere]">{c.name}</h2>
+            <p className="text-sm">{fromSoum(c.fromPrice)}</p>
+            <Availability inStock={c.inStock} className="mt-1.5"/>
+            {c.variants>1&&<p className="text-xs text-sf-ink-3">{c.variants} ta variant</p>}
           </div>
         </Link>
       </article>)}
     </div>}
 
-    {(pages.length>0||next)&&!error&&<nav className="sf-pager" aria-label="Katalog sahifalari">
-      {pages.length>0&&<button type="button" className="sf-btn sf-btn-ghost" disabled={loading} onClick={()=>turn(-1)}>Oldingi sahifa</button>}
-      <span className="sf-pager-n">{pages.length+1}-sahifa</span>
-      {next&&<button type="button" className="sf-btn sf-btn-ghost" disabled={loading} onClick={()=>turn(1)}>Keyingi sahifa</button>}
+    {(pages.length>0||next)&&!error&&<nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3 pt-10" aria-label="Katalog sahifalari">
+      {pages.length>0&&<button type="button" className={pill({tone:"ghost",size:"sm"})} disabled={loading} onClick={()=>turn(-1)}>Oldingi sahifa</button>}
+      <span className="text-sm text-sf-ink-2 tabular-nums">{pages.length+1}-sahifa</span>
+      {next&&<button type="button" className={pill({tone:"ghost",size:"sm"})} disabled={loading} onClick={()=>turn(1)}>Keyingi sahifa</button>}
     </nav>}
   </>;
 }

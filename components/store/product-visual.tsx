@@ -1,38 +1,49 @@
 import type {ReactNode} from "react";
+import {cn} from "@/lib/utils";
 import {glyphFor,type Glyph} from "../../lib/storefront";
 
-// A product photo, or a quiet line drawing when the product has no image yet.
-export function ProductVisual({image,name,category,className="",priority=false,fit="cover",sizes="(min-width:1069px) 50vw, 100vw"}:{
-  image:string|null;name:string;category:string;className?:string;priority?:boolean;fit?:"cover"|"contain";sizes?:string;
-}){
-  if(image){
-    const cdn=appleSources(image);
-    // Store CDN shots sit inside the frame: cut-outs keep a margin, white-backed
-    // JPEGs blend into the light tile. Uploaded marketing photos fill it.
-    return <img className={"pv-img "+className} data-fit={cdn?"contain":fit} data-alpha={cdn?.alpha||undefined} data-blend={cdn&&!cdn.alpha||undefined}
-      src={cdn?.src??image} srcSet={cdn?.srcSet} sizes={cdn?.srcSet?sizes:undefined} alt={name} referrerPolicy="no-referrer"
-      loading={priority?"eager":"lazy"} fetchPriority={priority?"high":"auto"} decoding="async"/>;
-  }
-  return <div className={"pv-fallback "+className} role="img" aria-label={name+". Rasm tez orada qo‘shiladi"}>
-    <GlyphArt glyph={glyphFor(name,category)}/>
-  </div>;
-}
+export type ImageSources={src:string;srcSet?:string;hiRes:string;alpha:boolean;ratio:number|null};
 
 // Apple's image CDN resizes on request. Ask for sensible widths instead of the
-// stored original, which can be 5120px wide. The aspect ratio is preserved.
-function appleSources(raw:string){
-  let url:URL;
-  try{url=new URL(raw);}catch{return null;}
-  if(url.hostname!=="store.storeimages.cdn-apple.com")return null;
+// stored original, which can be 5120px wide. A non-numeric version token signs
+// the exact size and the CDN returns 404 for any other, so those stay as stored.
+export function imageSources(raw:string):ImageSources{
+  let url:URL|null=null;
+  try{url=new URL(raw);}catch{/* relative upload path */}
+  if(!url||url.hostname!=="store.storeimages.cdn-apple.com")return {src:raw,hiRes:raw,alpha:false,ratio:null};
   const wid=Number(url.searchParams.get("wid")),hei=Number(url.searchParams.get("hei"));
-  if(!wid||!hei)return null;
   const alpha=url.searchParams.get("fmt")==="png-alpha";
-  // A non-numeric version token signs the exact size; changing it returns 404.
-  if(!/^\d*$/.test(url.searchParams.get(".v")??""))return {src:raw,srcSet:undefined,alpha};
+  const ratio=wid&&hei?wid/hei:null;
+  if(!wid||!hei||!/^\d*$/.test(url.searchParams.get(".v")??""))return {src:raw,hiRes:raw,alpha,ratio};
   const at=(w:number)=>{const u=new URL(url);u.searchParams.set("wid",String(w));u.searchParams.set("hei",String(Math.round(w*hei/wid)));return u.toString();};
   const widths=[480,800,1200,1600,2400].filter(w=>w<wid);
   widths.push(Math.min(wid,3200));
-  return {src:at(Math.min(wid,1200)),srcSet:widths.map(w=>at(w)+" "+w+"w").join(", "),alpha};
+  return {src:at(Math.min(wid,1200)),srcSet:widths.map(w=>at(w)+" "+w+"w").join(", "),hiRes:at(Math.min(wid,3200)),alpha,ratio};
+}
+
+/**
+ * A product photo, or a quiet line drawing when the product has no image yet.
+ * "cover": the photo fills its frame (the product gallery sizes the frame to
+ * the photo, so nothing is cut). "blend": for fixed tiles and cards, the whole
+ * product stays visible and a white studio background melts into the tile.
+ * Uploaded marketing photos always cover. Transparent cut-outs are shown
+ * whole, since there is no background to fill.
+ */
+export function ProductVisual({image,name,category,className,priority=false,sizes="(min-width:1069px) 50vw, 100vw",cutoutPadding=true,fit="cover"}:{
+  image:string|null;name:string;category:string;className?:string;priority?:boolean;sizes?:string;cutoutPadding?:boolean;fit?:"cover"|"blend";
+}){
+  if(image){
+    const s=imageSources(image);
+    const studio=s.ratio!==null&&!s.alpha;
+    const mode=s.alpha?"object-contain":fit==="blend"&&studio?"object-contain mix-blend-multiply":"object-cover";
+    return <img className={cn("block size-full",mode,s.alpha&&cutoutPadding&&"p-[5%]",className)}
+      src={s.src} srcSet={s.srcSet} sizes={s.srcSet?sizes:undefined} alt={name} referrerPolicy="no-referrer"
+      loading={priority?"eager":"lazy"} fetchPriority={priority?"high":"auto"} decoding="async"/>;
+  }
+  return <div className={cn("flex size-full items-center justify-center bg-linear-to-b from-[#fafafc] to-[#ececf0] text-[#b0b0b6]",className)}
+    role="img" aria-label={name+". Rasm tez orada qo‘shiladi"}>
+    <GlyphArt glyph={glyphFor(name,category)}/>
+  </div>;
 }
 
 function GlyphArt({glyph}:{glyph:Glyph}){
@@ -52,5 +63,5 @@ function GlyphArt({glyph}:{glyph:Glyph}){
     card:<><rect x="44" y="56" width="152" height="96" rx="12" {...p}/><path d="M120 56v96M44 92h152M120 92c-10-20-34-18-30-2 2 8 18 4 30 2zm0 0c10-20 34-18 30-2-2 8-18 4-30 2z" {...p}/></>,
     box:<><path d="M120 34l70 30v72l-70 30-70-30V64z" {...p}/><path d="M50 64l70 30 70-30M120 94v72" {...p}/></>,
   };
-  return <svg viewBox="0 0 240 200" aria-hidden="true">{art[glyph]}</svg>;
+  return <svg viewBox="0 0 240 200" className="h-auto w-[min(46%,240px)]" aria-hidden="true">{art[glyph]}</svg>;
 }

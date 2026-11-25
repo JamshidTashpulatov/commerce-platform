@@ -160,3 +160,53 @@ html:not(:has([data-ui="shadcn"])) {
   
   .staff-nav{display:block;border-radius:8px;padding:12px;min-height:44px;color:var(--text);font-size:.875rem;white-space:nowrap}.staff-nav:hover{background:var(--surface)}.staff-role{padding:12px;font-size:.875rem}.filters{align-items:end}.dash-content>.section-head{margin-bottom:0}.dash-content>.text-button{align-self:flex-start}.dash-content>.surface h2{font-size:1.375rem}
 }
+
+/*
+ * Storefront (owned by the storefront session; app/(store) and components/store).
+ * Pages there carry data-ui="shadcn", so they use Tailwind and these tokens only.
+ */
+@theme {
+  --color-sf-alt: #f5f5f7;
+  --color-sf-ink: #1d1d1f;
+  --color-sf-ink-2: #6e6e73;
+  --color-sf-ink-3: #86868b;
+  --color-sf-line: #d2d2d7;
+  --color-sf-blue: #0071e3;
+  --color-sf-blue-hover: #0077ed;
+  --color-sf-blue-dark: #2997ff;
+  --color-sf-link: #0066cc;
+  --color-sf-green: #03801f;
+  --ease-sf: cubic-bezier(0.23, 1, 0.32, 1);
+  --font-sf: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", var(--sf-inter), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --breakpoint-tablet: 735px;
+  --breakpoint-navbar: 834px;
+  --breakpoint-desktop: 1069px;
+  --animate-sf-fade: sf-fade 360ms var(--ease-sf);
+  --animate-sf-shimmer: sf-shimmer 1.4s linear infinite;
+  @keyframes sf-fade { from { opacity: 0; filter: blur(4px); } }
+  @keyframes sf-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+  @keyframes sf-reveal { from { opacity: 0; transform: translateY(32px); } }
+}
+
+/* Scroll reveal, only where the browser drives it from scroll position. */
+@utility sf-reveal {
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      animation: sf-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+  }
+}
+
+/* Hide the scrollbar on horizontal shelves and chip rows. */
+@utility sf-no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+html:has(.sf) { scroll-padding-top: 64px; }
+html.sf-locked { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .sf *, .sf *::before, .sf *::after { animation: none !important; transition-property: opacity, background-color, border-color, color, box-shadow !important; }
+}

@@ -1,9 +1,14 @@
 "use client";
 import {useMemo,useState,type CSSProperties} from "react";
+import {CheckIcon,CopyIcon,SendIcon} from "lucide-react";
+import {cn} from "@/lib/utils";
+import {NativeSelect,NativeSelectOption} from "@/components/ui/native-select";
+import {Separator} from "@/components/ui/separator";
 import type {OptionGroup} from "../../lib/catalog-options";
 import type {StoreProductDetail,StoreVariant} from "../../lib/server/storefront";
 import {TELEGRAM_URL,isColorGroup,soum,swatchColor} from "../../lib/storefront";
-import {ProductVisual} from "./product-visual";
+import {Availability,pill} from "./bits";
+import {Gallery} from "./gallery";
 
 // Picks the stored SKU closest to the current choice when one option changes:
 // keep as many other choices as possible, then prefer in stock, then cheaper.
@@ -13,11 +18,13 @@ function closest(skus:StoreVariant[],current:StoreVariant,group:string,value:str
     .sort((a,b)=>score(b)-score(a)||Number(b.inStock)-Number(a.inStock)||(BigInt(a.price)<BigInt(b.price)?-1:1))[0];
 }
 
+const sectionTitle="mb-5 text-[21px] leading-[1.19] font-semibold tracking-[0.011em] tablet:text-2xl tablet:leading-[1.17]";
+
 export function BuyPanel({product}:{product:StoreProductDetail}){
   const {skus,groups}=product;
   const [selectedId,setSelectedId]=useState(()=>(skus.find(v=>v.inStock)??skus[0]).id);
   const selected=skus.find(v=>v.id===selectedId)??skus[0];
-  const [viewing,setViewing]=useState<string|null>(null);
+  const [viewing,setViewing]=useState<number|null>(null);
   const [copied,setCopied]=useState(false);
 
   const gallery=useMemo(()=>{
@@ -27,50 +34,47 @@ export function BuyPanel({product}:{product:StoreProductDetail}){
     for(const s of skus)add(s.image);
     return list;
   },[groups,skus]);
-  const current=viewing&&gallery.includes(viewing)?viewing:selected.image;
-  const tone=current?product.tones[current]:undefined;
+  const selectedIndex=Math.max(0,selected.image?gallery.indexOf(selected.image):0);
+  const index=viewing!==null&&viewing<gallery.length?viewing:selectedIndex;
 
   const choose=(v:StoreVariant|undefined)=>{if(v){setSelectedId(v.id);setViewing(null);setCopied(false);}};
-  const summary=[product.name,...(groups.length?groups.map(g=>selected.options[g.name]):selected.label&&selected.label!=="Standart"?[selected.label]:[])]
+  const ordered=[...groups].sort((a,b)=>Number(isColorGroup(b.name))-Number(isColorGroup(a.name)));
+  const summary=[product.name,...(groups.length?ordered.map(g=>selected.options[g.name]):selected.label&&selected.label!=="Standart"?[selected.label]:[])]
     .filter(Boolean).join(", ");
   const copy=async()=>{
     try{await navigator.clipboard.writeText(`${summary}. ${soum(selected.price)}. ${location.href}`);setCopied(true);}catch{setCopied(false);}
   };
 
-  return <div className="sf-buy">
-    <div className="sf-gallery">
-      <div className="sf-gallery-frame" style={(tone?{"--tile-bg":tone.background}:{}) as CSSProperties}>
-        <ProductVisual key={current??"none"} image={current} name={product.name} category={product.category} fit="contain" priority className="sf-fade"/>
-      </div>
-      {gallery.length>1&&<div className="sf-thumbs" role="group" aria-label="Rasmlar">
-        {gallery.map((u,i)=><button type="button" key={u} aria-pressed={u===current} aria-label={`${i+1}-rasm`} onClick={()=>setViewing(u)}
-          style={(product.tones[u]?{"--tile-bg":product.tones[u].background}:{}) as CSSProperties}>
-          <img src={u} alt="" loading="lazy" referrerPolicy="no-referrer"/>
-        </button>)}
-      </div>}
-    </div>
+  return <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-10 desktop:grid-cols-[minmax(0,1fr)_360px] desktop:gap-14">
+    <Gallery images={gallery} index={index} onIndex={setViewing} name={product.name} category={product.category} tones={product.tones}/>
 
-    <div className="sf-config">
-      {[...groups].sort((a,b)=>Number(isColorGroup(b.name))-Number(isColorGroup(a.name))).map(g=><OptionSection key={g.name} group={g} skus={skus} selected={selected} onPick={value=>choose(closest(skus,selected,g.name,value))}/>)}
+    <div className="flex min-w-0 flex-col">
+      {ordered.map((g,i)=><div key={g.name}>
+        {i>0&&<Separator className="my-8 bg-sf-line/70"/>}
+        <OptionSection group={g} skus={skus} selected={selected} onPick={value=>choose(closest(skus,selected,g.name,value))}/>
+      </div>)}
 
-      {!groups.length&&skus.length>1&&<section className="sf-option">
-        <h2 className="sf-option-title"><label htmlFor="sf-variant">Variant. <span>Kerakli turini tanlang.</span></label></h2>
-        <div className="sf-select">
-          <select id="sf-variant" value={selected.id} onChange={e=>choose(skus.find(v=>v.id===e.target.value))}>
-            {skus.map(v=><option key={v.id} value={v.id}>{(v.label||"Variant")+" · "+soum(v.price)}</option>)}
-          </select>
-        </div>
+      {!groups.length&&skus.length>1&&<section>
+        <h2 className={sectionTitle}><label htmlFor="sf-variant">Variant. <span className="text-sf-ink-2">Kerakli turini tanlang.</span></label></h2>
+        <NativeSelect id="sf-variant" value={selected.id} onChange={e=>choose(skus.find(v=>v.id===e.target.value))}
+          className="w-full [&_select]:h-14 [&_select]:rounded-xl [&_select]:border-sf-line [&_select]:bg-white [&_select]:pr-11 [&_select]:pl-[18px] [&_select]:text-[17px] [&_select]:focus-visible:border-sf-blue [&_svg]:right-4">
+          {skus.map(v=><NativeSelectOption key={v.id} value={v.id}>{(v.label||"Variant")+" · "+soum(v.price)}</NativeSelectOption>)}
+        </NativeSelect>
       </section>}
 
-      <section className="sf-summary" aria-label="Tanlangan mahsulot">
-        <p className="sf-summary-name">{summary}</p>
-        <p className="sf-summary-price" aria-live="polite">{soum(selected.price)}</p>
-        <p className={"sf-stock"+(selected.inStock?" is-in":"")}>{selected.inStock?"Mavjud. Sotuvchi tasdiqlagandan keyin topshiriladi.":"Hozircha mavjud emas. Kelishini sotuvchidan so‘rang."}</p>
-        <a className="sf-btn sf-btn-block" href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer">
-          {selected.inStock?"Telegram orqali buyurtma berish":"Telegram orqali so‘rash"}
-        </a>
-        <button type="button" className="sf-btn sf-btn-ghost sf-btn-block" onClick={copy}>{copied?"Nusxa olindi":"Tanlovdan nusxa olish"}</button>
-        <p className="sf-summary-note">Tugma do‘konning Telegram botini ochadi. Tanlovdan nusxa olib, botga yuboring. Onlayn to‘lov yo‘q, yakuniy narxni sotuvchi tasdiqlaydi.</p>
+      <section className={cn("flex flex-col rounded-[18px] bg-sf-alt p-6 tablet:p-7",(groups.length||skus.length>1)&&"mt-10")} aria-label="Tanlangan mahsulot">
+        <p className="text-sm leading-5 text-sf-ink-2">{summary}</p>
+        <p className="mt-2 text-[28px] leading-[1.14] font-semibold tracking-[0.007em] tabular-nums" aria-live="polite">{soum(selected.price)}</p>
+        <Availability inStock={selected.inStock} long className="mt-3 text-sm leading-5 [&>span:first-child]:mt-[7px]"/>
+        <div className="mt-6 flex flex-col gap-3">
+          <a className={pill({className:"w-full gap-2"})} href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer">
+            <SendIcon className="size-[18px]" aria-hidden="true"/>{selected.inStock?"Telegram orqali buyurtma berish":"Telegram orqali so‘rash"}
+          </a>
+          <button type="button" className={pill({tone:"ghost",className:"w-full gap-2"})} onClick={copy}>
+            {copied?<CheckIcon className="size-[18px]" aria-hidden="true"/>:<CopyIcon className="size-[18px]" aria-hidden="true"/>}{copied?"Nusxa olindi":"Tanlovdan nusxa olish"}
+          </button>
+        </div>
+        <p className="mt-5 text-xs leading-[1.45] text-sf-ink-2">Tugma do‘konning Telegram botini ochadi. Tanlovdan nusxa olib, botga yuboring. Onlayn to‘lov yo‘q, yakuniy narxni sotuvchi tasdiqlaydi.</p>
       </section>
     </div>
   </div>;
@@ -79,30 +83,29 @@ export function BuyPanel({product}:{product:StoreProductDetail}){
 function OptionSection({group,skus,selected,onPick}:{group:OptionGroup;skus:StoreVariant[];selected:StoreVariant;onPick:(value:string)=>void}){
   const color=isColorGroup(group.name);
   const chosen=selected.options[group.name];
-  const values=group.values.map(v=>{
-    const best=closest(skus,selected,group.name,v.label);
-    return {...v,best,exists:!!best};
-  });
+  const values=group.values.map(v=>({...v,best:closest(skus,selected,group.name,v.label)}));
   const titleId="opt-"+group.name.replace(/\s+/g,"-");
-  if(color)return <section className="sf-option" aria-labelledby={titleId}>
-    <h2 className="sf-option-title" id={titleId}>{group.name}. <span>{chosen}</span></h2>
-    <div className="sf-swatches" role="radiogroup" aria-labelledby={titleId}>
-      {values.map(v=><button type="button" role="radio" key={v.label} aria-checked={v.label===chosen} aria-label={v.label+(v.best&&!v.best.inStock?". Mavjud emas":"")}
-        disabled={!v.exists} title={v.label} onClick={()=>onPick(v.label)}>
-        <span style={swatch(v.label,v.imageUrl)}/>
+  if(color)return <section aria-labelledby={titleId}>
+    <h2 className={sectionTitle} id={titleId}>{group.name}. <span className="text-sf-ink-2">{chosen}</span></h2>
+    <div className="flex flex-wrap gap-3" role="radiogroup" aria-labelledby={titleId}>
+      {values.map(v=><button type="button" role="radio" key={v.label} aria-checked={v.label===chosen} title={v.label}
+        aria-label={v.label+(v.best&&!v.best.inStock?". Mavjud emas":"")} disabled={!v.best} onClick={()=>onPick(v.label)}
+        className="inline-flex size-11 cursor-pointer items-center justify-center rounded-full transition-[box-shadow,scale] duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 aria-checked:shadow-[0_0_0_2px_var(--color-sf-blue)]">
+        <span className="size-8 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.14),inset_0_2px_4px_rgba(0,0,0,0.08)]" style={swatch(v.label,v.imageUrl)}/>
       </button>)}
     </div>
   </section>;
-  return <section className="sf-option" aria-labelledby={titleId}>
-    <h2 className="sf-option-title" id={titleId}>{group.name}. <span>{group.affectsPrice?"Narxga ta’sir qiladi.":"Kerakli turini tanlang."}</span></h2>
-    <div className="sf-tiles-pick" role="radiogroup" aria-labelledby={titleId}>
-      {values.map(v=><button type="button" role="radio" key={v.label} aria-checked={v.label===chosen} disabled={!v.exists} onClick={()=>onPick(v.label)}>
-        <span className="sf-pick-label">{v.label}</span>
-        {v.best&&(group.affectsPrice||!v.best.inStock)&&<span className="sf-pick-meta">
-          {group.affectsPrice&&<span>{soum(v.best.price)}</span>}
-          {!v.best.inStock&&<span>Mavjud emas</span>}
-        </span>}
-        {!v.exists&&<span className="sf-pick-meta"><span>Bu tanlovda yo‘q</span></span>}
+  return <section aria-labelledby={titleId}>
+    <h2 className={sectionTitle} id={titleId}>{group.name}. <span className="text-sf-ink-2">{group.affectsPrice?"Narxga ta’sir qiladi.":"Kerakli turini tanlang."}</span></h2>
+    <div className="grid gap-3" role="radiogroup" aria-labelledby={titleId}>
+      {values.map(v=><button type="button" role="radio" key={v.label} aria-checked={v.label===chosen} disabled={!v.best} onClick={()=>onPick(v.label)}
+        className="flex min-h-16 cursor-pointer items-center justify-between gap-4 rounded-xl border border-sf-line bg-white px-[18px] py-4 text-left transition-[border-color,box-shadow,scale] duration-200 hover:border-sf-ink-3 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 aria-checked:border-sf-blue aria-checked:shadow-[0_0_0_1px_var(--color-sf-blue)]">
+        <span className="text-[17px] font-semibold">{v.label}</span>
+        <span className="flex flex-col items-end gap-0.5 text-right text-xs leading-4 text-sf-ink-2">
+          {v.best&&group.affectsPrice&&<span>{soum(v.best.price)}</span>}
+          {v.best&&!v.best.inStock&&<span>Mavjud emas</span>}
+          {!v.best&&<span>Bu tanlovda yo‘q</span>}
+        </span>
       </button>)}
     </div>
   </section>;

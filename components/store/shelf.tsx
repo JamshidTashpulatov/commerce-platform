@@ -1,5 +1,7 @@
 "use client";
-import {useEffect,useRef,useState,type ReactNode} from "react";
+import {Children,useEffect,useRef,useState,type ReactNode} from "react";
+import {ChevronLeftIcon,ChevronRightIcon} from "lucide-react";
+import {Button} from "@/components/ui/button";
 
 // A horizontally scrolling row with paddle buttons on pointer devices.
 export function Shelf({label,children}:{label:string;children:ReactNode}){
@@ -18,17 +20,15 @@ export function Shelf({label,children}:{label:string;children:ReactNode}){
     const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollBy({left:dir*el.clientWidth*0.8,behavior:reduce?"auto":"smooth"});
   };
-  return <div className="sf-shelf">
-    <div className="sf-shelf-track" ref={track} role="list" aria-label={label} tabIndex={0}>
-      {Array.isArray(children)?children.map((c,i)=><div role="listitem" key={i} className="sf-shelf-item">{c}</div>):children}
+  const paddle="size-9 rounded-full bg-[rgba(210,210,215,0.64)] text-black/55 hover:bg-[rgba(223,223,227,0.7)] hover:text-black/65 disabled:opacity-40";
+  return <div className="relative">
+    <div ref={track} role="list" aria-label={label} tabIndex={0}
+      className="sf-no-scrollbar flex snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain px-[max(16px,calc((100%-980px)/2))] pt-2 pb-10 scroll-px-[max(16px,calc((100%-980px)/2))] focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-sf-blue">
+      {Children.map(children,c=><div role="listitem" className="flex-none snap-start">{c}</div>)}
     </div>
-    <div className="sf-paddles">
-      <button type="button" className="sf-paddle" aria-label="Oldingilar" disabled={edges.start} onClick={()=>move(-1)}>
-        <svg viewBox="0 0 8 14" width="8" height="14" aria-hidden="true"><path d="M7 1L1 7l6 6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-      </button>
-      <button type="button" className="sf-paddle" aria-label="Keyingilar" disabled={edges.end} onClick={()=>move(1)}>
-        <svg viewBox="0 0 8 14" width="8" height="14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-      </button>
+    <div className="mx-auto -mt-3 hidden max-w-[980px] justify-end gap-4 px-4 tablet:pointer-fine:flex">
+      <Button variant="ghost" size="icon" className={paddle} aria-label="Oldingilar" disabled={edges.start} onClick={()=>move(-1)}><ChevronLeftIcon/></Button>
+      <Button variant="ghost" size="icon" className={paddle} aria-label="Keyingilar" disabled={edges.end} onClick={()=>move(1)}><ChevronRightIcon/></Button>
     </div>
   </div>;
 }
