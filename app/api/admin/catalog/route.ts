@@ -3,7 +3,7 @@ import {database,configuredStoreId} from "../../../../lib/server/db";
 import {requireStoreRole} from "../../../../lib/server/auth";
 import {isUuid,sameOrigin,smallJson,privateHeaders} from "../../../../lib/server/http";
 import {validGroups,validSelection,canonicalGroups,type OptionGroup} from "../../../../lib/catalog-options";
-import {approvedImageUrl} from "../../../../lib/server/catalog-media";
+import {approvedImageUrl,localMediaId} from "../../../../lib/server/catalog-media";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const reply=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:privateHeaders});
@@ -43,6 +43,9 @@ export async function POST(request:Request){
  await c.query("BEGIN");
  const fail=async(error:string,status=409)=>{await c.query("ROLLBACK");return reply({error},status);};
  const repeat=async(id:string)=>{await c.query("ROLLBACK");return reply({id,repeated:true});};
+ const refs=[...(typeof b.imageUrl==="string"?[b.imageUrl]:[]),...(Array.isArray(b.optionGroups)?(b.optionGroups as OptionGroup[]).flatMap(g=>g.values.map(v=>v.imageUrl).filter((v):v is string=>typeof v==="string")):[])];
+ const localIds=[...new Set(refs.map(localMediaId).filter((v):v is string=>v!==null))];
+ if(localIds.length){const media=await c.query("SELECT id FROM catalog_media WHERE store_id=$1 AND id=ANY($2::uuid[])",[store,localIds]);if(media.rowCount!==localIds.length)return await fail("Rasm ushbu katalogda topilmadi",400);}
  let id:string;
  if(product){
  const name=String(b.name).trim(),category=String(b.category).trim(),description=String(b.description).trim();
