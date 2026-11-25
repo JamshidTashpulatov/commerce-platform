@@ -24,57 +24,102 @@ if (!DATABASE_URL || !STORE_ID) { console.error("DATABASE_URL and STORE_ID are r
 const work = arg("work"), restoreFile = arg("restore");
 if (!work === !restoreFile) { console.error("pass exactly one of --work <dir> or --restore <file>"); process.exit(2); }
 
+// Images are decoded and normalised before the transaction opens, and rows are
+// changed in a few set-based statements, so locks are held for seconds, not
+// minutes. A deadlock or serialization failure rolls everything back and the
+// whole transaction is retried.
+const plan = [];
+if (work) {
+  const {images} = JSON.parse(readFileSync(join(work, "report.json"), "utf8"));
+  for (const image of images) {
+    if (image.error || !image.out) { plan.push({image, skip: image.error ?? "no output"}); continue; }
+    plan.push({image, bytes: await normaliseCatalogImage(readFileSync(image.out), "image/webp")});
+  }
+}
+
 const client = new pg.Client({connectionString: DATABASE_URL});
 await client.connect();
-const changes = [];
-const skipped = [];
-// Change one column of one row from `from` to `to`, only if it still holds `from`.
-async function swap(table, id, from, to, reason) {
-  const r = await client.query(`UPDATE ${table} SET image_url=$4, revision=revision+1 WHERE store_id=$1 AND id=$2 AND image_url=$3 RETURNING revision`, [STORE_ID, id, from, to]);
-  if (!r.rowCount) { skipped.push({table, id, from, reason: "image changed since the build"}); return; }
-  changes.push({table, id, from, to, revision: r.rows[0].revision, reason});
-  await client.query("INSERT INTO audit_events(store_id,actor_id,action,entity_type,entity_id) VALUES($1,$2,'catalog_image_replaced',$3,$4)",
-    [STORE_ID, actor, table === "products" ? "product" : "variant", id]);
+
+/**
+ * Lock, then change rows [{id, from, to, reason}] of one table, only where the
+ * row still holds `from`. Returns what changed and what did not.
+ */
+async function swapAll(table, rows, actor) {
+  if (!rows.length) return {changed: [], skipped: []};
+  const ids = rows.map(r => r.id), from = rows.map(r => r.from), to = rows.map(r => r.to);
+  await client.query(`SELECT id FROM ${table} WHERE store_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR UPDATE`, [STORE_ID, ids]);
+  const r = await client.query(`UPDATE ${table} t SET image_url=x.to_url, revision=t.revision+1
+    FROM unnest($2::uuid[],$3::text[],$4::text[]) AS x(id,from_url,to_url)
+    WHERE t.store_id=$1 AND t.id=x.id AND t.image_url=x.from_url RETURNING t.id,t.revision`, [STORE_ID, ids, from, to]);
+  const done = new Map(r.rows.map(x => [x.id, x.revision]));
+  await client.query(`INSERT INTO audit_events(store_id,actor_id,action,entity_type,entity_id)
+    SELECT $1,$2,'catalog_image_replaced',$3,id FROM unnest($4::uuid[]) AS id`,
+    [STORE_ID, actor, table === "products" ? "product" : "variant", [...done.keys()]]);
+  return {
+    changed: rows.filter(x => done.has(x.id)).map(x => ({table, ...x, revision: done.get(x.id)})),
+    skipped: rows.filter(x => !done.has(x.id)).map(x => ({table, id: x.id, from: x.from, reason: "image changed since the build"})),
+  };
 }
-let actor;
-try {
+
+async function run() {
+  const changes = [], skipped = plan.filter(p => p.skip).map(p => ({url: p.image.url, reason: p.skip}));
   await client.query("BEGIN");
   await client.query("SELECT id FROM stores WHERE id=$1 FOR UPDATE", [STORE_ID]);
-  const owner = await client.query("SELECT account_id FROM memberships WHERE store_id=$1 AND role='owner' ORDER BY account_id LIMIT 1", [STORE_ID]);
-  if (!owner.rowCount) throw new Error("store has no owner membership");
-  actor = owner.rows[0].account_id;
+  // Recorded as the uploader, like an admin upload: the owner, or else an admin.
+  const owner = await client.query("SELECT account_id FROM memberships WHERE store_id=$1 AND role IN ('owner','admin') ORDER BY role='owner' DESC,account_id LIMIT 1", [STORE_ID]);
+  if (!owner.rowCount) throw new Error("store has no owner or admin membership");
+  const actor = owner.rows[0].account_id;
+  const rows = {products: [], variants: []};
   if (restoreFile) {
     const saved = JSON.parse(readFileSync(restoreFile, "utf8"));
-    for (const c of saved.changes) await swap(c.table, c.id, c.to, c.from, "restore");
+    for (const c of saved.changes) rows[c.table].push({id: c.id, from: c.to, to: c.from, reason: "restore"});
   } else {
-    const {images} = JSON.parse(readFileSync(join(work, "report.json"), "utf8"));
     const opts = await client.query(`SELECT count(*)::int AS n FROM products p, jsonb_array_elements(p.option_groups) g, jsonb_array_elements(g->'values') v
       WHERE p.store_id=$1 AND v->>'imageUrl' IS NOT NULL`, [STORE_ID]);
     if (opts.rows[0].n) throw new Error(opts.rows[0].n + " option values carry their own image; this script does not rewrite option images yet");
-    for (const image of images) {
-      if (image.error || !image.out) { skipped.push({url: image.url, reason: image.error ?? "no output"}); continue; }
-      const bytes = await normaliseCatalogImage(readFileSync(image.out), "image/webp");
-      const {url} = await saveCatalogImage(client, STORE_ID, actor, bytes);
-      const split = image.uses.filter(u => u.role.startsWith("split:"));
+    const byUrl = new Map();
+    for (const p of plan) {
+      if (p.skip) continue;
+      const {url} = await saveCatalogImage(client, STORE_ID, actor, p.bytes);
+      const split = p.image.uses.filter(u => u.role.startsWith("split:"));
       if (split.length) {
-        for (const u of split) await swap("variants", u.variantId, u.replaces, url, u.role);
-        // The product's own cover was the shared photo: it takes the first colour's photo.
-        for (const u of split) {
-          const p = await client.query("SELECT id FROM products WHERE store_id=$1 AND id=$2 AND image_url=$3", [STORE_ID, u.productId, u.replaces]);
-          if (p.rowCount) await swap("products", u.productId, u.replaces, url, "cover from " + u.role);
-        }
-        continue;
-      }
-      // Every product and variant row that stores this URL, active or not.
-      for (const table of ["products", "variants"]) {
-        const rows = await client.query(`SELECT id FROM ${table} WHERE store_id=$1 AND image_url=$2 ORDER BY id`, [STORE_ID, image.url]);
-        for (const row of rows.rows) await swap(table, row.id, image.url, url, "standard image");
-      }
+        for (const u of split) rows.variants.push({id: u.variantId, from: u.replaces, to: url, reason: u.role});
+        // The product's own cover, if it was the shared photo, takes the first colour's photo.
+        for (const u of split) if (!rows.products.some(r => r.id === u.productId)) rows.products.push({id: u.productId, from: u.replaces, to: url, reason: "cover from " + u.role, optional: true});
+      } else byUrl.set(p.image.url, url);
+    }
+    // Every product and variant row that stores a built URL, active or not.
+    for (const table of ["products", "variants"]) {
+      const r = await client.query(`SELECT id,image_url FROM ${table} WHERE store_id=$1 AND image_url=ANY($2::text[])`, [STORE_ID, [...byUrl.keys()]]);
+      for (const x of r.rows) rows[table].push({id: x.id, from: x.image_url, to: byUrl.get(x.image_url), reason: "standard image"});
     }
   }
+  for (const table of ["products", "variants"]) {
+    const res = await swapAll(table, rows[table], actor);
+    changes.push(...res.changed);
+    // A product cover that was not the shared photo is simply left alone.
+    skipped.push(...res.skipped.filter(s => !rows[table].find(r => r.id === s.id)?.optional));
+  }
   const left = await client.query(`SELECT (SELECT count(*) FROM products WHERE store_id=$1 AND image_url LIKE 'https://%')::int AS products,
-    (SELECT count(*) FROM variants WHERE store_id=$1 AND active AND image_url LIKE 'https://%')::int AS variants`, [STORE_ID]);
-  const summary = {mode: restoreFile ? "restore" : "apply", committed: commit, changed: changes.length, skipped: skipped.length, externalUrlsLeft: left.rows[0]};
+    (SELECT count(*) FROM variants WHERE store_id=$1 AND active AND image_url LIKE 'https://%')::int AS variants,
+    (SELECT count(*) FROM catalog_media WHERE store_id=$1)::int AS media`, [STORE_ID]);
+  return {changes, skipped, left: left.rows[0]};
+}
+
+try {
+  let result;
+  for (let attempt = 1; ; attempt++) {
+    try { result = await run(); break; } catch (e) {
+      await client.query("ROLLBACK").catch(() => {});
+      if (!["40P01", "40001"].includes(e.code) || attempt >= 3) throw e;
+      console.log(`attempt ${attempt}: ${e.message}; retrying`);
+      await new Promise(r => setTimeout(r, 2000 * attempt));
+    }
+  }
+  const {changes, skipped, left} = result;
+  const summary = {mode: restoreFile ? "restore" : "apply", committed: commit, changed: changes.length,
+    variants: changes.filter(c => c.table === "variants").length, products: changes.filter(c => c.table === "products").length,
+    skipped: skipped.length, after: left};
   if (commit) {
     const out = (restoreFile ? restoreFile.replace(/\.json$/, "") + "-undone-" : join(work, "restore-")) + new Date().toISOString().replace(/[:.]/g, "-") + ".json";
     writeFileSync(out, JSON.stringify({summary, changes, skipped}, null, 1));
