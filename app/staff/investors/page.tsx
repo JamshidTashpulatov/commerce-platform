@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, PageHeader, RefreshButton, Section, StatusBadge, SubmitButton, SummaryList, TableFrame, TextField, errorText, isAmount } from "@/components/admin/kit";
+import { CapitalCaveat } from "@/components/admin/capital-caveat";
 import { PeerPortfolioSetting } from "@/components/admin/peer-portfolio-setting";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -125,6 +126,7 @@ export default function Investors() {
       ) : (
         <>
           <Section title="Kapital hisoboti" description="Investor sahifasini ochish uchun nomini bosing. Kapital va foyda qaytimlarini tizim o‘zi hisoblaydi.">
+            <CapitalCaveat />
             {data.items.length ? (
               <TableFrame>
                 <Table>

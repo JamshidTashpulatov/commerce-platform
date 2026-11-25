@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronDownIcon, ScaleIcon, XIcon } from "lucide-react";
+import { CapitalCaveat } from "./capital-caveat";
 import { InlineError, Money, MoneyInput, Notice, SummaryList, TextField, formatSum, isAdminRole, useStaffRole } from "./kit";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -69,6 +70,7 @@ export function InvestorAllocator({ investors, principal, entries, onChange, dis
 
   return (
     <div className="flex flex-col gap-4">
+      <CapitalCaveat />
       {noCapital && (
         <Notice>
           Hech bir investorda bo‘sh kapital yo‘q. Avval administrator{" "}
