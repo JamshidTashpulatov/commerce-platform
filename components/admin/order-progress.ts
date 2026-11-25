@@ -31,9 +31,10 @@ const optional = <T,>(url: string) => staffFetch<T>(url).catch(() => null);
  * Read-only snapshot of where an order stands, taken from the same GET endpoints the sections use.
  * It decides which step is current; every action still goes through its own section and API call.
  */
-export function useOrderProgress(endpoint: string, version: number, isWebsite: boolean) {
+export function useOrderProgress(endpoint: string, version: number, isWebsite: boolean, enabled = true) {
   const [progress, setProgress] = useState<OrderProgress>({ ready: false, customer: null, payments: null, funding: null, installments: null, returns: null, website: null });
   const load = useCallback(async () => {
+    if (!enabled) return;
     const [customer, payments, funding, installments, returns, website] = await Promise.all([
       optional<{ customer: Customer | null }>(endpoint + "/customer"),
       optional<Payments>(endpoint + "/payments"),
@@ -43,7 +44,7 @@ export function useOrderProgress(endpoint: string, version: number, isWebsite: b
       isWebsite ? optional<WebsiteRequest>(endpoint + "/website") : Promise.resolve(null),
     ]);
     setProgress({ ready: true, customer: customer ? { linked: customer.customer } : null, payments, funding, installments, returns, website });
-  }, [endpoint, isWebsite]);
+  }, [endpoint, isWebsite, enabled]);
   useEffect(() => {
     void load();
   }, [load, version]);
