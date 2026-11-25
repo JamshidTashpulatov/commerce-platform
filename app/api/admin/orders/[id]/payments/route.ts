@@ -19,9 +19,12 @@ export async function GET(_request:Request,{params}:Ctx){
  if(!o.rowCount){await c.query("ROLLBACK");return reply({error:"Buyurtma topilmadi"},404);}
  const t=await c.query("SELECT agreed_total_uzs::text,payment_type,initial_due_uzs::text FROM order_payment_terms WHERE store_id=$1 AND order_id=$2",[store,id]);
  const r=await c.query("SELECT r.id,r.amount_uzs::text,r.kind,r.method,r.received_on::text,r.created_at,r.recorded_by,(v.receipt_id IS NOT NULL) AS reversed FROM order_manual_receipts r LEFT JOIN order_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE r.store_id=$1 AND r.order_id=$2 ORDER BY r.created_at DESC",[store,id]);
+ const scheduled=await c.query("SELECT COALESCE(SUM(r.amount_uzs) FILTER(WHERE v.receipt_id IS NULL),0)::text AS paid FROM installment_contracts c JOIN installment_schedule s ON s.store_id=c.store_id AND s.contract_id=c.id JOIN installment_receipts r ON r.store_id=s.store_id AND r.schedule_id=s.id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE c.store_id=$1 AND c.order_id=$2 AND c.status IN ('active','settled')",[store,id]);
+ const contract=await c.query("SELECT 1 FROM installment_contracts WHERE store_id=$1 AND order_id=$2 AND status IN ('active','settled')",[store,id]);
  await c.query("COMMIT");
  const received=r.rows.reduce((sum,row)=>sum+(row.reversed?BigInt(0):BigInt(row.amount_uzs)),BigInt(0));
- return reply({terms:t.rows[0]??null,receipts:r.rows,received_uzs:received.toString(),remaining_uzs:t.rows[0]?(BigInt(t.rows[0].agreed_total_uzs)-received).toString():null});
+ const combined=received+BigInt(scheduled.rows[0].paid);
+ return reply({terms:t.rows[0]??null,receipts:r.rows,manual_received_uzs:received.toString(),received_uzs:combined.toString(),remaining_uzs:t.rows[0]?(BigInt(t.rows[0].agreed_total_uzs)-combined).toString():null,has_schedule:!!contract.rowCount});
  }catch{await c.query("ROLLBACK");return reply({error:"To‘lovlarni yuklab bo‘lmadi"},503);}finally{c.release();}
  }catch{return reply({error:"Xizmat vaqtincha ishlamayapti"},503);}
 }
