@@ -17,7 +17,7 @@ export async function GET(_request:Request,{params}:Ctx){
  await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
  const o=await c.query("SELECT o.id,o.request_status,COALESCE(c.passport_cipher IS NOT NULL,false) AS has_passport FROM orders o LEFT JOIN customers c ON c.store_id=o.store_id AND c.id=o.customer_record_id WHERE o.store_id=$1 AND o.id=$2",[store,id]);
  if(!o.rowCount){await c.query("ROLLBACK");return reply({error:"Buyurtma topilmadi"},404);}
- const t=await c.query("SELECT agreed_total_uzs::text,initial_due_uzs::text,payment_type FROM order_payment_terms WHERE store_id=$1 AND order_id=$2",[store,id]);
+ const t=await c.query("SELECT agreed_total_uzs::text,initial_due_uzs::text,payment_type,term_months FROM order_payment_terms WHERE store_id=$1 AND order_id=$2",[store,id]);
  const paid=await c.query("SELECT COALESCE(SUM(r.amount_uzs),0)::text AS amount FROM order_manual_receipts r LEFT JOIN order_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE r.store_id=$1 AND r.order_id=$2 AND r.kind='initial' AND v.receipt_id IS NULL",[store,id]);
  const contract=await c.query("SELECT id,status FROM installment_contracts WHERE store_id=$1 AND order_id=$2",[store,id]);
  const cid=contract.rows[0]?.id;
@@ -56,8 +56,9 @@ export async function POST(request:Request,{params}:Ctx){
  if(action==="activate"){
  if(process.env.INSTALLMENT_SCHEDULE_ENABLED!=="true")return await fail("Nasiya jadvali hali yoqilmagan",503);
  if(existing)return await fail("Nasiya jadvali mavjud");
- const t=await c.query("SELECT agreed_total_uzs,initial_due_uzs,payment_type FROM order_payment_terms WHERE store_id=$1 AND order_id=$2",[store,id]);
- const terms=t.rows[0];if(!terms||terms.payment_type!=="installment")return await fail("Avval nasiya shartlarini saqlang");
+ const t=await c.query("SELECT agreed_total_uzs,initial_due_uzs,payment_type,term_months FROM order_payment_terms WHERE store_id=$1 AND order_id=$2",[store,id]);
+ const terms=t.rows[0];if(!terms||terms.payment_type!=="installment"||!terms.term_months)return await fail("Avval hisoblangan nasiya shartlarini saqlang");
+ if(terms.term_months!==b.months)return await fail("Muddat saqlangan nasiya shartlariga mos emas",400);
  const customer=await c.query("SELECT id FROM customers WHERE store_id=$1 AND id=$2 AND passport_cipher IS NOT NULL",[store,o.rows[0].customer_record_id]);
  if(!customer.rowCount)return await fail("Pasport ma’lumoti mavjud mijozni biriktiring");
  const initial=await c.query("SELECT COALESCE(SUM(r.amount_uzs),0)::text AS paid FROM order_manual_receipts r LEFT JOIN order_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE r.store_id=$1 AND r.order_id=$2 AND r.kind='initial' AND v.receipt_id IS NULL",[store,id]);
