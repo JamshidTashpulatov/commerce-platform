@@ -20,6 +20,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { CURRENCY, MONEY_MAX_DIGITS, formatMoney, groupMoneyDigits } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 export type StaffRole = "owner" | "admin" | "seller";
@@ -50,20 +51,11 @@ export function formatStamp(value: string | null | undefined) {
   const pick = (k: string) => parts.find(p => p.type === k)?.value;
   return `${pick("day")}.${pick("month")}.${pick("year")}`;
 }
-/** UZS amount with a space as the thousands separator, the same in every browser. */
-export function formatSum(value: string | bigint) {
-  try {
-    const n = BigInt(value);
-    return (n < BigInt(0) ? "-" : "") + groupDigits((n < BigInt(0) ? -n : n).toString()) + " UZS";
-  } catch {
-    return "—";
-  }
-}
-export const isAmount = (value: string) => /^[1-9][0-9]{0,11}$/.test(value);
+/** An amount as the store shows it: whole US dollars, "$1,250". One formatter for the whole project. */
+export const formatSum = (value: string | bigint) => formatMoney(value);
+/** A positive whole-dollar amount the money inputs can hold (up to $999,999,999). */
+export const isAmount = (value: string) => new RegExp(`^[1-9][0-9]{0,${MONEY_MAX_DIGITS - 1}}$`).test(value);
 export const errorText = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
-export function groupDigits(value: string) {
-  return value.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
-}
 
 export function PageHeader({ title, description, children }: { title: string; description?: string; children?: ReactNode }) {
   return (
@@ -220,25 +212,25 @@ export function TextField({ label, description, error, className, children }: { 
   );
 }
 
-/** Whole-sum input. Keeps a plain digit string (what the API expects) and shows thousands separators. */
+/** Whole-dollar input. Keeps a plain digit string (what the API expects) and shows "$" and thousands separators. */
 export function MoneyInput({ id, value, onChange, disabled, placeholder = "0", name, ...rest }: { id?: string; name?: string; value: string; onChange: (digits: string) => void; disabled?: boolean; placeholder?: string; "aria-label"?: string; "aria-invalid"?: boolean }) {
   return (
     <div className="relative">
+      <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-muted-foreground" aria-hidden="true">
+        {CURRENCY.symbol}
+      </span>
       <Input
         id={id}
         name={name}
         inputMode="numeric"
         autoComplete="off"
-        className="pr-12 tabular-nums"
-        value={groupDigits(value)}
+        className="pl-6 tabular-nums"
+        value={value ? groupMoneyDigits(value) : ""}
         placeholder={placeholder}
         disabled={disabled}
-        onChange={e => onChange(e.target.value.replace(/[^0-9]/g, "").slice(0, 12))}
+        onChange={e => onChange(e.target.value.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "").slice(0, MONEY_MAX_DIGITS))}
         {...rest}
       />
-      <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground" aria-hidden="true">
-        UZS
-      </span>
     </div>
   );
 }

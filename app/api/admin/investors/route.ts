@@ -29,7 +29,7 @@ export async function GET(){
 export async function POST(request:Request){
  if(!sameOrigin(request))return reply({error:"Ruxsat yo‘q"},403);
  const b=await smallJson(request);
- if(!b||!isUuid(b.accountId)||!isUuid(b.key)||typeof b.amount!=="string"||!/^[1-9][0-9]{0,11}$/.test(b.amount)||!["contribution","withdrawal","distribution"].includes(String(b.type)))return reply({error:"Ma’lumotlarni tekshiring"},400);
+ if(!b||!isUuid(b.accountId)||!isUuid(b.key)||typeof b.amount!=="string"||!/^[1-9][0-9]{0,8}$/.test(b.amount)||!["contribution","withdrawal","distribution"].includes(String(b.type)))return reply({error:"Ma’lumotlarni tekshiring"},400);
  try{
  const store=configuredStoreId();const member=await requireStoreRole(store,["owner","admin"]);if(!member)return reply({error:"Ruxsat yo‘q"},403);
  if(process.env.INVESTOR_FUNDING_ENABLED!=="true")return reply({error:"Moliyalashtirish hali yoqilmagan"},503);

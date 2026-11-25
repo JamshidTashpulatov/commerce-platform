@@ -25,7 +25,7 @@ export async function GET(){
     const outstanding=allocated-returned;
     const earnings=await c.query("SELECT COALESCE(SUM(profit_uzs),0)::text AS profit FROM active_monthly_allocations WHERE store_id=$1 AND investor_account_id=$2",[storeId,member.account_id]);
     await c.query("COMMIT");
-    return NextResponse.json({currency:"UZS",received_profit_uzs:earnings.rows[0].profit,...rows[0],allocated_uzs:allocated.toString(),returned_uzs:returned.toString(),outstanding_uzs:outstanding.toString(),available_uzs:(BigInt(rows[0].contributions_uzs)-BigInt(rows[0].withdrawals_uzs)-outstanding).toString(),allocations:allocations.rows},{headers});
+    return NextResponse.json({currency:"USD",received_profit_uzs:earnings.rows[0].profit,...rows[0],allocated_uzs:allocated.toString(),returned_uzs:returned.toString(),outstanding_uzs:outstanding.toString(),available_uzs:(BigInt(rows[0].contributions_uzs)-BigInt(rows[0].withdrawals_uzs)-outstanding).toString(),allocations:allocations.rows},{headers});
     }catch(e){await c.query("ROLLBACK");throw e;}finally{c.release();}
   }catch{return NextResponse.json({error:"Xizmat vaqtincha ishlamayapti"},{status:503,headers});}
 }

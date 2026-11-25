@@ -29,7 +29,7 @@ export async function GET(){
 export async function POST(request:Request){
  if(!sameOrigin(request))return reply({error:"Ruxsat yo‘q"},403);
  const b=await smallJson(request);
- if(!b||!isUuid(b.invoiceId)||!isUuid(b.variantId)||!isUuid(b.key)||typeof b.quantity!=="number"||!Number.isSafeInteger(b.quantity)||b.quantity<1||b.quantity>10000||typeof b.unitCost!=="string"||!/^[1-9][0-9]{0,11}$/.test(b.unitCost)||!validDate(b.date))return reply({error:"Kirim ma’lumotlarini tekshiring"},400);
+ if(!b||!isUuid(b.invoiceId)||!isUuid(b.variantId)||!isUuid(b.key)||typeof b.quantity!=="number"||!Number.isSafeInteger(b.quantity)||b.quantity<1||b.quantity>10000||typeof b.unitCost!=="string"||!/^[1-9][0-9]{0,8}$/.test(b.unitCost)||!validDate(b.date))return reply({error:"Kirim ma’lumotlarini tekshiring"},400);
  try{
  const store=configuredStoreId();const actor=await requireStoreRole(store,["owner","admin"]);if(!actor)return reply({error:"Ruxsat yo‘q"},403);
  if(process.env.STOCK_RECEIPTS_ENABLED!=="true")return reply({error:"Ombor kirimi hali yoqilmagan"},503);

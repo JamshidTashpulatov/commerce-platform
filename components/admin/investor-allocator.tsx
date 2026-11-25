@@ -20,6 +20,7 @@ const amountOf = (value: string | undefined) => BigInt(value || "0");
 export function InvestorAllocator({ investors, principal, entries, onChange, disabled }: { investors: AllocatorInvestor[]; principal: bigint; entries: Record<string, string>; onChange: (entries: Record<string, string>) => void; disabled: boolean }) {
   const role = useStaffRole();
   const [splitError, setSplitError] = useState("");
+  const [splitNote, setSplitNote] = useState("");
   const selected = investors.filter(i => i.account_id in entries);
   const sum = selected.reduce((n, i) => n + amountOf(entries[i.account_id]), zero);
   const remaining = principal - sum;
@@ -27,6 +28,7 @@ export function InvestorAllocator({ investors, principal, entries, onChange, dis
 
   function toggle(id: string, on: boolean) {
     setSplitError("");
+    setSplitNote("");
     const next = { ...entries };
     if (on) next[id] = next[id] ?? "";
     else delete next[id];
@@ -44,6 +46,9 @@ export function InvestorAllocator({ investors, principal, entries, onChange, dis
       return;
     }
     setSplitError("");
+    // Whole dollars only: say where the leftover dollars went, so the unequal parts are no surprise.
+    const leftover = Number(principal % BigInt(selected.length));
+    setSplitNote(leftover ? `Summa teng bo‘linmadi: qolgan ${formatSum(BigInt(leftover))} ro‘yxatdagi birinchi ${leftover} ta investorga $1 dan qo‘shildi.` : "");
     onChange(Object.fromEntries(selected.map(i => [i.account_id, result.shares[i.account_id] ?? ""])));
   }
 
@@ -107,6 +112,7 @@ export function InvestorAllocator({ investors, principal, entries, onChange, dis
         </Button>
       </div>
       <InlineError message={splitError} />
+      {splitNote && !splitError && <p className="text-sm text-muted-foreground">{splitNote}</p>}
       {selected.length > 0 ? (
         <ul className="flex flex-col gap-3">
           {selected.map(i => {
@@ -133,6 +139,7 @@ export function InvestorAllocator({ investors, principal, entries, onChange, dis
                       aria-invalid={over || undefined}
                       onChange={value => {
                         setSplitError("");
+                        setSplitNote("");
                         onChange({ ...entries, [i.account_id]: value });
                       }}
                     />

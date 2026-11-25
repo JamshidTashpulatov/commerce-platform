@@ -27,7 +27,7 @@ export async function POST(request:Request,{params}:Ctx){
  const {id}=await params;const b=await smallJson(request);
  if(!isUuid(id)||!b||!isUuid(b.receiptId)||!Array.isArray(b.entries)||b.entries.length<1||b.entries.length>20)return reply({error:"Qaytim ma’lumotlarini tekshiring"},400);
  const entries:Entry[]=[];
- for(const e of b.entries){if(!e||typeof e!=="object"||!isUuid(e.accountId)||typeof e.amount!=="string"||!/^[1-9][0-9]{0,11}$/.test(e.amount))return reply({error:"Investor va summani tekshiring"},400);entries.push({accountId:e.accountId.toLowerCase(),amount:e.amount});}
+ for(const e of b.entries){if(!e||typeof e!=="object"||!isUuid(e.accountId)||typeof e.amount!=="string"||!/^[1-9][0-9]{0,8}$/.test(e.amount))return reply({error:"Investor va summani tekshiring"},400);entries.push({accountId:e.accountId.toLowerCase(),amount:e.amount});}
  if(new Set(entries.map(e=>e.accountId)).size!==entries.length)return reply({error:"Investor takrorlangan"},400);
  try{
  const store=configuredStoreId();const member=await requireStoreRole(store,["owner","admin"]);if(!member)return reply({error:"Ruxsat yo‘q"},403);

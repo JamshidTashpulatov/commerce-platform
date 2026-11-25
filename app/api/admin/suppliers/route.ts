@@ -6,7 +6,7 @@ import {validDate} from "../../../../lib/installment-schedule";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const reply=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:privateHeaders});
-const amount=(v:unknown):v is string=>typeof v==="string"&&/^[1-9][0-9]{0,11}$/.test(v);
+const amount=(v:unknown):v is string=>typeof v==="string"&&/^[1-9][0-9]{0,8}$/.test(v);
 export async function GET(){
  try{
  const store=configuredStoreId();if(!await requireStoreRole(store,["owner","admin"]))return reply({error:"Ruxsat yo‘q"},403);

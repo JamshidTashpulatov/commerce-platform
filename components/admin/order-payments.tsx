@@ -16,7 +16,7 @@ type Terms = { agreed_total_uzs: string; payment_type: "cash" | "installment"; i
 type Receipt = { id: string; amount_uzs: string; kind: "cash" | "initial"; method: string; received_on: string; reversed: boolean };
 type PaymentData = { can_review: boolean; terms: Terms | null; receipts: Receipt[]; received_uzs: string; remaining_uzs: string | null; manual_received_uzs: string; has_schedule: boolean; pricing_policy: PricingPolicy | null };
 export const paymentMethods: Record<string, string> = { cash: "Naqd", transfer: "Pul o‘tkazmasi", other: "Boshqa" };
-const validSum = (s: string) => /^(0|[1-9][0-9]{0,11})$/.test(s);
+const validSum = (s: string) => /^(0|[1-9][0-9]{0,8})$/.test(s);
 
 export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: { plain?: boolean; part?: "terms" | "receipts"; endpoint: string; cancelled: boolean; onChanged?: () => void }) {
   const url = endpoint + "/payments";

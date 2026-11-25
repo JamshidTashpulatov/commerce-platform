@@ -32,7 +32,7 @@ export async function PUT(request:Request,{params}:Ctx){
  if(!isUuid(id)||!b||!Array.isArray(b.allocations)||b.allocations.length>20)return reply({error:"Investorlarni tekshiring"},400);
  const allocations:Allocation[]=[];
  for(const a of b.allocations){
- if(!a||typeof a!=="object"||!isUuid(a.accountId)||typeof a.amount!=="string"||!/^[1-9][0-9]{0,11}$/.test(a.amount))return reply({error:"Investor va summani tekshiring"},400);
+ if(!a||typeof a!=="object"||!isUuid(a.accountId)||typeof a.amount!=="string"||!/^[1-9][0-9]{0,8}$/.test(a.amount))return reply({error:"Investor va summani tekshiring"},400);
  allocations.push({accountId:a.accountId.toLowerCase(),amount:a.amount});
  }
  if(new Set(allocations.map(a=>a.accountId)).size!==allocations.length)return reply({error:"Investor takrorlangan"},400);
