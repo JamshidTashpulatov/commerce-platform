@@ -1,0 +1,7 @@
+# Manual payment workflow (development preview)
+
+Staff record agreed total and payment type. Cash purchases may have partial receipts up to the total; installment purchases currently accept only the manually agreed initial payment. The system does not move money. All money values use integer UZS and API strings. Initial-payment pricing rules and installment schedule posting remain unimplemented; no automatic credit pricing or approval.
+
+The receipts endpoint uses the order row lock, request idempotency key, store-scoped authorization, overpayment check, date validation, and transactional audit entry. Original receipts are never edited by the API. An owner or administrator may add a reversal with a reason to correct an erroneous entry; this does not refund money. A request with active receipts cannot be cancelled. The initial-payment ledger remains separate from scheduled installment receipts. Active or settled installment contracts block writes to the new receipt API until a unified reconciliation process is implemented. The displayed outstanding amount is total minus unreversed manual receipts only, not a consolidated installment balance. Do not activate installment contracts until the ledgers are reconciled.
+
+Use only in disposable test environments until authorization, contract policies, cancellation, reporting, and UI verification are complete. Staff pages are disabled by default. Do not collect personal details or configure real payment transactions in public previews. No payment provider credentials or deployment are required.
