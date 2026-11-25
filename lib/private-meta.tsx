@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { ImageResponse } from "next/og";
 
-/** Brand shown in private-area link previews. Matches the label in the workspace shell. */
-export const brandName = "Do‘kon";
+/** Store brand, the same string the storefront uses in its root title template ("%s. Malika Tech"). */
+export const brandName = "Malika Tech";
 export const ogSize = { width: 1200, height: 630 };
 
 /**

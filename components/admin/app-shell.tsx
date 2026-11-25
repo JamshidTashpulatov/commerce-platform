@@ -182,9 +182,9 @@ export function AppShell({ role, children }: { role: StaffRole; children: ReactN
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton size="lg" render={<Link href="/staff" />}>
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary font-heading text-sm font-semibold text-primary-foreground">D</span>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary font-heading text-sm font-semibold text-primary-foreground">M</span>
                     <span className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">Do‘kon</span>
+                      <span className="truncate font-semibold">Malika Tech</span>
                       <span className="truncate text-xs text-muted-foreground">Ish maydoni</span>
                     </span>
                   </SidebarMenuButton>
