@@ -4,7 +4,7 @@ import {variantImage,type OptionGroup,type OptionSelection} from "../catalog-opt
 import {approvedImageUrl,localMediaId} from "./catalog-media";
 import {database,configuredStoreId} from "./db";
 import {isUuid} from "./http";
-import {modelFamily,sortCategories} from "../storefront";
+import {productModel,sortCategories} from "../storefront";
 export {sortCategories};
 
 // Read-only queries for the public storefront. Only published products with
@@ -123,7 +123,7 @@ export type ModelFamily={family:string;image:string|null;count:number};
  */
 export async function categoryFamilies(category:string):Promise<ModelFamily[]>{
   const r=await database().query(
-    `SELECT p.id,p.name,p.image_url,p.option_groups,
+    `SELECT p.id,p.name,p.model,p.image_url,p.option_groups,
        (array_agg(v.image_url ORDER BY v.price_uzs,v.id))[1] AS variant_image,
        (array_agg(v.option_values ORDER BY v.price_uzs,v.id))[1] AS first_options
      FROM products p JOIN variants v ON v.store_id=p.store_id AND v.product_id=p.id AND v.active
@@ -131,7 +131,7 @@ export async function categoryFamilies(category:string):Promise<ModelFamily[]>{
      GROUP BY p.id ORDER BY max(v.price_uzs) DESC,p.name,p.id LIMIT 200`,[configuredStoreId(),category]);
   const families=new Map<string,ModelFamily>();
   for(const row of r.rows){
-    const family=modelFamily(row.name);
+    const family=productModel(row.model,row.name);
     const known=families.get(family);
     if(known){known.count++;continue;}
     families.set(family,{family,count:1,

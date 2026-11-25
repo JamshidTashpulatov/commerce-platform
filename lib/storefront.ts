@@ -114,3 +114,6 @@ export function modelFamily(name:string):string{
   const base=name.trim().replace(/\s*\d+(?:[.,]\d+)?(?:″|"|-inch| dyuym)$/,"").trim();
   return base.match(/^(.*\d+)(?:e| Pro Max| Pro| Plus| mini)$/)?.[1]??base;
 }
+
+/** A product's model on the storefront: the one set in the catalog admin, else derived from the name. */
+export const productModel=(model:string|null|undefined,name:string)=>model?.trim()||modelFamily(name);

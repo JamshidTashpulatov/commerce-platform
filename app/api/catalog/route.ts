@@ -3,7 +3,7 @@ import {variantImage,type OptionGroup,type OptionSelection} from "../../../lib/c
 import {approvedImageUrl} from "../../../lib/server/catalog-media";
 import { database,configuredStoreId } from "../../../lib/server/db";
 import {isUuid} from "../../../lib/server/http";
-import {modelFamily} from "../../../lib/storefront";
+import {productModel} from "../../../lib/storefront";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request:Request){
@@ -26,11 +26,11 @@ export async function GET(request:Request){
       return NextResponse.json({error:"Qidiruv parametrlarini tekshiring"},{status:400});
     }
     const db=database();
-    // A model family is derived from product names, so resolve it to product ids first.
+    // A product's model is the admin's choice or derived from its name, so resolve it to product ids first.
     let modelIds:string[]|null=null;
     if (model) {
-      const named=await db.query(`SELECT id,name FROM products WHERE store_id=$1 AND published AND ($2::text IS NULL OR category=$2)`,[storeId,category]);
-      modelIds=named.rows.filter(r=>modelFamily(r.name)===model).map(r=>r.id);
+      const named=await db.query(`SELECT id,name,model FROM products WHERE store_id=$1 AND published AND ($2::text IS NULL OR category=$2)`,[storeId,category]);
+      modelIds=named.rows.filter(r=>productModel(r.model,r.name)===model).map(r=>r.id);
     }
     const [page,categories]=await Promise.all([
       db.query(
