@@ -145,6 +145,7 @@ html:not(:has([data-ui="shadcn"])) {
   --shadow:0 0 0 1px #0000000f,0 2px 4px #00000008,0 8px 24px #00000005;
   scroll-padding-top: 88px;
   /* Restore what Tailwind's preflight resets, so legacy pages look as before. */
+  line-height: normal;
   h1, h2, h3 { font-weight: 700; }
   img, svg { display: inline; vertical-align: baseline; }
   button:not([class]) { border: 2px outset buttonborder; background: buttonface; padding: 1px 6px; }
