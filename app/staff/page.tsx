@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, SearchIcon } from "lucide-react";
 import { EmptyState, ErrorState, LoadingBlock, Money, PageHeader, RefreshButton, Stat, StatGrid, TableFrame, formatStamp } from "@/components/admin/kit";
@@ -12,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { requestLabels, sourceLabels, staffFetch, type StaffOrder } from "@/lib/staff-client";
 
 export default function StaffInbox() {
+  const router = useRouter();
   const [orders, setOrders] = useState<StaffOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -151,9 +153,17 @@ export default function StaffInbox() {
                 </TableHeader>
                 <TableBody>
                   {orders.map(o => (
-                    <TableRow key={o.id}>
+                    <TableRow
+                      key={o.id}
+                      className="cursor-pointer"
+                      onClick={e => {
+                        // The whole row opens the order. Modified clicks and text selection keep their usual meaning.
+                        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || window.getSelection()?.toString()) return;
+                        router.push("/staff/orders/" + o.id);
+                      }}
+                    >
                       <TableCell>
-                        <Link href={"/staff/orders/" + o.id} className="font-mono font-medium underline-offset-4 hover:underline" aria-label={"Buyurtma " + o.id}>
+                        <Link href={"/staff/orders/" + o.id} onClick={e => e.stopPropagation()} className="font-mono font-medium text-primary underline underline-offset-4" aria-label={"Buyurtma " + o.id}>
                           {o.id.slice(0, 8)}
                         </Link>
                       </TableCell>
