@@ -16,7 +16,7 @@ export async function GET(_request:Request,{params}:{params:Promise<{id:string}>
  SELECT 1 FROM jsonb_array_elements(p.option_groups) g CROSS JOIN LATERAL jsonb_array_elements(g->'values') val
  WHERE val->>'imageUrl'=$4
  ))
- ))`,[store,id,admin,path]);
+ ) OR EXISTS(SELECT 1 FROM store_banners b WHERE b.store_id=m.store_id AND b.published AND b.image_url=$4))`,[store,id,admin,path]);
  if(!r.rowCount)return missing();
  return new Response(new Uint8Array(r.rows[0].image_bytes),{headers:{"Content-Type":"image/webp","X-Content-Type-Options":"nosniff","Content-Security-Policy":"default-src 'none'","Cache-Control":"private, no-store"}});
  }catch{return NextResponse.json({error:"Rasmni yuklab bo‘lmadi"},{status:503,headers:privateHeaders});}

@@ -2,7 +2,7 @@ import type {SVGProps} from "react";
 import {BRAND_MARK_D,BRAND_MARK_ROTATIONS,BRAND_MARK_VIEWBOX} from "@/lib/brand-mark";
 
 /**
- * The Tech Store logo. Inherits its colour (currentColor) and draws three explicit
+ * The Techs logo. Inherits its colour (currentColor) and draws three explicit
  * paths instead of <use>, so several copies on one page never clash on ids.
  * Decorative by default; pass a `title` to make it a labelled image.
  */

@@ -50,7 +50,7 @@ export default function Inventory() {
   const invoice = data?.invoices.find(i => i.id === invoiceId);
   const variant = data?.variants.find(v => v.id === variantId && v.active);
   const q = Number(quantity);
-  const costOk = /^[1-9][0-9]{0,11}$/.test(unitCost);
+  const costOk = /^[1-9][0-9]{0,8}$/.test(unitCost);
   const qtyOk = Number.isSafeInteger(q) && q >= 1 && q <= 10000;
   const total = costOk && qtyOk ? BigInt(unitCost) * BigInt(q) : BigInt(0);
   const overInvoice = !!invoice && total > BigInt(invoice.unreceived_uzs);

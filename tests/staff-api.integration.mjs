@@ -188,9 +188,12 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   const fundingPath=nextPath+"/funding";
   const allocation={allocations:[{accountId:investorId,amount:"700"},{accountId:secondId,amount:"300"}]};
   assert.equal((await call(fundingPath,"PUT",allocation,investor)).status,403);
-  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:investorId,amount:"1001"}]},seller)).status,400);
-  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:secondId,amount:"401"}]},seller)).status,409);
-  assert.equal((await call(fundingPath,"PUT",allocation,seller)).status,200);
+  // Confirmed rules: only the administrator assigns investors, and funding covers the full cost (1000) exactly.
+  assert.equal((await call(fundingPath,"PUT",allocation,seller)).status,403);
+  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:investorId,amount:"1001"}]},admin)).status,400);
+  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:secondId,amount:"400"}]},admin)).status,400);
+  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:investorId,amount:"599"},{accountId:secondId,amount:"401"}]},admin)).status,409);
+  assert.equal((await call(fundingPath,"PUT",allocation,admin)).status,200);
   assert.equal((await call(fundingPath,"GET",undefined,seller)).data.allocations.length,2);
   const own=await call("/api/investor/summary","GET",undefined,investor);
   assert.equal(own.status,200);assert.equal(own.data.allocated_uzs,"700");assert.equal(own.data.available_uzs,"300");
@@ -342,6 +345,57 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal((await fetch(origin+media.data.url)).status,200);
   assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:1,published:false},admin)).status,200);
   assert.equal((await fetch(origin+media.data.url)).status,404);
+  // The model groups products on the storefront: set in the admin, kept when omitted, derived from the name when empty.
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:2,published:true,model:"x".repeat(81)},admin)).status,400);
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:2,published:true,model:"  Fixture family  "},admin)).status,200);
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:3,published:true},admin)).status,200);
+  assert.equal((await call("/api/admin/catalog","GET",undefined,admin)).data.products.find(p=>p.id===mediaProductId).model,"Fixture family");
+  assert.deepEqual([...new Set((await call("/api/catalog?category=Test&model=Fixture+family")).data.items.map(i=>i.id))],[mediaProductId]);
+  assert.equal((await call("/api/catalog?category=Test&model=Media+fixture")).data.items.length,0);
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:4,published:true,model:""},admin)).status,200);
+  assert.deepEqual([...new Set((await call("/api/catalog?category=Test&model=Media+fixture")).data.items.map(i=>i.id))],[mediaProductId]);
+  assert.equal((await call("/api/catalog?sort=cheapest")).status,400);
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:5,published:false},admin)).status,200);
+  // The home page banner: admin only, validated, revision checked, and its image public only while published.
+  assert.equal((await call("/api/admin/banner","GET",undefined,seller)).status,403);
+  assert.equal((await call("/api/admin/banner","GET",undefined,admin)).data.banner,null);
+  async function uploadVideo(bytes,auth,type="video/mp4"){
+   const response=await fetch(origin+"/api/admin/banner/video",{method:"POST",headers:{Origin:origin,"Content-Type":type,Cookie:auth},body:bytes});
+   return {status:response.status,data:await response.json()};
+  }
+  const mp4=Buffer.concat([Buffer.from([0,0,0,0x18]),Buffer.from("ftypmp42"),Buffer.alloc(2048,7)]);
+  assert.equal((await uploadVideo(mp4,seller)).status,403);
+  assert.equal((await uploadVideo(mp4,admin,"video/quicktime")).status,415);
+  assert.equal((await uploadVideo(png,admin)).status,415);
+  assert.equal((await uploadVideo(Buffer.alloc(4*1024*1024+1,1),admin)).status,413);
+  const video=await uploadVideo(mp4,admin);
+  assert.equal(video.status,201);
+  assert.equal((await uploadVideo(mp4,admin)).data.url,video.data.url);
+  assert.equal((await fetch(origin+video.data.url)).status,404);
+  const banner={eyebrow:"Yangi",title:"Banner fixture",subtitle:"Fixture matni",imageUrl:media.data.url,videoUrl:video.data.url,primaryLabel:"Batafsil",primaryHref:"/catalog",secondaryLabel:"",secondaryHref:"",published:true,revision:null};
+  assert.equal((await call("/api/admin/banner","POST",{...banner,videoUrl:"/api/catalog/media/"+randomUUID()},admin)).status,400);
+  assert.equal((await call("/api/admin/banner","POST",{...banner,videoUrl:"/api/banner/video/"+randomUUID()},admin)).status,400);
+  assert.equal((await call("/api/admin/banner","POST",banner,seller)).status,403);
+  assert.equal((await call("/api/admin/banner","POST",{...banner,primaryHref:"//evil.example"},admin)).status,400);
+  assert.equal((await call("/api/admin/banner","POST",{...banner,primaryHref:"javascript:alert(1)"},admin)).status,400);
+  assert.equal((await call("/api/admin/banner","POST",{...banner,secondaryLabel:"Faqat matn"},admin)).status,400);
+  assert.equal((await call("/api/admin/banner","POST",{...banner,title:" "},admin)).status,400);
+  assert.equal((await call("/api/admin/banner","POST",banner,admin)).status,200);
+  assert.equal((await call("/api/admin/banner","POST",banner,admin)).status,409);
+  assert.equal((await fetch(origin+media.data.url)).status,200);
+  const ranged=await fetch(origin+video.data.url,{headers:{Range:"bytes=4-11"}});
+  assert.equal(ranged.status,206);
+  assert.equal(ranged.headers.get("content-range"),"bytes 4-11/"+mp4.length);
+  assert.equal(Buffer.from(await ranged.arrayBuffer()).toString("latin1"),"ftypmp42");
+  assert.equal((await fetch(origin+video.data.url,{headers:{Range:"bytes=999999-"}})).status,416);
+  assert.ok((await (await fetch(origin+"/")).text()).includes("Banner fixture"));
+  const savedBanner=(await call("/api/admin/banner","GET",undefined,admin)).data.banner;
+  assert.equal(savedBanner.revision,0);
+  assert.equal((await call("/api/admin/banner","POST",{...banner,published:false,revision:0},admin)).status,200);
+  assert.equal((await call("/api/admin/banner","POST",{...banner,published:false,revision:0},admin)).status,409);
+  assert.equal((await fetch(origin+media.data.url)).status,404);
+  assert.equal((await fetch(origin+video.data.url)).status,404);
+  assert.ok(!(await (await fetch(origin+"/")).text()).includes("Banner fixture"));
 
 
 

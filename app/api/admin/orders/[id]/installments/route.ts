@@ -8,7 +8,7 @@ export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const reply=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:privateHeaders});
 type Ctx={params:Promise<{id:string}>};
-const amount=(v:unknown):v is string=>typeof v==="string"&&/^[1-9][0-9]{0,11}$/.test(v);
+const amount=(v:unknown):v is string=>typeof v==="string"&&/^[1-9][0-9]{0,8}$/.test(v);
 export async function GET(_request:Request,{params}:Ctx){
  try{
  const {id}=await params;if(!isUuid(id))return reply({error:"Buyurtma topilmadi"},404);

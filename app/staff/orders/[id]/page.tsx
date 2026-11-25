@@ -202,19 +202,19 @@ export default function StaffOrderDetails() {
     content: <OrderPayments plain part="receipts" endpoint={endpoint} cancelled={cancelled} onChanged={refreshQuiet} />,
   });
 
-  if (installment)
+  if (terms)
     drafts.push({
       id: "funding",
       title: "Investor moliyalashtirishi",
-      description: "Tan narxi qaysi investor kapitalidan qoplanishini belgilang. Sotuv tasdiqlangach taqsimotni o‘zgartirib bo‘lmaydi.",
+      description: "Tan narxi qaysi investor kapitalidan qoplanishini administrator belgilaydi. Tan narxi to‘liq taqsimlanadi, sotuvdan keyin o‘zgartirib bo‘lmaydi.",
       done: fundingDone,
-      blocked: principal === null ? "Avval nasiya shartlarini saqlang." : !fundingDone && sold ? "Sotilgan buyurtmada taqsimotni o‘zgartirib bo‘lmaydi." : !fundingDone && cancelled ? "Buyurtma bekor qilingan." : undefined,
+      blocked: principal === null ? "Tan narxi kiritilmagan. To‘lov shartlarida tan narxini saqlang." : !fundingDone && sold ? "Sotilgan buyurtmada taqsimotni o‘zgartirib bo‘lmaydi." : !fundingDone && cancelled ? "Buyurtma bekor qilingan." : undefined,
       summary: (
         <>
           Ajratilgan: <Money value={funded} /> / <Money value={principal ?? "0"} />
         </>
       ),
-      content: <OrderFunding plain endpoint={endpoint} locked={sold || cancelled} onChanged={refreshQuiet} />,
+      content: <OrderFunding plain endpoint={endpoint} locked={sold || cancelled} cash={!installment} onChanged={refreshQuiet} />,
     });
 
   drafts.push({
@@ -228,7 +228,7 @@ export default function StaffOrderDetails() {
       <Notice>Sotuv tasdiqlangan. Qaytarish jarayoni hali mavjud emas.</Notice>
     ) : (
       <>
-        {installment && !fundingDone && <Notice>Moliyalashtirish to‘liq emas. Sotuv tasdiqlangach uni o‘zgartirib bo‘lmaydi va kapital qaytimini yozib bo‘lmaydi.</Notice>}
+        {principal !== null && !fundingDone && <Notice>Investorlar biriktirilmagan. Sotuv tasdiqlangach uni o‘zgartirib bo‘lmaydi va kapital qaytimini yozib bo‘lmaydi.</Notice>}
         {terms && !paymentDone && <Notice>{installment ? "Boshlang‘ich to‘lov" : "To‘lov"} hali to‘liq qayd etilmagan. Sotuvni tasdiqlash to‘lovni qayd etmaydi.</Notice>}
         <Button type="button" className="self-start" disabled={busy} onClick={() => setConfirmSale(true)}>
           Sotuvni tasdiqlash

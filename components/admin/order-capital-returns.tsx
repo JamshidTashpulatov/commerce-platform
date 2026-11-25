@@ -1,5 +1,6 @@
 "use client";
 
+import { SplitIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, RefreshButton, Section, StatusBadge, SummaryList, TableFrame, TextField, errorText, formatDay } from "./kit";
@@ -140,7 +141,7 @@ export function OrderCapitalReturns({ endpoint, onChanged, version = 0, plain }:
                         {!r.posted && data.canPost && data.sold && full && (
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                            
                             disabled={busy}
                             onClick={() => {
@@ -150,6 +151,7 @@ export function OrderCapitalReturns({ endpoint, onChanged, version = 0, plain }:
                               setConfirm(false);
                             }}
                           >
+                            <SplitIcon data-icon="inline-start" />
                             Taqsimlash
                           </Button>
                         )}

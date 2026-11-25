@@ -6,10 +6,11 @@ import {ShoppingBagIcon} from "lucide-react";
 import {Empty,EmptyContent,EmptyDescription,EmptyHeader,EmptyMedia,EmptyTitle} from "@/components/ui/empty";
 import {cartStore} from "../../lib/cart-store";
 import {useQuote,type Quote} from "../../lib/use-cart-quote";
-import {TELEGRAM_URL,soum} from "../../lib/storefront";
+import {TELEGRAM_URL} from "../../lib/storefront";
 import {CartLines,summarize} from "./cart-sheet";
 import {CheckoutForm,type TelegramLogin} from "./checkout-form";
 import {pill} from "./bits";
+import {formatMoney} from "../../lib/money";
 
 export function CheckoutView({enabled,telegram}:{enabled:boolean;telegram:TelegramLogin}){
   const router=useRouter();
@@ -26,7 +27,7 @@ export function CheckoutView({enabled,telegram}:{enabled:boolean;telegram:Telegr
     router.push("/checkout/done?ref="+reference);
   };
   const orderLines=payable.map(r=>({variantId:r.line.variantId,quantity:r.line.quantity,expectedPrice:r.quote!.unitPrice}));
-  const text=payable.map(r=>`${r.quote!.name}${r.quote!.options?" ("+r.quote!.options+")":""} × ${r.line.quantity}: ${soum(BigInt(r.quote!.unitPrice)*BigInt(r.line.quantity))}`).join("\n")+`\nJami: ${soum(total)}`;
+  const text=payable.map(r=>`${r.quote!.name}${r.quote!.options?" ("+r.quote!.options+")":""} × ${r.line.quantity}: ${formatMoney(BigInt(r.quote!.unitPrice)*BigInt(r.line.quantity))}`).join("\n")+`\nJami: ${formatMoney(total)}`;
 
   if(!lines.length)return <div className="pt-16">
     <Empty className="rounded-[18px] bg-sf-alt py-16">
@@ -61,7 +62,7 @@ export function CheckoutView({enabled,telegram}:{enabled:boolean;telegram:Telegr
         <CartLines lines={lines} quotes={quotes} loading={loading}/>
         <div className="mt-2 border-t border-sf-line pt-4">
           {unavailable>0&&<p className="mb-2 text-xs text-amber-800">Sotuvda yo‘q mahsulotlar so‘rovga qo‘shilmaydi.</p>}
-          <div className="flex items-baseline justify-between"><span className="text-sf-ink-2">Jami</span><span className="text-[24px] font-semibold tabular-nums">{loading&&!quotes.length?"…":soum(total)}</span></div>
+          <div className="flex items-baseline justify-between"><span className="text-sf-ink-2">Jami</span><span className="text-[24px] font-semibold tabular-nums">{loading&&!quotes.length?"…":formatMoney(total)}</span></div>
           <p className="mt-1 text-xs text-sf-ink-3">Yetkazib berish narxi yo‘q. Onlayn to‘lov yo‘q.</p>
           {payable.length>1&&<p className="mt-3 text-xs leading-[1.5] text-sf-ink-3">Har bir mahsulot alohida so‘rov sifatida yoziladi, hammasi bitta raqam ostida.</p>}
         </div>

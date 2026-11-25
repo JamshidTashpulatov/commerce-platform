@@ -1,19 +1,13 @@
 // Shared, client-safe storefront helpers.
 
 /** The store's name, defined once. The admin side re-exports it from lib/brand.ts. */
-export const STORE_NAME="Tech Store";
+export const STORE_NAME="Techs";
 // The logo lives in lib/brand-mark.ts and components/brand-mark.tsx.
 // The Telegram bot keeps its original handle; renaming the store does not change it.
 export const TELEGRAM_BOT="malika_tech_store_bot";
 export const TELEGRAM_URL="https://t.me/"+TELEGRAM_BOT;
 
-export function soum(value:string|bigint|number){
-  // Grouped by hand: browsers disagree on uz-UZ separators, and server and
-  // client output must match.
-  try{return BigInt(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g,"\u00a0")+"\u00a0so‘m";}catch{return "—";}
-}
-/** "9 987 500 so‘mdan" — a starting price. */
-export const fromSoum=(value:string)=>soum(value)+"dan";
+// Prices are formatted by lib/money.ts (whole US dollars).
 
 export const catalogHref=(category?:string)=>category?"/catalog?category="+encodeURIComponent(category):"/catalog";
 export const productHref=(id:string)=>"/products/"+id;
@@ -102,4 +96,18 @@ export function bySize<T>(values:T[],label:(v:T)=>string=(v=>String(v))):T[]{
 
 export const TITLE_TEMPLATE="%s. "+STORE_NAME;
 export const STORE_TAGLINE="Apple texnikasi do‘koni";
-export const STORE_DESCRIPTION="iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar. Narxlar so‘mda, buyurtmani sotuvchi qo‘ng‘iroq qilib tasdiqlaydi.";
+export const STORE_DESCRIPTION="iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar. Narxlar dollarda, buyurtmani sotuvchi qo‘ng‘iroq qilib tasdiqlaydi.";
+
+/**
+ * The model family a product belongs to, from its name: screen sizes and the
+ * tier after a generation number are dropped, so "iPhone 18 Pro Max" and
+ * "iPhone 18 Pro" are "iPhone 18", and "MacBook Pro 14″" is "MacBook Pro".
+ * Names without a generation number ("iPad mini", "iPhone Air") are their own family.
+ */
+export function modelFamily(name:string):string{
+  const base=name.trim().replace(/\s*\d+(?:[.,]\d+)?(?:″|"|-inch| dyuym)$/,"").trim();
+  return base.match(/^(.*\d+)(?:e| Pro Max| Pro| Plus| mini)$/)?.[1]??base;
+}
+
+/** A product's model on the storefront: the one set in the catalog admin, else derived from the name. */
+export const productModel=(model:string|null|undefined,name:string)=>model?.trim()||modelFamily(name);

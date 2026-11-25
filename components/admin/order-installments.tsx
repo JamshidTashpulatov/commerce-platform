@@ -1,5 +1,6 @@
 "use client";
 
+import { PlusIcon, WrenchIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, RefreshButton, Section, StatusBadge, SummaryList, TableFrame, TextField, errorText, formatDay, tashkentToday } from "./kit";
@@ -94,7 +95,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
   const ready = !!t && t.payment_type === "installment" && data?.has_passport && initialPaid && t.term_months === months && preview.length > 0 && !cancelled;
   const row = data?.schedule.find(r => r.id === selected);
   const cap = row ? BigInt(row.amount_uzs) - BigInt(row.paid_uzs) : BigInt(0);
-  const amountOk = /^[1-9][0-9]{0,11}$/.test(amount);
+  const amountOk = /^[1-9][0-9]{0,8}$/.test(amount);
   const canPay = !!row && amountOk && BigInt(amount) <= cap && !!date && !busy && !cancelled;
 
   if ((!loading || data) && !loadError && t?.payment_type !== "installment") return null;
@@ -197,7 +198,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
                         {r.state !== "paid" && data.contract?.status === "active" && !cancelled && (
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                            
                             disabled={busy}
                             onClick={() => {
@@ -207,6 +208,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
                               key.current = "";
                             }}
                           >
+                            <PlusIcon data-icon="inline-start" />
                             To‘lov qo‘shish
                           </Button>
                         )}
@@ -257,7 +259,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
                               {!r.reversed && !cancelled && (
                                 <Button
                                   type="button"
-                                  variant="ghost"
+                                  variant="secondary"
                                  
                                   disabled={busy}
                                   onClick={() => {
@@ -265,6 +267,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
                                     setCorrecting(r);
                                   }}
                                 >
+                                  <WrenchIcon data-icon="inline-start" />
                                   Tuzatish
                                 </Button>
                               )}

@@ -28,7 +28,7 @@ export async function GET(request:Request){
  LEFT JOIN installment_receipts r ON r.store_id=x.store_id AND r.id=x.monthly_id
  WHERE x.store_id=$1 AND (x.resolved_at IS NULL OR (x.resolved_at AT TIME ZONE 'Asia/Tashkent')::date BETWEEN $2 AND $3)
  ORDER BY (x.resolved_at IS NULL) DESC,x.opened_at DESC`,values);
- await c.query("COMMIT");return reply({from,to,reviews:reviews.rows,currency:"UZS",...totals.rows[0],groups:groups.rows,entries:entries.rows.slice(0,200),truncated:entries.rows.length>200,complete:false});
+ await c.query("COMMIT");return reply({from,to,reviews:reviews.rows,currency:"USD",...totals.rows[0],groups:groups.rows,entries:entries.rows.slice(0,200),truncated:entries.rows.length>200,complete:false});
  }catch{await c.query("ROLLBACK");return reply({error:"Kassa hisobotini yuklab bo‘lmadi"},503);}finally{c.release();}
  }catch{return reply({error:"Xizmat vaqtincha ishlamayapti"},503);}
 }

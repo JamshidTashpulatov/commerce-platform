@@ -8,14 +8,15 @@ export type Series = { key: string; label: string; color: string };
 /** SortUI chart tokens, always assigned in this fixed order. */
 export const chartColors = ["var(--chart-2)", "var(--chart-4)", "var(--chart-3)", "var(--chart-1)", "var(--chart-7)", "var(--chart-10)"];
 
-/** Short axis label: 12,5 mln / 850 ming. */
+/** Short axis label in dollars: $850, $12.5 ming, $3.4 mln. */
 export function compactSum(value: number) {
   const abs = Math.abs(value);
-  const trim = (n: number) => n.toFixed(1).replace(/\.0$/, "").replace(".", ",");
-  if (abs >= 1e9) return trim(value / 1e9) + " mlrd";
-  if (abs >= 1e6) return trim(value / 1e6) + " mln";
-  if (abs >= 1e3) return trim(value / 1e3) + " ming";
-  return String(value);
+  const sign = value < 0 ? "−" : "";
+  const trim = (n: number) => n.toFixed(1).replace(/\.0$/, "");
+  if (abs >= 1e9) return `${sign}$${trim(abs / 1e9)} mlrd`;
+  if (abs >= 1e6) return `${sign}$${trim(abs / 1e6)} mln`;
+  if (abs >= 1e3) return `${sign}$${trim(abs / 1e3)} ming`;
+  return `${sign}$${Math.round(abs)}`;
 }
 
 const moneyRow = (value: unknown, label: string, color: string) => (

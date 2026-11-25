@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeftIcon } from "lucide-react";
 import { ShareDonut, chartColors } from "@/components/admin/charts";
+import { CapitalCaveat } from "@/components/admin/capital-caveat";
 import { InvestorReport } from "@/components/admin/investor-report";
 import { toast } from "sonner";
 import { ConfirmDialog, ErrorState, InlineError, LoadingBlock, Money, PageHeader, RefreshButton, Section, Stat, StatGrid, StatusBadge, SubmitButton, TextField, errorText, formatSum } from "@/components/admin/kit";
@@ -151,6 +152,7 @@ export default function InvestorPage() {
         <ConfirmDialog open={confirmReset} onOpenChange={setConfirmReset} title="Kirishni qayta sozlaysizmi?" description="Ulangan Telegram hisobi uziladi va investorning ochiq sessiyalari yopiladi. U mini ilovaga kirganda telefon raqamini qaytadan tasdiqlaydi. Kapital va hisobotlar o‘zgarmaydi." confirmLabel="Qayta sozlash" destructive busy={resetting} onConfirm={() => void resetSignIn()} />
       </Section>
       <Section title="Kapital">
+        <CapitalCaveat />
         <StatGrid>
           <Stat label="Joriy asosiy kapital" value={<Money value={principal} />} />
           <Stat label="Kiritilgan" value={<Money value={investor.contributed} />} />

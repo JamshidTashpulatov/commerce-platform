@@ -1,5 +1,6 @@
 "use client";
 
+import { WrenchIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, PageHeader, RefreshButton, Section, StatusBadge, SubmitButton, SummaryList, TableFrame, TextField, errorText, formatDay, isAmount, tashkentToday } from "@/components/admin/kit";
@@ -366,7 +367,7 @@ export default function Suppliers() {
                               {!p.reversed && (
                                 <Button
                                   type="button"
-                                  variant="ghost"
+                                  variant="secondary"
                                  
                                   disabled={!enabled}
                                   onClick={() => {
@@ -375,6 +376,7 @@ export default function Suppliers() {
                                     setError("");
                                   }}
                                 >
+                                  <WrenchIcon data-icon="inline-start" />
                                   Tuzatish
                                 </Button>
                               )}

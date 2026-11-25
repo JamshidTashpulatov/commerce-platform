@@ -1,5 +1,6 @@
 "use client";
 
+import { WrenchIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, RefreshButton, Section, Stat, StatGrid, SubmitButton, SummaryList, TableFrame, TextField, errorText, formatDay, tashkentToday } from "./kit";
@@ -16,7 +17,7 @@ type Terms = { agreed_total_uzs: string; payment_type: "cash" | "installment"; i
 type Receipt = { id: string; amount_uzs: string; kind: "cash" | "initial"; method: string; received_on: string; reversed: boolean };
 type PaymentData = { can_review: boolean; terms: Terms | null; receipts: Receipt[]; received_uzs: string; remaining_uzs: string | null; manual_received_uzs: string; has_schedule: boolean; pricing_policy: PricingPolicy | null };
 export const paymentMethods: Record<string, string> = { cash: "Naqd", transfer: "Pul o‘tkazmasi", other: "Boshqa" };
-const validSum = (s: string) => /^(0|[1-9][0-9]{0,11})$/.test(s);
+const validSum = (s: string) => /^(0|[1-9][0-9]{0,8})$/.test(s);
 
 export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: { plain?: boolean; part?: "terms" | "receipts"; endpoint: string; cancelled: boolean; onChanged?: () => void }) {
   const url = endpoint + "/payments";
@@ -96,7 +97,8 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
     try {
       quote = priceInstallment(BigInt(cost), BigInt(initial), months, policy);
     } catch {}
-  const canSave = editable && (type === "cash" ? validSum(total) && BigInt(total) > BigInt(0) : !!quote);
+  const cashCostBad = type === "cash" && cost !== "" && !(validSum(cost) && BigInt(cost) > BigInt(0));
+  const canSave = editable && (type === "cash" ? validSum(total) && BigInt(total) > BigInt(0) && !cashCostBad : !!quote);
   const cap = data?.terms ? BigInt(data.terms.payment_type === "cash" ? data.terms.agreed_total_uzs : data.terms.initial_due_uzs) - BigInt(data.manual_received_uzs) : BigInt(0);
   const amountOver = validSum(amount) && BigInt(amount) > cap;
   const canReceipt = !busy && !cancelled && !data?.has_schedule && !!data?.terms && validSum(amount) && BigInt(amount) > BigInt(0) && BigInt(amount) <= cap && !!date;
@@ -127,7 +129,14 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
                   </NativeSelect>
                 )}
               </TextField>
-              {type === "cash" && <TextField label="Kelishilgan jami summa">{id => <MoneyInput id={id} name="total" value={total} disabled={!editable} onChange={setTotal} />}</TextField>}
+              {type === "cash" && (
+                <>
+                  <TextField label="Kelishilgan jami summa">{id => <MoneyInput id={id} name="total" value={total} disabled={!editable} onChange={setTotal} />}</TextField>
+                  <TextField label="Tan narxi" description="Investorlarni biriktirish uchun kerak." error={cashCostBad ? "Tan narxini to‘g‘ri kiriting." : undefined}>
+                    {id => <MoneyInput id={id} name="cost" value={cost} disabled={!editable} onChange={setCost} />}
+                  </TextField>
+                </>
+              )}
               {type === "installment" && (
                 <>
                   <TextField label="Tan narxi">
@@ -288,7 +297,7 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
                           {!r.reversed && !cancelled && (
                             <Button
                               type="button"
-                              variant="ghost"
+                              variant="secondary"
                              
                               disabled={busy}
                               onClick={() => {
@@ -296,6 +305,7 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
                                 setCorrecting(r);
                               }}
                             >
+                              <WrenchIcon data-icon="inline-start" />
                               Tuzatish
                             </Button>
                           )}

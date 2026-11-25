@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeftIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { ArrowLeftIcon, PencilIcon, PlusIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
 import { CatalogImageUpload } from "@/components/admin/catalog-image-upload";
 import { CatalogOptionEditor } from "@/components/admin/catalog-option-editor";
@@ -14,11 +14,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { validSelection, type OptionGroup, type OptionSelection } from "@/lib/catalog-options";
 import { staffFetch } from "@/lib/staff-client";
+import { modelFamily, productModel } from "@/lib/storefront";
 
-type Product = { id: string; name: string; category: string; description: string; image_url: string | null; published: boolean; revision: number; option_groups: OptionGroup[] };
+type Product = { id: string; name: string; category: string; model: string | null; description: string; image_url: string | null; published: boolean; revision: number; option_groups: OptionGroup[] };
 type Variant = { id: string; product_id: string; sku: string; color: string; storage_label: string | null; price_uzs: string; quantity: number; active: boolean; revision: number; option_values: OptionSelection; image_url: string | null };
 type Data = { products: Product[]; variants: Variant[]; enabled: boolean; truncated: boolean };
-const emptyProduct = { name: "", category: "", description: "", imageUrl: "", published: false, optionGroups: [] as OptionGroup[] };
+const emptyProduct = { name: "", category: "", model: "", description: "", imageUrl: "", published: false, optionGroups: [] as OptionGroup[] };
 const emptyVariant = { sku: "", color: "", storage: "", price: "", active: true, optionValues: {} as OptionSelection, imageUrl: "" };
 const describe = (v: Variant) => (Object.keys(v.option_values).length ? Object.entries(v.option_values).map(([k, val]) => k + ": " + val).join(" · ") : [v.color, v.storage_label].filter(Boolean).join(" · "));
 
@@ -68,7 +69,7 @@ export default function CatalogAdmin() {
   function select(p: Product) {
     setSelected(p.id);
     setEditing(p);
-    setProductForm({ name: p.name, category: p.category, description: p.description, imageUrl: p.image_url ?? "", published: p.published, optionGroups: p.option_groups });
+    setProductForm({ name: p.name, category: p.category, model: p.model ?? "", description: p.description, imageUrl: p.image_url ?? "", published: p.published, optionGroups: p.option_groups });
     setError("");
     setView("editor");
   }
@@ -115,6 +116,9 @@ export default function CatalogAdmin() {
 
   // Categories are the distinct values already used by products, plus ones added in this session.
   const categories = [...new Set([...(data?.products.map(p => p.category) ?? []), ...addedCategories, productForm.category].filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  // Models already used in the chosen category, offered while typing; an empty field falls back to the name.
+  const autoModel = productForm.name.trim() ? modelFamily(productForm.name) : "";
+  const models = [...new Set((data?.products ?? []).filter(p => p.category === productForm.category).map(p => productModel(p.model, p.name)))].sort((a, b) => a.localeCompare(b));
   const categoryName = newCategory.trim();
   const categoryExists = categories.some(c => c.toLowerCase() === categoryName.toLowerCase());
   function addCategory() {
@@ -125,7 +129,7 @@ export default function CatalogAdmin() {
     setCategoryOpen(false);
   }
   const productValid = !!productForm.name.trim() && !!productForm.category.trim();
-  const variantValid = !!product && !!variantForm.sku.trim() && (product.option_groups.length ? validSelection(product.option_groups, variantForm.optionValues) : !!variantForm.color.trim()) && /^[1-9][0-9]{0,11}$/.test(variantForm.price);
+  const variantValid = !!product && !!variantForm.sku.trim() && (product.option_groups.length ? validSelection(product.option_groups, variantForm.optionValues) : !!variantForm.color.trim()) && /^[1-9][0-9]{0,8}$/.test(variantForm.price);
 
   if (loading && !data) return <><PageHeader title="Mahsulotlar" /><LoadingBlock rows={6} label="Katalog yuklanmoqda" /></>;
   if (!data) return <><PageHeader title="Mahsulotlar" /><ErrorState message={loadError || "Katalog yuklanmadi"} onRetry={() => void load()} /></>;
@@ -168,7 +172,8 @@ export default function CatalogAdmin() {
                       <StatusBadge tone={p.published ? "success" : "neutral"}>{p.published ? "E’lon qilingan" : "Qoralama"}</StatusBadge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button type="button" variant="outline" onClick={() => select(p)}>
+                      <Button type="button" variant="secondary" onClick={() => select(p)}>
+                        <PencilIcon data-icon="inline-start" />
                         Tahrirlash
                       </Button>
                     </TableCell>
@@ -197,7 +202,7 @@ export default function CatalogAdmin() {
           onSubmit={e => {
             e.preventDefault();
             if (!productValid) return;
-            void save({ ...productForm, imageUrl: productForm.imageUrl.trim() || null, action: editing ? "updateProduct" : "createProduct", ...(editing ? { id: editing.id, revision: editing.revision } : {}) }, () => {});
+            void save({ ...productForm, model: productForm.model.trim() || null, imageUrl: productForm.imageUrl.trim() || null, action: editing ? "updateProduct" : "createProduct", ...(editing ? { id: editing.id, revision: editing.revision } : {}) }, () => {});
           }}
         >
           <div className="grid gap-4 sm:grid-cols-2">
@@ -226,6 +231,21 @@ export default function CatalogAdmin() {
                     Kategoriya
                   </Button>
                 </div>
+              )}
+            </TextField>
+            <TextField
+              label="Model"
+              description={productForm.model.trim() ? "Saytda katalog shu model bo‘yicha guruhlanadi." : autoModel ? `Bo‘sh qolsa, nomdan olinadi: “${autoModel}”.` : "Masalan, iPhone 18 Pro va iPhone 18 Pro Max uchun “iPhone 18”. Bo‘sh qolsa, nomdan olinadi."}
+            >
+              {id => (
+                <>
+                  <Input id={id} name="model" maxLength={80} autoComplete="off" list={id + "-models"} disabled={locked} placeholder={autoModel || "Masalan, iPhone 18"} value={productForm.model} onChange={e => setProductForm(p => ({ ...p, model: e.target.value }))} />
+                  <datalist id={id + "-models"}>
+                    {models.map(m => (
+                      <option key={m} value={m} />
+                    ))}
+                  </datalist>
+                </>
               )}
             </TextField>
             <CatalogImageUpload key={editing?.id ?? "draft"} label="Asosiy rasm" value={productForm.imageUrl} disabled={locked || !data.enabled} onBusy={setUploading} onChange={imageUrl => setProductForm(p => ({ ...p, imageUrl }))} />
@@ -284,7 +304,8 @@ export default function CatalogAdmin() {
                         <StatusBadge tone={v.active ? "success" : "neutral"}>{v.active ? "Faol" : "Faol emas"}</StatusBadge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button type="button" variant="outline" disabled={locked} onClick={() => openVariant(v)}>
+                        <Button type="button" variant="secondary" disabled={locked} onClick={() => openVariant(v)}>
+                          <PencilIcon data-icon="inline-start" />
                           Tahrirlash
                         </Button>
                       </TableCell>

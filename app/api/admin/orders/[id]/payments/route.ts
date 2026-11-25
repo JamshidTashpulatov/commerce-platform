@@ -8,7 +8,7 @@ export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const reply=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:privateHeaders});
 type Ctx={params:Promise<{id:string}>};
-const amount=(v:unknown):v is string=>typeof v==="string"&&/^(0|[1-9][0-9]{0,11})$/.test(v);
+const amount=(v:unknown):v is string=>typeof v==="string"&&/^(0|[1-9][0-9]{0,8})$/.test(v);
 const validDate=(v:unknown):v is string=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v;
 export async function GET(_request:Request,{params}:Ctx){
  try{
@@ -38,6 +38,8 @@ export async function POST(request:Request,{params}:Ctx){
  if(action==="terms"){
   if(b.type==="cash"){
    if(!amount(b.total)||BigInt(b.total)<=BigInt(0)||b.initial!=="0")return reply({error:"Kelishilgan summani tekshiring"},400);
+   // Optional for cash: what the product cost. Investors can be assigned only when it is recorded.
+   if(b.cost!==undefined&&b.cost!==""&&b.cost!==null&&(!amount(b.cost)||BigInt(b.cost)<=BigInt(0)))return reply({error:"Tan narxini tekshiring"},400);
   }else if(b.type==="installment"){
    if(!amount(b.cost)||!amount(b.initial)||typeof b.months!=="number"||!Number.isSafeInteger(b.months))return reply({error:"Tan narxi, boshlang‘ich to‘lov va muddatni tekshiring"},400);
   }else return reply({error:"To‘lov turini tanlang"},400);
@@ -72,7 +74,7 @@ export async function POST(request:Request,{params}:Ctx){
    const policy=installmentPolicy();if(!policy)return await fail("Nasiya hisoblash qoidalari sozlanmagan",503);
    try{quote=priceInstallment(BigInt(String(b.cost)),BigInt(String(b.initial)),Number(b.months),policy);}catch{return await fail("Boshlang‘ich to‘lov, tan narxi yoki muddat talabga mos emas",400);}
   }
-  await c.query("INSERT INTO order_payment_terms(store_id,order_id,agreed_total_uzs,payment_type,initial_due_uzs,cost_uzs,financed_principal_uzs,markup_uzs,term_months,minimum_initial_bps,monthly_markup_bps) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(store_id,order_id) DO UPDATE SET agreed_total_uzs=EXCLUDED.agreed_total_uzs,payment_type=EXCLUDED.payment_type,initial_due_uzs=EXCLUDED.initial_due_uzs,cost_uzs=EXCLUDED.cost_uzs,financed_principal_uzs=EXCLUDED.financed_principal_uzs,markup_uzs=EXCLUDED.markup_uzs,term_months=EXCLUDED.term_months,minimum_initial_bps=EXCLUDED.minimum_initial_bps,monthly_markup_bps=EXCLUDED.monthly_markup_bps",[store,id,quote?.total??b.total,b.type,b.initial,quote?.cost??null,quote?.principal??null,quote?.markup??null,quote?.months??null,quote?.minimumInitialBps??null,quote?.monthlyMarkupBps??null]);
+  await c.query("INSERT INTO order_payment_terms(store_id,order_id,agreed_total_uzs,payment_type,initial_due_uzs,cost_uzs,financed_principal_uzs,markup_uzs,term_months,minimum_initial_bps,monthly_markup_bps) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(store_id,order_id) DO UPDATE SET agreed_total_uzs=EXCLUDED.agreed_total_uzs,payment_type=EXCLUDED.payment_type,initial_due_uzs=EXCLUDED.initial_due_uzs,cost_uzs=EXCLUDED.cost_uzs,financed_principal_uzs=EXCLUDED.financed_principal_uzs,markup_uzs=EXCLUDED.markup_uzs,term_months=EXCLUDED.term_months,minimum_initial_bps=EXCLUDED.minimum_initial_bps,monthly_markup_bps=EXCLUDED.monthly_markup_bps",[store,id,quote?.total??b.total,b.type,b.initial,quote?.cost??(b.type==="cash"&&typeof b.cost==="string"&&b.cost!==""?b.cost:null),quote?.principal??null,quote?.markup??null,quote?.months??null,quote?.minimumInitialBps??null,quote?.monthlyMarkupBps??null]);
   event="payment_terms_saved";
  }else if(action==="receipt"){
   if(!t)return await fail("Avval to‘lov shartlarini saqlang");
