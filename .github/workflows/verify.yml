@@ -77,6 +77,7 @@ jobs:
           node --test tests/initial-return.integration.mjs
           node --test tests/investor-funding-rules.integration.mjs
           node --test tests/checkout.integration.mjs
+          node --test tests/monthly-overpayment.integration.mjs
           node --test tests/website-order.integration.mjs
           node --test tests/investor-phone.integration.mjs
           node --test tests/workspace.browser.mjs

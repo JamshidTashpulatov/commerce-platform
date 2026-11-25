@@ -4,11 +4,16 @@ import {requireStoreRole} from "../../../../../../lib/server/auth";
 import {isUuid,sameOrigin,smallJson,privateHeaders} from "../../../../../../lib/server/http";
 import {buildSchedule,validDate} from "../../../../../../lib/installment-schedule";
 import {postMonthlyAllocation,validateMonthlyReversal} from "../../../../../../lib/server/monthly-posting";
+import {spreadPayment,remainingBalance} from "../../../../../../lib/installment-spread";
+import {formatMoney} from "../../../../../../lib/money";
+import {createHash} from "node:crypto";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const reply=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:privateHeaders});
 type Ctx={params:Promise<{id:string}>};
 const amount=(v:unknown):v is string=>typeof v==="string"&&/^[1-9][0-9]{0,8}$/.test(v);
+// Keys of the second and later month rows of one payment, derived from the payment's own key.
+const partKey=(key:string,index:number)=>{const h=createHash("sha256").update(key.toLowerCase()+":"+index).digest("hex");return [h.slice(0,8),h.slice(8,12),h.slice(12,16),h.slice(16,20),h.slice(20,32)].join("-");};
 export async function GET(_request:Request,{params}:Ctx){
  try{
  const {id}=await params;if(!isUuid(id))return reply({error:"Buyurtma topilmadi"},404);
@@ -26,7 +31,7 @@ export async function GET(_request:Request,{params}:Ctx){
  CASE WHEN COALESCE(SUM(r.amount_uzs) FILTER(WHERE v.receipt_id IS NULL),0)>=s.amount_uzs THEN 'paid' WHEN s.due_date < (now() AT TIME ZONE 'Asia/Tashkent')::date THEN 'overdue' ELSE 'pending' END AS state
  FROM installment_schedule s LEFT JOIN installment_receipts r ON r.store_id=s.store_id AND r.schedule_id=s.id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id
  WHERE s.store_id=$1 AND s.contract_id=$2 GROUP BY s.id ORDER BY s.sequence_no`,[store,cid]):{rows:[]};
- const receipts=cid?await c.query("SELECT r.id,s.sequence_no,r.amount_uzs::text,r.received_on::text,r.method,(SELECT SUM(a.principal_uzs)::text FROM investor_monthly_allocations a WHERE a.store_id=r.store_id AND a.receipt_id=r.id) AS principal_uzs,(SELECT SUM(a.profit_uzs)::text FROM investor_monthly_allocations a WHERE a.store_id=r.store_id AND a.receipt_id=r.id) AS profit_uzs,(v.receipt_id IS NOT NULL) AS reversed FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE s.store_id=$1 AND s.contract_id=$2 ORDER BY r.received_at DESC",[store,cid]):{rows:[]};
+ const receipts=cid?await c.query("SELECT r.id,r.payment_key,s.sequence_no,r.amount_uzs::text,r.received_on::text,r.method,(SELECT SUM(a.principal_uzs)::text FROM investor_monthly_allocations a WHERE a.store_id=r.store_id AND a.receipt_id=r.id) AS principal_uzs,(SELECT SUM(a.profit_uzs)::text FROM investor_monthly_allocations a WHERE a.store_id=r.store_id AND a.receipt_id=r.id) AS profit_uzs,(v.receipt_id IS NOT NULL) AS reversed FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE s.store_id=$1 AND s.contract_id=$2 ORDER BY r.received_at DESC,s.sequence_no DESC",[store,cid]):{rows:[]};
  await c.query("COMMIT");
  return reply({can_review:actor.role==="admin"||actor.role==="owner",terms:t.rows[0]??null,initial_received_uzs:paid.rows[0].amount,has_passport:o.rows[0].has_passport,contract:contract.rows[0]??null,schedule:schedule.rows,receipts:receipts.rows});
  }catch{await c.query("ROLLBACK");return reply({error:"Nasiya jadvalini yuklab bo‘lmadi"},503);}finally{c.release();}
@@ -71,14 +76,22 @@ export async function POST(request:Request,{params}:Ctx){
  }else{
  if(!existing||!["active","settled"].includes(existing.status))return await fail("Faol nasiya jadvali mavjud emas");
  if(action==="receipt"){
- const duplicate=await c.query("SELECT r.id,r.schedule_id,r.amount_uzs::text,r.method,r.received_on::text FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id WHERE r.store_id=$1 AND r.idempotency_key=$2 AND s.contract_id=$3",[store,b.key,existing.id]);
+ // A payment spread over several months is one payment: its first row holds the request key, all rows its payment_key.
+ const duplicate=await c.query(`SELECT r.id,r.schedule_id,r.method,r.received_on::text,
+   COALESCE((SELECT SUM(g.amount_uzs) FROM installment_receipts g WHERE g.store_id=r.store_id AND g.payment_key=r.payment_key),r.amount_uzs)::text AS amount_uzs
+   FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id WHERE r.store_id=$1 AND r.idempotency_key=$2 AND s.contract_id=$3`,[store,b.key,existing.id]);
  if(duplicate.rowCount){const d=duplicate.rows[0];await c.query("ROLLBACK");return d.schedule_id===b.scheduleId&&d.amount_uzs===b.amount&&d.method===b.method&&d.received_on===b.date?reply({id:d.id,repeated:true}):reply({error:"So‘rov kaliti band"},409);}
  if(existing.status!=="active")return await fail("Nasiya yakunlangan");
  const date=await c.query("SELECT $1::date <= (now() AT TIME ZONE 'Asia/Tashkent')::date AS valid",[b.date]);if(!date.rows[0].valid)return await fail("Kelajakdagi to‘lovni qayd etib bo‘lmaydi",400);
- const s=await c.query("SELECT s.amount_uzs,COALESCE(SUM(r.amount_uzs) FILTER(WHERE v.receipt_id IS NULL),0)::text AS paid FROM installment_schedule s LEFT JOIN installment_receipts r ON r.store_id=s.store_id AND r.schedule_id=s.id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE s.store_id=$1 AND s.contract_id=$2 AND s.id=$3 GROUP BY s.id",[store,existing.id,b.scheduleId]);
- if(!s.rowCount)return await fail("To‘lov qatori topilmadi",404);
- if(BigInt(s.rows[0].paid)+BigInt(String(b.amount))>BigInt(s.rows[0].amount_uzs))return await fail("To‘lov jadvaldagi qoldiqdan oshmoqda");
- const result=await c.query("INSERT INTO installment_receipts(store_id,schedule_id,amount_uzs,idempotency_key,recorded_by,received_on,method) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(store_id,idempotency_key) DO NOTHING RETURNING id",[store,b.scheduleId,b.amount,b.key,member.account_id,b.date,b.method]);
+ const months=await c.query("SELECT s.id,s.sequence_no,(s.amount_uzs-COALESCE(SUM(r.amount_uzs) FILTER(WHERE v.receipt_id IS NULL),0))::text AS balance FROM installment_schedule s LEFT JOIN installment_receipts r ON r.store_id=s.store_id AND r.schedule_id=s.id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE s.store_id=$1 AND s.contract_id=$2 GROUP BY s.id ORDER BY s.sequence_no",[store,existing.id]);
+ const rows=months.rows.map(r=>({id:r.id as string,sequence_no:r.sequence_no as number,balance:BigInt(r.balance)}));
+ if(!rows.some(r=>r.id===b.scheduleId))return await fail("To‘lov qatori topilmadi",404);
+ // More than the month's balance is accepted: the excess goes to the following months. More than the whole remaining balance is not.
+ let parts;
+ try{parts=spreadPayment(BigInt(String(b.amount)),rows,String(b.scheduleId));}
+ catch(e){return await fail(e instanceof Error&&e.message==="MONTH_PAID"?"Bu oy to‘liq to‘langan. To‘lovni keyingi to‘lanmagan oyga yozing.":`To‘lov shartnomaning qolgan qarzidan oshmoqda. Qolgan qarz: ${formatMoney(remainingBalance(rows))}.`);}
+ for(const [index,part] of parts.entries()){
+ const result=await c.query("INSERT INTO installment_receipts(store_id,schedule_id,amount_uzs,idempotency_key,recorded_by,received_on,method,payment_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(store_id,idempotency_key) DO NOTHING RETURNING id",[store,part.id,part.amount.toString(),index?partKey(String(b.key),index):b.key,member.account_id,b.date,b.method,parts.length>1?b.key:null]);
  if(!result.rowCount)return await fail("Takroriy so‘rov");
  // A sold order's funding is frozen. Capture original invested amounts, never current portfolio balances.
  if(o.rows[0].sale_status==="sold"){
@@ -91,16 +104,25 @@ export async function POST(request:Request,{params}:Ctx){
    JOIN order_payment_terms t ON t.store_id=$1 AND t.order_id=$2 AND t.cost_uzs=p.funded`,
    [store,id,result.rows[0].id]);
  }
- const postingError=await postMonthlyAllocation(c,store,id,result.rows[0].id,BigInt(String(b.amount)));
+ // Principal and profit come from the cumulative formula, row after row, so the payment's total split is the same as for one receipt.
+ const postingError=await postMonthlyAllocation(c,store,id,result.rows[0].id,part.amount);
  if(postingError)return await fail(postingError);
+ }
  event="installment_receipt_recorded";
  }else{
- const r=await c.query("SELECT r.id FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id WHERE r.store_id=$1 AND s.contract_id=$2 AND r.id=$3",[store,existing.id,b.receiptId]);
+ const r=await c.query("SELECT r.id,r.payment_key FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id WHERE r.store_id=$1 AND s.contract_id=$2 AND r.id=$3",[store,existing.id,b.receiptId]);
  if(!r.rowCount)return await fail("To‘lov topilmadi",404);
- const reversal=await c.query("INSERT INTO installment_receipt_reversals(store_id,receipt_id,reversed_by,reason) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING receipt_id",[store,b.receiptId,member.account_id,String(b.reason).trim()]);
- if(!reversal.rowCount)return await fail("To‘lov avval bekor qilingan");const issue=await validateMonthlyReversal(c,store,id,String(b.receiptId));
- if(issue)return await fail(issue);
- await c.query("UPDATE receipt_reviews SET resolved_at=now(),resolved_by=$3,resolution=$4 WHERE store_id=$1 AND monthly_id=$2 AND resolved_at IS NULL",[store,b.receiptId,member.account_id,b.reason]);
+ // A payment spread over several months is reversed as a whole.
+ const group=r.rows[0].payment_key?(await c.query("SELECT id FROM installment_receipts WHERE store_id=$1 AND payment_key=$2 ORDER BY received_at,id",[store,r.rows[0].payment_key])).rows.map(x=>x.id as string):[String(b.receiptId)];
+ for(const receiptId of group){
+  const reversal=await c.query("INSERT INTO installment_receipt_reversals(store_id,receipt_id,reversed_by,reason) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING receipt_id",[store,receiptId,member.account_id,String(b.reason).trim()]);
+  if(!reversal.rowCount)return await fail("To‘lov avval bekor qilingan");
+ }
+ for(const receiptId of group){
+  const issue=await validateMonthlyReversal(c,store,id,receiptId);
+  if(issue)return await fail(issue);
+  await c.query("UPDATE receipt_reviews SET resolved_at=now(),resolved_by=$3,resolution=$4 WHERE store_id=$1 AND monthly_id=$2 AND resolved_at IS NULL",[store,receiptId,member.account_id,b.reason]);
+ }
  event="installment_receipt_reversed";
  }
  await c.query(`UPDATE installment_contracts c SET status=CASE WHEN NOT EXISTS(
