@@ -9,7 +9,8 @@ import {getProduct} from "../../../../lib/server/storefront";
 import {pageMeta,snippet} from "../../../../lib/server/seo";
 import {checkoutEnabled} from "../../../../lib/server/checkout";
 import {telegramLoginState} from "../../../../lib/server/telegram-login-config";
-import {catalogHref,fromSoum,soum,splitDescription} from "../../../../lib/storefront";
+import {catalogHref,splitDescription} from "../../../../lib/storefront";
+import {formatFrom,formatMoney} from "../../../../lib/money";
 
 export const dynamic="force-dynamic";
 const load=cache(async(id:string)=>{try{return await getProduct(id);}catch{return undefined;}});
@@ -18,7 +19,7 @@ export async function generateMetadata({params}:{params:Promise<{id:string}>}):P
   const product=await load((await params).id);
   if(!product)return {title:"Mahsulot topilmadi",robots:{index:false,follow:true}};
   const oneprice=new Set(product.skus.map(s=>s.price)).size===1;
-  const price=oneprice?soum(product.fromPrice):fromSoum(product.fromPrice);
+  const price=oneprice?formatMoney(product.fromPrice):formatFrom(product.fromPrice);
   const body=splitDescription(product.description).body;
   return pageMeta({title:product.name,path:"/products/"+product.id,og:{product:product.id},
     description:snippet(`${product.name}, ${price}. ${body||product.category+" turkumidan."}`)});
@@ -41,7 +42,7 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
       <Link className="self-start text-sm text-sf-link hover:underline" href={catalogHref(product.category)}>{product.category}</Link>
       <h1 className="text-[32px] leading-[1.125] font-semibold tracking-[0.004em] tablet:text-5xl tablet:leading-[1.08] tablet:tracking-[-0.003em]">{product.name}</h1>
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <p className="text-[17px] tablet:text-[19px]">{oneprice?soum(product.fromPrice):fromSoum(product.fromPrice)}</p>
+        <p className="text-[17px] tablet:text-[19px]">{oneprice?formatMoney(product.fromPrice):formatFrom(product.fromPrice)}</p>
         <CompareToggle size="md" item={{id:product.id,name:product.name,category:product.category,image:product.image}}/>
       </div>
     </header>

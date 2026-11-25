@@ -7,13 +7,7 @@ export const STORE_NAME="Tech Store";
 export const TELEGRAM_BOT="malika_tech_store_bot";
 export const TELEGRAM_URL="https://t.me/"+TELEGRAM_BOT;
 
-export function soum(value:string|bigint|number){
-  // Grouped by hand: browsers disagree on uz-UZ separators, and server and
-  // client output must match.
-  try{return BigInt(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g,"\u00a0")+"\u00a0so‘m";}catch{return "—";}
-}
-/** "9 987 500 so‘mdan" — a starting price. */
-export const fromSoum=(value:string)=>soum(value)+"dan";
+// Prices are formatted by lib/money.ts (whole US dollars).
 
 export const catalogHref=(category?:string)=>category?"/catalog?category="+encodeURIComponent(category):"/catalog";
 export const productHref=(id:string)=>"/products/"+id;
@@ -102,7 +96,7 @@ export function bySize<T>(values:T[],label:(v:T)=>string=(v=>String(v))):T[]{
 
 export const TITLE_TEMPLATE="%s. "+STORE_NAME;
 export const STORE_TAGLINE="Apple texnikasi do‘koni";
-export const STORE_DESCRIPTION="iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar. Narxlar so‘mda, buyurtmani sotuvchi qo‘ng‘iroq qilib tasdiqlaydi.";
+export const STORE_DESCRIPTION="iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar. Narxlar dollarda, buyurtmani sotuvchi qo‘ng‘iroq qilib tasdiqlaydi.";
 
 /**
  * The model family a product belongs to, from its name: screen sizes and the

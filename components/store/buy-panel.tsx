@@ -6,13 +6,14 @@ import {NativeSelect,NativeSelectOption} from "@/components/ui/native-select";
 import {Separator} from "@/components/ui/separator";
 import type {OptionGroup} from "../../lib/catalog-options";
 import type {StoreProductDetail,StoreVariant} from "../../lib/server/storefront";
-import {bySize,isColorGroup,soum,swatchColor} from "../../lib/storefront";
+import {bySize,isColorGroup,swatchColor} from "../../lib/storefront";
 import {Availability,pill} from "./bits";
 import {Gallery} from "./gallery";
 import {OneClick} from "./one-click";
 import type {TelegramLogin} from "./checkout-form";
 import {addToCart} from "../../lib/cart-store";
 import {cartUi} from "../../lib/cart-ui";
+import {formatMoney} from "../../lib/money";
 
 // Picks the stored SKU closest to the current choice when one option changes:
 // keep as many other choices as possible, then prefer in stock, then cheaper.
@@ -58,13 +59,13 @@ export function BuyPanel({product,checkout}:{product:StoreProductDetail;checkout
         <h2 className={sectionTitle}><label htmlFor="sf-variant">Variant. <span className="text-sf-ink-2">Kerakli turini tanlang.</span></label></h2>
         <NativeSelect id="sf-variant" value={selected.id} onChange={e=>choose(skus.find(v=>v.id===e.target.value))}
           className="w-full [&_select]:h-14 [&_select]:rounded-xl [&_select]:border-sf-line [&_select]:bg-white [&_select]:pr-11 [&_select]:pl-[18px] [&_select]:text-[17px] [&_select]:focus-visible:border-sf-blue [&_svg]:right-4">
-          {skus.map(v=><NativeSelectOption key={v.id} value={v.id}>{(v.label||"Variant")+" · "+soum(v.price)}</NativeSelectOption>)}
+          {skus.map(v=><NativeSelectOption key={v.id} value={v.id}>{(v.label||"Variant")+" · "+formatMoney(v.price)}</NativeSelectOption>)}
         </NativeSelect>
       </section>}
 
       <section className={cn("flex flex-col rounded-[18px] bg-sf-alt p-6 tablet:p-7",(groups.length||skus.length>1)&&"mt-10")} aria-label="Tanlangan mahsulot">
         <p className="text-sm leading-5 text-sf-ink-2">{summary}</p>
-        <p className="mt-2 text-[28px] leading-[1.14] font-semibold tracking-[0.007em] tabular-nums" aria-live="polite">{soum(selected.price)}</p>
+        <p className="mt-2 text-[28px] leading-[1.14] font-semibold tracking-[0.007em] tabular-nums" aria-live="polite">{formatMoney(selected.price)}</p>
         <Availability inStock={selected.inStock} long className="mt-3 text-sm leading-5 [&>span:first-child]:mt-[7px]"/>
         <div className="mt-6 flex flex-col gap-3">
           <button type="button" className={pill({className:"w-full gap-2"})} onClick={()=>{addToCart({variantId:selected.id,productId:product.id,seenPrice:selected.price});cartUi.open();}}>
@@ -101,7 +102,7 @@ function OptionSection({group,skus,selected,onPick}:{group:OptionGroup;skus:Stor
         className="flex min-h-16 cursor-pointer items-center justify-between gap-4 rounded-xl border border-sf-line bg-white px-[18px] py-4 text-left transition-[border-color,box-shadow,scale] duration-200 hover:border-sf-ink-3 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 aria-checked:border-sf-blue aria-checked:shadow-[0_0_0_1px_var(--color-sf-blue)]">
         <span className="text-[17px] font-semibold">{v.label}</span>
         <span className="flex flex-col items-end gap-0.5 text-right text-xs leading-4 text-sf-ink-2">
-          {v.best&&group.affectsPrice&&<span>{soum(v.best.price)}</span>}
+          {v.best&&group.affectsPrice&&<span>{formatMoney(v.best.price)}</span>}
           {v.best&&!v.best.inStock&&<span>Mavjud emas</span>}
           {!v.best&&<span>Bu tanlovda yo‘q</span>}
         </span>

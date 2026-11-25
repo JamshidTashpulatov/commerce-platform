@@ -10,12 +10,13 @@ import {imageSources} from "../../lib/image-sources";
 import {Availability,eyebrow,pill,wrap} from "../../components/store/bits";
 import {imageTone,listProducts,sortCategories,type StoreProduct,type Tone} from "../../lib/server/storefront";
 import {publishedBanner} from "../../lib/server/banner";
-import {STORE_NAME,STORE_TAGLINE,TELEGRAM_URL,catalogHref,fromSoum,productHref} from "../../lib/storefront";
+import {STORE_NAME,STORE_TAGLINE,TELEGRAM_URL,catalogHref,productHref} from "../../lib/storefront";
 import {pageMeta} from "../../lib/server/seo";
+import {formatFrom} from "../../lib/money";
 
 export const dynamic="force-dynamic";
 export const metadata=pageMeta({title:STORE_NAME+". "+STORE_TAGLINE,absoluteTitle:true,path:"/",
-  description:"iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar bir joyda. Narxlar so‘mda, buyurtma saytda, sotuvchi qo‘ng‘iroq qilib tasdiqlaydi."});
+  description:"iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar bir joyda. Narxlar dollarda, buyurtma saytda, sotuvchi qo‘ng‘iroq qilib tasdiqlaydi."});
 
 // Uploaded photos lend their edge colour to the tile, so the photo bleeds into it.
 const toneStyle=(tone:Tone|null,fallback:string)=>({"--tile-bg":tone?.background??fallback}) as CSSProperties;
@@ -51,7 +52,7 @@ export default async function Home(){
   const lead=leads[heroIndex];
   const hero:Hero|null=banner?{eyebrow:banner.eyebrow,title:banner.title,subtitle:banner.subtitle,image:banner.imageUrl,video:banner.videoUrl,category:"",tone:await imageTone(banner.imageUrl),
       primary:banner.primaryLabel?{label:banner.primaryLabel,href:banner.primaryHref}:null,secondary:banner.secondaryLabel?{label:banner.secondaryLabel,href:banner.secondaryHref}:null}
-    :lead?{eyebrow:lead.category,title:lead.product.name,subtitle:`${fromSoum(lead.product.fromPrice)}. Savatga qo‘shing yoki bir bosishda xarid qiling.`,
+    :lead?{eyebrow:lead.category,title:lead.product.name,subtitle:`${formatFrom(lead.product.fromPrice)}. Savatga qo‘shing yoki bir bosishda xarid qiling.`,
       image:lead.product.image,video:null,category:lead.category,tone:lead.product.tone,
       primary:{label:"Batafsil",href:productHref(lead.product.id)},secondary:{label:"Barcha "+lead.category,href:catalogHref(lead.category)}}:null;
   const tiles=leads.filter((_,i)=>i!==heroIndex);
@@ -98,7 +99,7 @@ export default async function Home(){
           <div className="flex flex-1 flex-col items-center gap-1 px-4 pt-11">
             <p className={cn(eyebrow,dark&&"text-[#a1a1a6]")}>{category}</p>
             <h2 className="text-[32px] leading-[1.125] font-semibold tracking-[0.004em] tablet:text-[40px] tablet:leading-[1.1] tablet:tracking-normal">{product.name}</h2>
-            <p className="mb-4 text-[19px] leading-[1.21] tracking-[0.012em] tablet:text-[21px]">{fromSoum(product.fromPrice)}{count>1?`. Turkumda ${count} ta model.`:"."}</p>
+            <p className="mb-4 text-[19px] leading-[1.21] tracking-[0.012em] tablet:text-[21px]">{formatFrom(product.fromPrice)}{count>1?`. Turkumda ${count} ta model.`:"."}</p>
             <div className="flex flex-wrap justify-center gap-x-3 gap-y-2">
               <Link className={pill({size:"sm"})} href={productHref(product.id)} aria-label={product.name+" haqida batafsil"}>Batafsil</Link>
               <Link className={pill({tone:"ghost",size:"sm",dark})} href={catalogHref(category)} aria-label={"Barcha "+category+" mahsulotlari"}>Barchasi</Link>
@@ -127,7 +128,7 @@ export default async function Home(){
             <div className="flex flex-col gap-1 px-6 pt-5 pb-6">
               <p className={eyebrow}>{p.category}</p>
               <h3 className="mb-1 text-[21px] leading-[1.19] font-semibold tracking-[0.011em]">{p.name}</h3>
-              <p className="text-sm">{fromSoum(p.fromPrice)}</p>
+              <p className="text-sm">{formatFrom(p.fromPrice)}</p>
               <Availability inStock={p.inStock} className="mt-1"/>
             </div>
           </Card>

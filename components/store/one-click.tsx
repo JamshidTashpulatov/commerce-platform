@@ -5,10 +5,11 @@ import {AlertTriangleIcon,XIcon,ZapIcon} from "lucide-react";
 import {Dialog,DialogClose,DialogContent,DialogDescription,DialogTitle} from "@/components/ui/dialog";
 import {Skeleton} from "@/components/ui/skeleton";
 import {useQuote} from "../../lib/use-cart-quote";
-import {soum} from "../../lib/storefront";
+
 import {ProductVisual} from "./product-visual";
 import {CheckoutForm,type TelegramLogin} from "./checkout-form";
 import {pill} from "./bits";
+import {formatMoney} from "../../lib/money";
 
 /**
  * "Bir bosishda xarid": orders the selected variant directly, leaving the cart
@@ -41,7 +42,7 @@ export function OneClick({variantId,productName,options,enabled,telegram,disable
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold">{productName}</p>
             {options&&<p className="truncate text-sm text-sf-ink-2">{options}</p>}
-            <p className="mt-0.5 font-semibold tabular-nums">{q?soum(q.unitPrice):loading?"…":"—"}</p>
+            <p className="mt-0.5 font-semibold tabular-nums">{q?formatMoney(q.unitPrice):loading?"…":"—"}</p>
           </div>
         </div>
         {error&&<p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}

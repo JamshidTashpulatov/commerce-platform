@@ -9,9 +9,10 @@ import {Skeleton} from "@/components/ui/skeleton";
 import {CART_MAX_QTY,cartCount,cartStore,removeLine,setQuantity,type CartLine} from "../../lib/cart-store";
 import {cartUi} from "../../lib/cart-ui";
 import {useQuote,type Quote} from "../../lib/use-cart-quote";
-import {productHref,soum} from "../../lib/storefront";
+import {productHref} from "../../lib/storefront";
 import {ProductVisual} from "./product-visual";
 import {pill} from "./bits";
+import {formatMoney} from "../../lib/money";
 
 export function CartButton(){
   const lines=cartStore.use();
@@ -48,8 +49,8 @@ export function CartLines({lines,quotes,loading,editable=true}:{lines:CartLine[]
           </div>
           {!quote.available?<p className="flex items-start gap-1.5 text-sm text-red-700"><AlertTriangleIcon className="mt-0.5 size-4 shrink-0"/>Endi sotuvda yo‘q. Savatdan olib tashlang.</p>
           :<>
-            <p className="text-xs text-sf-ink-2 tabular-nums">{line.quantity>1?`${soum(quote.unitPrice)} × ${line.quantity}. `:""}{quote.inStock?"Mavjud":"Buyurtma asosida: sotuvchi muddatini aytadi"}</p>
-            {quote.unitPrice!==line.seenPrice&&<p className="flex items-start gap-1.5 text-xs text-amber-800"><AlertTriangleIcon className="mt-px size-3.5 shrink-0"/>Narx o‘zgardi: avval {soum(line.seenPrice)} edi.</p>}
+            <p className="text-xs text-sf-ink-2 tabular-nums">{line.quantity>1?`${formatMoney(quote.unitPrice)} × ${line.quantity}. `:""}{quote.inStock?"Mavjud":"Buyurtma asosida: sotuvchi muddatini aytadi"}</p>
+            {quote.unitPrice!==line.seenPrice&&<p className="flex items-start gap-1.5 text-xs text-amber-800"><AlertTriangleIcon className="mt-px size-3.5 shrink-0"/>Narx o‘zgardi: avval {formatMoney(line.seenPrice)} edi.</p>}
           </>}
         </>:loading?<div className="flex flex-col gap-2"><Skeleton className="h-4 w-2/3 bg-sf-alt"/><Skeleton className="h-3 w-1/3 bg-sf-alt"/></div>
           :<p className="text-sm text-sf-ink-2">Ma’lumot yuklanmadi.</p>}
@@ -60,9 +61,9 @@ export function CartLines({lines,quotes,loading,editable=true}:{lines:CartLine[]
             <button type="button" className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-sf-ink-2 hover:text-sf-ink disabled:opacity-30" aria-label="Ko‘paytirish" disabled={line.quantity>=CART_MAX_QTY||!quote?.available} onClick={()=>setQuantity(line.variantId,line.quantity+1)}><PlusIcon className="size-3.5"/></button>
           </div>
           <button type="button" aria-label="O‘chirish" title="O‘chirish" className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-sf-ink-2 hover:bg-sf-alt hover:text-red-700" onClick={()=>removeLine(line.variantId)}><Trash2Icon className="size-4"/></button>
-          <p className="ml-auto font-semibold tabular-nums">{quote?.available?soum(BigInt(quote.unitPrice)*BigInt(line.quantity)):"—"}</p>
+          <p className="ml-auto font-semibold tabular-nums">{quote?.available?formatMoney(BigInt(quote.unitPrice)*BigInt(line.quantity)):"—"}</p>
         </div>}
-        {!editable&&quote?.available&&<p className="mt-1 font-semibold tabular-nums">{soum(BigInt(quote.unitPrice)*BigInt(line.quantity))}</p>}
+        {!editable&&quote?.available&&<p className="mt-1 font-semibold tabular-nums">{formatMoney(BigInt(quote.unitPrice)*BigInt(line.quantity))}</p>}
       </div>
     </li>)}
   </ul>;
@@ -102,7 +103,7 @@ export function CartSheet(){
           </p>}
           <div className="flex items-baseline justify-between">
             <span className="text-sf-ink-2">Jami</span>
-            <span className="text-[24px] font-semibold tabular-nums">{loading&&!quotes.length?"…":soum(total)}</span>
+            <span className="text-[24px] font-semibold tabular-nums">{loading&&!quotes.length?"…":formatMoney(total)}</span>
           </div>
           <p className="mt-1 text-xs text-sf-ink-3">Yetkazib berish narxi yo‘q. To‘lov sotuvchi bilan kelishiladi.</p>
           <Link href="/checkout" aria-disabled={!payable.length} onClick={e=>{if(!payable.length)e.preventDefault();}}
