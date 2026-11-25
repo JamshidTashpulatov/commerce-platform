@@ -44,7 +44,7 @@ export function CompareView({products,siblings,max}:{products:CompareProduct[];s
     push("from","Boshlang‘ich narx",products.map(p=>[p.fromPrice]),products.map(p=><span key={p.id} className="text-[17px] font-semibold tabular-nums">{soum(p.fromPrice)}</span>));
     push("range","Narx oralig‘i",products.map(p=>[p.fromPrice,p.toPrice]),products.map(p=><span key={p.id} className="tabular-nums">{p.fromPrice===p.toPrice?"Bitta narx":`${soum(p.fromPrice)} dan ${soum(p.toPrice)} gacha`}</span>),"Variantlar bo‘yicha eng arzon va eng qimmat narx.");
     push("stock","Mavjudlik",products.map(p=>[String(p.inStock),String(p.inStockCount)]),products.map(p=><div key={p.id} className="flex flex-col items-center gap-1">
-      <Availability inStock={p.inStock} className="text-sm"/>
+      <Availability inStock={p.inStock} always className="text-sm"/>
       <span className="text-xs text-sf-ink-3">{p.inStock?`${p.inStockCount} / ${p.variants} variant omborda`:"Kelishini sotuvchidan so‘rang"}</span>
     </div>));
     if(products.some(p=>p.colors.length))push("colors","Ranglar",products.map(p=>p.colors.map(c=>c.label)),products.map(p=>p.colors.length?<div key={p.id} className="flex flex-col items-center gap-2">

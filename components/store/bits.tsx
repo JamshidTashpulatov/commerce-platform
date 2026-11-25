@@ -12,10 +12,12 @@ export function pill({tone="primary",size="md",dark=false,className}:{tone?:"pri
     className);
 }
 
-export function Availability({inStock,className,long=false}:{inStock:boolean;className?:string;long?:boolean}){
+/** Shown only when a product is unavailable. Pass `always` where availability itself is the point, as in the comparison table. */
+export function Availability({inStock,className,long=false,always=false}:{inStock:boolean;className?:string;long?:boolean;always?:boolean}){
+  if(inStock&&!always)return null;
   return <p className={cn("flex items-start gap-1.5 text-xs leading-4",inStock?"text-sf-green":"text-sf-ink-2",className)}>
     <span aria-hidden="true" className={cn("mt-[5px] size-1.5 shrink-0 rounded-full",inStock?"bg-sf-green":"bg-sf-ink-3")}/>
-    <span>{inStock?(long?"Mavjud. Sotuvchi tasdiqlagandan keyin topshiriladi.":"Mavjud"):(long?"Hozircha mavjud emas. Kelishini sotuvchidan so‘rang.":"Hozircha mavjud emas")}</span>
+    <span>{inStock?"Mavjud":(long?"Hozircha mavjud emas. Kelishini sotuvchidan so‘rang.":"Hozircha mavjud emas")}</span>
   </p>;
 }
 
