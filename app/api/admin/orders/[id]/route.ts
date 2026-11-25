@@ -34,3 +34,21 @@ export async function PATCH(request:Request,{params}:Context){
   }catch{await c.query("ROLLBACK");return response({error:"Saqlash imkoni bo‘lmadi"},503);}finally{c.release();}
  }catch{return response({error:"Xizmat vaqtincha ishlamayapti"},503);}
 }
+
+export async function PUT(request:Request,{params}:Context){
+ if(!sameOrigin(request))return response({error:"Ruxsat yo‘q"},403);
+ const {id}=await params;const body=await smallJson(request);
+ if(!isUuid(id)||!body||typeof body.revision!=="number"||!Number.isInteger(body.revision)||body.revision<0||!["not_delivered","in_transit","delivered"].includes(String(body.fulfillment)))return response({error:"Ma’lumotlarni tekshiring"},400);
+ try{
+  const storeId=configuredStoreId();const member=await requireStoreRole(storeId,["owner","admin","seller"]);
+  if(!member)return response({error:"Ruxsat yo‘q"},403);
+  const c=await database().connect();
+  try{
+   await c.query("BEGIN");
+   const {rows}=await c.query("UPDATE orders SET fulfillment_status=$1,revision=revision+1 WHERE store_id=$2 AND id=$3 AND revision=$4 AND sale_status='sold' AND fulfillment_status<>'delivered' RETURNING id,fulfillment_status,revision",[body.fulfillment,storeId,id,body.revision]);
+   if(!rows.length){await c.query("ROLLBACK");return response({error:"Holat o‘zgargan yoki sotuv tasdiqlanmagan"},409);}
+   await c.query("INSERT INTO audit_events(store_id,actor_id,action,entity_type,entity_id) VALUES($1,$2,$3,'order',$4)",[storeId,member.account_id,"fulfillment:"+body.fulfillment,id]);
+   await c.query("COMMIT");return response({order:rows[0]});
+  }catch{await c.query("ROLLBACK");return response({error:"Saqlash imkoni bo‘lmadi"},503);}finally{c.release();}
+ }catch{return response({error:"Xizmat vaqtincha ishlamayapti"},503);}
+}
