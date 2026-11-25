@@ -19,7 +19,7 @@ type PaymentData = { can_review: boolean; terms: Terms | null; receipts: Receipt
 export const paymentMethods: Record<string, string> = { cash: "Naqd", transfer: "Pul o‘tkazmasi", other: "Boshqa" };
 const validSum = (s: string) => /^(0|[1-9][0-9]{0,8})$/.test(s);
 
-export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: { plain?: boolean; part?: "terms" | "receipts"; endpoint: string; cancelled: boolean; onChanged?: () => void }) {
+export function OrderPayments({ endpoint, cancelled, onChanged, plain, part, target, onDone }: { plain?: boolean; part?: "terms" | "receipts" | "form" | "correct"; endpoint: string; cancelled: boolean; onChanged?: () => void; target?: string; onDone?: () => void }) {
   const url = endpoint + "/payments";
   const [data, setData] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,6 +63,11 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
     void load();
   }, [load]);
 
+  // Opened from the order page to correct one receipt.
+  useEffect(() => {
+    if (part === "correct" && data && target) setCorrecting(data.receipts.find(r => r.id === target) ?? null);
+  }, [part, target, data]);
+
   async function post(body: Record<string, unknown>, success: string, report: (message: string) => void = setError) {
     if (pending.current) return;
     pending.current = true;
@@ -80,6 +85,7 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
       setCorrecting(null);
       await load();
       onChanged?.();
+      if (part === "form" || part === "correct" || part === "terms") onDone?.();
     } catch (e) {
       setConfirmReceipt(false);
       report(errorText(e, "Saqlash imkoni bo‘lmadi"));
@@ -106,6 +112,29 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
   const amountOver = validSum(amount) && BigInt(amount) > cap;
   const canReceipt = !busy && !cancelled && !data?.has_schedule && !!data?.terms && validSum(amount) && BigInt(amount) > BigInt(0) && BigInt(amount) <= cap && !!date;
 
+  const correctionDialog = (
+          <ReceiptCorrectionDialog
+            open={!!correcting}
+            busy={busy}
+            error={correctionError}
+            summary={
+              correcting && (
+                <>
+                  {formatDay(correcting.received_on)} · <Money value={correcting.amount_uzs} /> · {correcting.kind === "initial" ? "Boshlang‘ich to‘lov" : "To‘liq to‘lov"}
+                </>
+              )
+            }
+            onClose={() => {
+              setCorrecting(null);
+              if (part === "correct") onDone?.();
+            }}
+            onReverse={reason => correcting && void post({ action: "reverse", receiptId: correcting.id, reason }, "To‘lov qaydi bekor qilindi.", setCorrectionError)}
+            onReview={reason => correcting && void post({ action: "review", kind: "manual", receiptId: correcting.id, reason }, "Tafovut kassadagi tekshiruvlar ro‘yxatiga yozildi.", setCorrectionError)}
+          />
+  );
+  // `correct`: the order page shows its own table and opens just the correction dialog.
+  if (part === "correct") return correctionDialog;
+  const bare = part === "form";
   return (
     <Section plain={plain} title="To‘lov shartlari va to‘lovlar" description="Tizimdan tashqarida olingan to‘lovlar qo‘lda qayd etiladi. Bu pul o‘tkazmasi emas." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
       {loading ? (
@@ -114,7 +143,7 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
         <ErrorState message={loadError} onRetry={() => void load()} />
       ) : data ? (
         <>
-          {part !== "receipts" && (
+          {(!part || part === "terms") && (
           <form
             className="flex flex-col gap-4"
             onSubmit={e => {
@@ -193,20 +222,22 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
             <>
           {data.terms && (
             <>
+{!bare && (
               <StatGrid className="xl:grid-cols-3">
                 <Stat label="Qayd etilgan tushum" value={<Money value={data.received_uzs} />} />
                 <Stat label="Umumiy qoldiq" value={<Money value={data.remaining_uzs ?? "0"} />} />
                 {data.terms.payment_type === "installment" && <Stat label="Boshlang‘ich to‘lov qoldig‘i" value={<Money value={cap} />} />}
               </StatGrid>
+              )}
               {!data.has_schedule && !cancelled && cap > BigInt(0) && (
                 <form
-                  className="flex flex-col gap-4 rounded-lg border p-3"
+                  className={bare ? "flex flex-col gap-4" : "flex flex-col gap-4 rounded-lg border p-3"}
                   onSubmit={e => {
                     e.preventDefault();
                     if (canReceipt) setConfirmReceipt(true);
                   }}
                 >
-                  <h3 className="text-sm font-medium">{data.terms.payment_type === "installment" ? "Boshlang‘ich to‘lovni qayd etish" : "To‘lovni qayd etish"}</h3>
+                  {!bare && <h3 className="text-sm font-medium">{data.terms.payment_type === "installment" ? "Boshlang‘ich to‘lovni qayd etish" : "To‘lovni qayd etish"}</h3>}
                   <div className="grid gap-4 sm:grid-cols-3">
                     <TextField label="Olingan summa" error={amountOver ? "Summa qoldiqdan oshmasligi kerak." : undefined}>
                       {id => (
@@ -265,12 +296,12 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
                   </SubmitButton>
                 </form>
               )}
-              {data.terms.payment_type === "installment" && <p className="text-sm text-muted-foreground">Oylik to‘lovlar quyidagi «Nasiya jadvali» bo‘limida qayd etiladi.</p>}
+              {!bare && data.terms.payment_type === "installment" && <p className="text-sm text-muted-foreground">Oylik to‘lovlar quyidagi «Nasiya jadvali» bo‘limida qayd etiladi.</p>}
             </>
           )}
 
-          <h3 className="text-sm font-medium">To‘lovlar tarixi</h3>
-          {data.receipts.length ? (
+          {!bare && <h3 className="text-sm font-medium">To‘lovlar tarixi</h3>}
+          {bare ? null : data.receipts.length ? (
             <TableFrame>
               <Table>
                 <TableHeader>
@@ -346,21 +377,7 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
             />
           </ConfirmDialog>
 
-          <ReceiptCorrectionDialog
-            open={!!correcting}
-            busy={busy}
-            error={correctionError}
-            summary={
-              correcting && (
-                <>
-                  {formatDay(correcting.received_on)} · <Money value={correcting.amount_uzs} /> · {correcting.kind === "initial" ? "Boshlang‘ich to‘lov" : "To‘liq to‘lov"}
-                </>
-              )
-            }
-            onClose={() => setCorrecting(null)}
-            onReverse={reason => correcting && void post({ action: "reverse", receiptId: correcting.id, reason }, "To‘lov qaydi bekor qilindi.", setCorrectionError)}
-            onReview={reason => correcting && void post({ action: "review", kind: "manual", receiptId: correcting.id, reason }, "Tafovut kassadagi tekshiruvlar ro‘yxatiga yozildi.", setCorrectionError)}
-          />
+          {correctionDialog}
         </>
       ) : null}
     </Section>

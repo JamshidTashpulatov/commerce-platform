@@ -2,26 +2,30 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeftIcon } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowLeftIcon, EllipsisIcon } from "lucide-react";
 import { toast } from "sonner";
-import { ConfirmDialog, ErrorState, InlineError, LoadingBlock, Money, Notice, PageHeader, RefreshButton, Section, TableFrame, TextField, errorText, formatStamp, isAdminRole, useStaffRole } from "@/components/admin/kit";
+import { ConfirmDialog, ErrorState, InlineError, LoadingBlock, Money, Notice, Stat, StatGrid, StatusBadge, TableFrame, errorText, formatDay, formatStamp, isAdminRole, useStaffRole } from "@/components/admin/kit";
+import { Block, HistoryBlock, InvestorsBlock, PaymentsBlock, ProgressLine } from "@/components/admin/order-blocks";
 import { OrderCapitalReturns } from "@/components/admin/order-capital-returns";
+import { CustomerRatingCard } from "@/components/admin/customer-rating";
 import { OrderCustomer } from "@/components/admin/order-customer";
 import { OrderFunding } from "@/components/admin/order-funding";
 import { OrderInstallments } from "@/components/admin/order-installments";
 import { OrderPayments } from "@/components/admin/order-payments";
 import { useOrderProgress } from "@/components/admin/order-progress";
 import { OrderReviews } from "@/components/admin/order-reviews";
-import { OrderSteps, type OrderStep, type StepStatus } from "@/components/admin/order-steps";
 import { OrderWebsite } from "@/components/admin/order-website";
-import { DeliveryBadge, RequestBadge, SaleBadge } from "@/components/admin/status";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { deliveryLabels, sourceLabels, staffFetch, type StaffItem, type StaffOrder } from "@/lib/staff-client";
 
 type Detail = { order: StaffOrder; items: StaffItem[] };
+/** The one thing open in a dialog. Every action is a short dialog over the page, never a permanent section. */
+type Sheet = { kind: "customer" | "terms" | "receipt" | "funding" | "returns" | "schedule" } | { kind: "month"; id: string } | { kind: "correct"; of: "manual" | "month"; id: string } | null;
+type Tone = "neutral" | "success" | "warning" | "danger" | "info";
 
 function BackLink() {
   return (
@@ -32,13 +36,27 @@ function BackLink() {
   );
 }
 
+function ActionDialog({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
+  return (
+    <Dialog open={open} onOpenChange={next => !next && onClose()}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:max-w-2xl [&_[data-section-action]]:hidden">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        {children}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function StaffOrderDetails() {
   const { id } = useParams<{ id: string }>();
   const role = useStaffRole();
+  const admin = isAdminRole(role);
   const [detail, setDetail] = useState<Detail | null>(null);
-  const [delivery, setDelivery] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [sheet, setSheet] = useState<Sheet>(null);
   const [confirmSale, setConfirmSale] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -52,7 +70,6 @@ export default function StaffOrderDetails() {
     try {
       const data = await staffFetch<Detail>(endpoint);
       setDetail(data);
-      setDelivery(data.order.fulfillment_status);
       setVersion(v => v + 1);
     } catch (e) {
       setDetail(null);
@@ -66,7 +83,7 @@ export default function StaffOrderDetails() {
     void refresh();
   }, [refresh]);
 
-  const { progress } = useOrderProgress(endpoint, version, detail?.order.source === "website");
+  const { progress: p } = useOrderProgress(endpoint, version, detail?.order.source === "website");
 
   async function mutate(method: string, path: string, body: Record<string, unknown>, success: string) {
     if (pending.current || !detail) return;
@@ -106,277 +123,315 @@ export default function StaffOrderDetails() {
   const cancelled = o.request_status === "cancelled";
   const sold = o.sale_status === "sold";
   const delivered = o.fulfillment_status === "delivered";
-  const total = detail.items.reduce((sum, item) => sum + BigInt(item.unit_price_uzs) * BigInt(item.quantity), BigInt(0));
   const refreshQuiet = () => void refresh();
+  const close = () => setSheet(null);
+  const done = () => {
+    setSheet(null);
+    refreshQuiet();
+  };
   const setStatus = (status: string, message: string) => void mutate("PATCH", endpoint, { status }, message);
+  const setDelivery = (fulfillment: string) => void mutate("PUT", endpoint, { fulfillment }, "Yetkazib berish holati saqlandi.");
 
-  // Where the order stands, read from the same data the sections show.
-  const p = progress;
+  // Where the order stands, read from the same data the blocks show.
   const terms = p.payments?.terms ?? null;
   const installment = terms?.payment_type === "installment";
   const linked = p.customer?.linked ?? null;
-  const receivedTarget = terms ? BigInt(installment ? terms.initial_due_uzs : terms.agreed_total_uzs) : BigInt(0);
+  const itemsTotal = detail.items.reduce((sum, item) => sum + BigInt(item.unit_price_uzs) * BigInt(item.quantity), BigInt(0));
+  const total = terms ? BigInt(terms.agreed_total_uzs) : itemsTotal;
+  const paid = BigInt(p.payments?.received_uzs ?? "0");
+  const firstTarget = terms ? BigInt(installment ? terms.initial_due_uzs : terms.agreed_total_uzs) : BigInt(0);
   const manualReceived = BigInt(p.payments?.manual_received_uzs ?? "0");
   // An instalment may be agreed without an initial payment: then there is nothing to receive or return before the schedule.
-  const noInitial = installment && receivedTarget === BigInt(0);
-  const paymentDone = !!terms && manualReceived >= receivedTarget && (receivedTarget > BigInt(0) || noInitial);
+  const noInitial = installment && firstTarget === BigInt(0);
+  const firstPaid = !!terms && manualReceived >= firstTarget && (firstTarget > BigInt(0) || noInitial);
   const principal = p.funding?.principal ? BigInt(p.funding.principal) : null;
   const funded = (p.funding?.allocations ?? []).reduce((n, a) => n + BigInt(a.amount_uzs), BigInt(0));
   const fundingDone = principal !== null && funded === principal;
   const contract = p.installments?.contract ?? null;
+  const settled = installment ? contract?.status === "settled" : !!terms && paid >= total;
+  const nextMonth = contract?.status === "active" ? p.installments?.schedule.find(r => r.state !== "paid") : undefined;
   const unposted = (p.returns?.receipts ?? []).filter(r => !r.posted).length;
+  // A hand-typed split that is off the proportion keeps the return open until the administrator corrects it.
+  const correctionPending = !!p.returns?.correction;
+  const canPostReturns = installment && !!p.returns?.canPost && sold && fundingDone && (unposted > 0 || correctionPending);
   const website = p.website?.checkout ?? null;
+  const first = detail.items[0];
 
-  type Draft = Omit<OrderStep, "status"> & { done: boolean; blocked?: string };
-  const drafts: Draft[] = [];
+  // One status for the whole order. The three underlying fields stay in the data and appear as small facts.
+  const status: { label: string; tone: Tone } = cancelled
+    ? { label: "Bekor qilingan", tone: "danger" }
+    : sold && settled && delivered
+      ? { label: "Yopilgan", tone: "success" }
+      : sold && contract?.status === "active" && delivered
+        ? { label: "Nasiya to‘lanmoqda", tone: "info" }
+        : delivered
+          ? { label: "Yetkazilgan", tone: "success" }
+          : sold
+            ? { label: "Sotilgan", tone: "info" }
+            : o.request_status === "in_progress"
+              ? { label: "Qabul qilingan", tone: "warning" }
+              : { label: "Yangi", tone: "warning" };
 
-  drafts.push({
-    id: "accept",
-    title: "So‘rovni qabul qilish",
-    description: "Mijoz bilan bog‘lanib, so‘rovni qabul qiling yoki bekor qiling. Qabul qilingan buyurtma «Jarayonda» holatiga o‘tadi.",
-    done: o.request_status === "in_progress" || sold,
-    summary: sold ? "Buyurtma qabul qilingan va sotilgan." : "Buyurtma qabul qilingan, jarayonda.",
-    content: sold ? (
-      <Notice>Sotilgan buyurtma holati o‘zgarmaydi.</Notice>
-    ) : (
-      <div className="flex flex-wrap gap-2">
-        {o.request_status !== "in_progress" && (
-          <Button type="button" disabled={busy} onClick={() => setStatus("in_progress", cancelled ? "Buyurtma qayta ochildi." : "Buyurtma qabul qilindi.")}>
-            {cancelled ? "Qayta ochib, qabul qilish" : "Qabul qilish"}
-          </Button>
-        )}
-        {o.request_status === "in_progress" && (
-          <Button type="button" variant="outline" disabled={busy} onClick={() => setStatus("new", "Buyurtma «Yangi» holatiga qaytarildi.")}>
-            «Yangi» holatiga qaytarish
-          </Button>
-        )}
-        {!cancelled && (
-          <Button type="button" variant="destructive" disabled={busy} onClick={() => setConfirmCancel(true)}>
-            Bekor qilish
-          </Button>
-        )}
-      </div>
-    ),
-  });
-
-  if (p.customer)
-    drafts.push({
-      id: "customer",
-      title: "Mijoz",
-      description: "Buyurtmaga mijoz yozuvini biriktiring. Nasiya jadvali uchun pasport ma’lumotli mijoz kerak bo‘ladi.",
-      done: !!linked,
-      blocked: cancelled && !linked ? "Buyurtma bekor qilingan." : undefined,
-      summary: linked ? `${linked.name}, ${linked.phone_masked}${linked.has_passport ? ", pasport kiritilgan" : ", pasport kiritilmagan"}` : undefined,
-      content: <OrderCustomer plain endpoint={endpoint} cancelled={cancelled} onLinked={refreshQuiet} websiteContact={website && !linked ? { name: website.name, phone: website.phone, existing: !!p.website?.existing_customer } : null} />,
-    });
-
-  drafts.push({
-    id: "terms",
-    title: "To‘lov turi va shartlari",
-    description: "To‘liq to‘lov yoki nasiyani tanlang. Nasiyada tizim ustama va jami qiymatni o‘zi hisoblaydi. Shartlar saqlangach to‘lovni qayd etish ochiladi.",
-    done: !!terms,
-    blocked: cancelled && !terms ? "Buyurtma bekor qilingan." : undefined,
-    summary: terms ? (
-      <>
-        {installment ? `Nasiya, ${terms.term_months} oy` : "To‘liq to‘lov"} · jami <Money value={terms.agreed_total_uzs} />
-        {installment && (
-          <>
-            {" "}
-            · {noInitial ? "boshlang‘ich to‘lovsiz" : <>boshlang‘ich <Money value={terms.initial_due_uzs} /></>}
-          </>
-        )}
-      </>
-    ) : undefined,
-    content: <OrderPayments plain part="terms" endpoint={endpoint} cancelled={cancelled} onChanged={refreshQuiet} />,
-  });
-
-  if (!noInitial) drafts.push({
-    id: "payment",
-    title: installment ? "Boshlang‘ich to‘lov" : "To‘lovni qabul qilish",
-    description: installment ? "Olingan boshlang‘ich to‘lovni qayd eting. U to‘liq olingach nasiya jadvalini yaratish mumkin bo‘ladi." : "Mijozdan olingan to‘lovni qayd eting. Bu faqat qayd, pul o‘tkazilmaydi.",
-    done: paymentDone,
-    blocked: !terms ? "Avval to‘lov shartlarini saqlang." : cancelled && !paymentDone ? "Buyurtma bekor qilingan." : undefined,
-    summary: (
-      <>
-        Qayd etilgan: <Money value={manualReceived} /> / <Money value={receivedTarget} />
-      </>
-    ),
-    content: <OrderPayments plain part="receipts" endpoint={endpoint} cancelled={cancelled} onChanged={refreshQuiet} />,
-  });
-
-  if (terms)
-    drafts.push({
-      id: "funding",
-      title: "Investor moliyalashtirishi",
-      description: "Tan narxi qaysi investor kapitalidan qoplanishini administrator belgilaydi. Tan narxi to‘liq taqsimlanadi, sotuvdan keyin o‘zgartirib bo‘lmaydi.",
-      done: fundingDone,
-      blocked: principal === null ? "Tan narxi kiritilmagan. To‘lov shartlarida tan narxini saqlang." : !fundingDone && sold ? "Sotilgan buyurtmada taqsimotni o‘zgartirib bo‘lmaydi." : !fundingDone && cancelled ? "Buyurtma bekor qilingan." : undefined,
-      summary: (
-        <>
-          Ajratilgan: <Money value={funded} /> / <Money value={principal ?? "0"} />
-        </>
-      ),
-      content: <OrderFunding plain endpoint={endpoint} locked={sold || cancelled} cash={!installment} onChanged={refreshQuiet} />,
-    });
-
-  drafts.push({
-    id: "sale",
-    title: "Sotuvni tasdiqlash",
-    description: "Mahsulot ombordan chiqariladi va buyurtma sotilgan deb belgilanadi. Shundan keyin yetkazib berish ochiladi.",
-    done: sold,
-    blocked: cancelled && !sold ? "Buyurtma bekor qilingan." : undefined,
-    summary: "Sotuv tasdiqlangan, mahsulot ombordan chiqarilgan.",
-    content: sold ? (
-      <Notice>Sotuv tasdiqlangan. Qaytarish jarayoni hali mavjud emas.</Notice>
-    ) : (
-      <>
-        {principal !== null && !fundingDone && <Notice>Investorlar biriktirilmagan. Sotuv tasdiqlangach uni o‘zgartirib bo‘lmaydi va kapital qaytimini yozib bo‘lmaydi.</Notice>}
-        {terms && !paymentDone && <Notice>{installment ? "Boshlang‘ich to‘lov" : "To‘lov"} hali to‘liq qayd etilmagan. Sotuvni tasdiqlash to‘lovni qayd etmaydi.</Notice>}
-        <Button type="button" className="self-start" disabled={busy} onClick={() => setConfirmSale(true)}>
-          Sotuvni tasdiqlash
-        </Button>
-      </>
-    ),
-  });
-
-  drafts.push({
-    id: "delivery",
-    title: "Yetkazib berish",
-    description: "Yetkazish holatini belgilang. Yetkazib berish bepul.",
-    done: delivered,
-    blocked: !sold ? "Avval sotuvni tasdiqlang." : undefined,
-    summary: "Mijozga yetkazilgan.",
-    content: delivered ? (
-      <Notice>Yetkazilgan buyurtma holati o‘zgarmaydi.</Notice>
-    ) : (
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <TextField label="Yetkazish holati" className="sm:max-w-xs">
-          {fieldId => (
-            <NativeSelect id={fieldId} name="fulfillment" className="w-full" value={delivery} disabled={busy} onChange={e => setDelivery(e.target.value)}>
-              {Object.entries(deliveryLabels).map(([k, v]) => (
-                <NativeSelectOption key={k} value={k}>
-                  {v}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          )}
-        </TextField>
-        <Button type="button" variant="outline" disabled={busy || delivery === o.fulfillment_status} onClick={() => void mutate("PUT", endpoint, { fulfillment: delivery }, "Yetkazib berish holati saqlandi.")}>
-          Holatni saqlash
-        </Button>
-      </div>
-    ),
-  });
-
-  // Recording a capital return is an administrator action; sellers do not see the step.
-  if (installment && !noInitial && p.returns?.cost && p.returns.canPost)
-    drafts.push({
-      id: "returns",
-      title: "Kapital qaytimi",
-      description: "Tizim boshlang‘ich to‘lovni investorlarga mahsulotga qo‘shgan puliga mutanosib hisoblaydi. Hisobni tasdiqlang, shunda mablag‘ qayta moliyalashtirish uchun ochiladi.",
-      done: p.returns.receipts.length > 0 && unposted === 0 && !p.returns.correction,
-      blocked: !sold ? "Avval sotuvni tasdiqlang." : !fundingDone ? "Tan narxi investorlar kapitalidan to‘liq moliyalashtirilmagan." : !p.returns.receipts.length ? "Boshlang‘ich to‘lov hali qayd etilmagan." : undefined,
-      summary: "Boshlang‘ich to‘lov investorlar kapitaliga qaytarilgan.",
-      content: <OrderCapitalReturns plain endpoint={endpoint} onChanged={refreshQuiet} version={version} />,
-    });
-
-  if (installment) {
-    drafts.push({
-      id: "schedule",
-      title: "Nasiya jadvali",
-      description: "Oylik to‘lovlar jadvalini yarating. Shundan keyin shartlar bloklanadi va oylik to‘lovlarni qayd etish ochiladi.",
-      done: !!contract,
-      blocked: contract ? undefined : cancelled ? "Buyurtma bekor qilingan." : !linked?.has_passport ? "Pasport ma’lumoti bor mijozni biriktiring." : !paymentDone ? "Boshlang‘ich to‘lov to‘liq qayd etilishi kerak." : undefined,
-      summary: contract ? `Jadval ${contract.status === "settled" ? "yakunlangan" : "faol"}, ${p.installments?.schedule.length ?? 0} oy.` : undefined,
-      content: <OrderInstallments plain endpoint={endpoint} cancelled={cancelled} onChanged={refreshQuiet} version={version} />,
-    });
-    drafts.push({
-      id: "monthly",
-      title: "Oylik to‘lovlar",
-      description: "Har oylik to‘lovni qayd eting. Tizim uni asosiy kapital va foydaga o‘zi ajratib, moliyalashtirgan investorlarga yozadi.",
-      done: contract?.status === "settled",
-      blocked: !contract ? "Avval nasiya jadvalini yarating." : undefined,
-      summary: "Barcha oylik to‘lovlar olingan, nasiya yakunlangan.",
-      content: <OrderInstallments plain endpoint={endpoint} cancelled={cancelled} onChanged={refreshQuiet} version={version} />,
-    });
-  }
-
-  // The first step that is neither finished nor blocked is the one to act on now.
-  let currentFound = false;
-  const steps: OrderStep[] = drafts.map(({ done, blocked, ...step }) => {
-    let status: StepStatus = done ? "done" : blocked ? "blocked" : "open";
-    if (status === "open" && !currentFound && !cancelled) {
-      status = "current";
-      currentFound = true;
-    }
-    if (cancelled && step.id === "accept") status = "current";
-    return { ...step, status, reason: blocked };
-  });
+  // The next thing to do, chosen from the order's state. Everything else stays reachable in its block.
+  type Step = { label: string; done: boolean; action?: { label: string; run: () => void }; skip?: boolean };
+  const steps: Step[] = [
+    { label: "Qabul", done: o.request_status === "in_progress" || sold, action: { label: "Qabul qilish", run: () => setStatus("in_progress", "Buyurtma qabul qilindi.") } },
+    { label: "Mijoz", done: !!linked, skip: !p.customer, action: { label: "Mijozni biriktirish", run: () => setSheet({ kind: "customer" }) } },
+    { label: "Shartlar", done: !!terms, action: { label: "To‘lov shartlari", run: () => setSheet({ kind: "terms" }) } },
+    { label: installment ? "Boshlang‘ich to‘lov" : "To‘lov", done: firstPaid, skip: noInitial, action: { label: "To‘lov qo‘shish", run: () => setSheet({ kind: "receipt" }) } },
+    // Only the administrator assigns investors, so a seller's next action moves on.
+    { label: "Investorlar", done: fundingDone, skip: principal === null || !p.funding?.enabled, action: admin && !sold ? { label: "Investorlarni biriktirish", run: () => setSheet({ kind: "funding" }) } : undefined },
+    { label: "Sotuv", done: sold, action: { label: "Sotuvni tasdiqlash", run: () => setConfirmSale(true) } },
+    { label: "Jadval", done: !!contract, skip: !installment, action: { label: "Nasiya jadvalini yaratish", run: () => setSheet({ kind: "schedule" }) } },
+    { label: "Yetkazish", done: delivered, action: sold ? { label: "Yetkazildi deb belgilash", run: () => setDelivery("delivered") } : undefined },
+    { label: "Oylik to‘lovlar", done: contract?.status === "settled", skip: !installment, action: nextMonth ? { label: "To‘lov qo‘shish", run: () => setSheet({ kind: "month", id: nextMonth.id }) } : undefined },
+  ].filter(s => !s.skip);
+  const next = cancelled ? undefined : (canPostReturns ? { label: "Qaytim", done: false, action: { label: correctionPending && !unposted ? "Qaytim taqsimotini tuzatish" : "Kapital qaytimini tasdiqlash", run: () => setSheet({ kind: "returns" }) } } : undefined) ?? steps.find(s => !s.done && s.action);
+  const currentLabel = steps.find(s => !s.done)?.label;
 
   return (
     <>
       <BackLink />
-      <PageHeader title={"Buyurtma " + o.id.slice(0, 8)} description={formatStamp(o.created_at) + " · Manba: " + sourceLabels[o.source] + (website ? " · " + website.reference : "")}>
-        <RefreshButton busy={busy} onClick={refreshQuiet} />
-      </PageHeader>
-      <div className="flex flex-wrap gap-1.5" aria-label="Buyurtma holatlari">
-        <RequestBadge status={o.request_status} />
-        <SaleBadge status={o.sale_status} />
-        <DeliveryBadge status={o.fulfillment_status} />
-      </div>
-      {cancelled && <Notice>Buyurtma bekor qilingan. Keyingi qadamlar yopiq. Kerak bo‘lsa birinchi qadamda qayta oching.</Notice>}
+      <header className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold text-balance">
+              {first ? first.name : "Buyurtma"}
+              {detail.items.length > 1 && <span className="text-muted-foreground"> va yana {detail.items.length - 1} ta</span>}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {first && [first.storage_label, first.color, first.quantity > 1 ? first.quantity + " dona" : null].filter(Boolean).join(" · ")}
+              {first && " · "}№ {o.id.slice(0, 8)} · {formatStamp(o.created_at)} · {sourceLabels[o.source]}
+              {website ? " · " + website.reference : ""}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <span className="max-sm:hidden">
+              <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="icon" aria-label="Boshqa amallar" />}>
+                <EllipsisIcon />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-60">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem disabled={busy} onClick={refreshQuiet}>
+                    Yangilash
+                  </DropdownMenuItem>
+                  {sold && !delivered && o.fulfillment_status !== "in_transit" && (
+                    <DropdownMenuItem disabled={busy} onClick={() => setDelivery("in_transit")}>
+                      Yo‘lda deb belgilash
+                    </DropdownMenuItem>
+                  )}
+                  {!sold && o.request_status === "in_progress" && (
+                    <DropdownMenuItem disabled={busy} onClick={() => setStatus("new", "Buyurtma «Yangi» holatiga qaytarildi.")}>
+                      «Yangi» holatiga qaytarish
+                    </DropdownMenuItem>
+                  )}
+                  {cancelled && (
+                    <DropdownMenuItem disabled={busy} onClick={() => setStatus("in_progress", "Buyurtma qayta ochildi.")}>
+                      Qayta ochish
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuGroup>
+                {!sold && !cancelled && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem variant="destructive" disabled={busy} onClick={() => setConfirmCancel(true)}>
+                        Buyurtmani bekor qilish
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        <div className="sm:hidden">
+          <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+        </div>
+        <p className="text-sm">
+          <span className="text-muted-foreground">Mijoz: </span>
+          {linked ? (
+            <span className="font-medium">
+              {linked.name} <span className="font-normal text-muted-foreground tabular-nums">{linked.phone_masked}</span>
+            </span>
+          ) : website ? (
+            <span className="font-medium">
+              {website.name} <span className="font-normal text-muted-foreground tabular-nums">{website.phone}</span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground">biriktirilmagan</span>
+          )}
+          {sold && (
+            <span className="text-muted-foreground">
+              {" "}
+              · {deliveryLabels[o.fulfillment_status] ?? o.fulfillment_status}
+            </span>
+          )}
+        </p>
+      </header>
+
+      <StatGrid className="grid-cols-3 xl:grid-cols-3">
+        <Stat label="Jami" value={<Money value={total} />} hint={terms ? (installment ? `Nasiya, ${terms.term_months} oy` : "To‘liq to‘lov") : "Shartlar kiritilmagan"} />
+        <Stat label="To‘langan" value={<Money value={paid} />} />
+        <Stat label="Qoldiq" value={<Money value={terms ? total - paid : null} />} tone={terms && total - paid > BigInt(0) ? "default" : "muted"} hint={nextMonth ? `Keyingi: ${formatDay(nextMonth.due_date)}` : undefined} />
+      </StatGrid>
+
+      {p.ready ? (
+        <div className="flex flex-col gap-3">
+          {next?.action && (
+            <Button type="button" size="lg" className="self-start max-sm:w-full" disabled={busy} onClick={next.action.run}>
+              {next.action.label}
+            </Button>
+          )}
+          <ProgressLine steps={steps.map(s => ({ label: s.label, done: s.done, current: !cancelled && s.label === currentLabel }))} />
+        </div>
+      ) : (
+        <LoadingBlock rows={2} label="Holat yuklanmoqda" />
+      )}
+      {cancelled && <Notice>Buyurtma bekor qilingan.</Notice>}
       <InlineError message={error} />
 
       {p.website && <OrderWebsite request={p.website} />}
 
-      <Section title="Mahsulotlar">
-        <TableFrame>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Mahsulot</TableHead>
-                <TableHead className="hidden sm:table-cell">Xotira</TableHead>
-                <TableHead className="hidden sm:table-cell">Rang</TableHead>
-                <TableHead className="text-right">Miqdor</TableHead>
-                <TableHead className="text-right">Birlik narxi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {detail.items.map(i => (
-                <TableRow key={i.variant_id}>
-                  <TableCell className="font-medium whitespace-normal">
-                    {i.name}
-                    <span className="block font-normal text-muted-foreground sm:hidden">{[i.storage_label, i.color].filter(Boolean).join(" · ")}</span>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">{i.storage_label ?? "—"}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{i.color}</TableCell>
-                  <TableCell className="text-right tabular-nums">{i.quantity}</TableCell>
-                  <TableCell className="text-right">
-                    <Money value={i.unit_price_uzs} />
-                  </TableCell>
+      {detail.items.length > 1 && (
+        <Block title="Mahsulotlar">
+          <TableFrame>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Mahsulot</TableHead>
+                  <TableHead className="text-right">Miqdor</TableHead>
+                  <TableHead className="text-right">Narxi</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-            <TableFooter>
-              <TableRow>
-                <TableCell>So‘rov qiymati</TableCell>
-                <TableCell colSpan={4} className="text-right">
-                  <Money value={total} />
-                </TableCell>
-              </TableRow>
-            </TableFooter>
-          </Table>
-        </TableFrame>
-      </Section>
+              </TableHeader>
+              <TableBody>
+                {detail.items.map(i => (
+                  <TableRow key={i.variant_id}>
+                    <TableCell className="font-medium whitespace-normal">
+                      {i.name}
+                      <span className="block font-normal text-muted-foreground">{[i.storage_label, i.color].filter(Boolean).join(" · ")}</span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{i.quantity}</TableCell>
+                    <TableCell className="text-right">
+                      <Money value={i.unit_price_uzs} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableFrame>
+        </Block>
+      )}
 
-      <Section title="Buyurtmani rasmiylashtirish" description="Qadamlar tartib bilan bajariladi. Hozirgi qadam ochiq turadi, bajarilganlarini bosib ko‘rish mumkin.">
-        {p.ready ? <OrderSteps steps={steps} /> : <LoadingBlock rows={5} label="Qadamlar yuklanmoqda" />}
-      </Section>
+      {terms && p.payments && (
+        <Block
+          title="To‘lovlar"
+          action={
+            !p.payments.receipts.length && !p.payments.has_schedule && !cancelled ? (
+              <Button type="button" variant="outline" onClick={() => setSheet({ kind: "terms" })}>
+                Shartlarni o‘zgartirish
+              </Button>
+            ) : installment && !contract && !cancelled ? (
+              <Button type="button" variant="outline" onClick={() => setSheet({ kind: "schedule" })}>
+                Jadval yaratish
+              </Button>
+            ) : undefined
+          }
+        >
+          <PaymentsBlock progress={p} cancelled={cancelled} onPay={t => setSheet(t.kind === "manual" ? { kind: "receipt" } : { kind: "month", id: t.id })} onCorrect={r => setSheet({ kind: "correct", of: r.kind, id: r.id })} />
+        </Block>
+      )}
 
-      {isAdminRole(role) && <OrderReviews orderId={o.id} version={version} />}
+      {terms && principal !== null && p.funding?.enabled && (
+        <Block
+          title="Investorlar"
+          action={
+            admin ? (
+              <span className="flex flex-wrap justify-end gap-2">
+                {canPostReturns && (
+                  <Button type="button" variant="outline" onClick={() => setSheet({ kind: "returns" })}>
+                    {correctionPending && !unposted ? "Taqsimotni tuzatish" : "Qaytimni tasdiqlash"}
+                  </Button>
+                )}
+                {!sold && !cancelled && (
+                  <Button type="button" variant="outline" onClick={() => setSheet({ kind: "funding" })}>
+                    {funded > BigInt(0) ? "O‘zgartirish" : "Biriktirish"}
+                  </Button>
+                )}
+              </span>
+            ) : undefined
+          }
+        >
+          <InvestorsBlock data={p.investors} />
+        </Block>
+      )}
 
-      <ConfirmDialog open={confirmSale} onOpenChange={setConfirmSale} title="Sotuvni tasdiqlaysizmi?" description="Mahsulotlar ombordan chiqariladi. Qaytarish jarayoni hali mavjud emas, shuning uchun bu amalni bekor qilib bo‘lmaydi." confirmLabel="Ombordan chiqarish va tasdiqlash" busy={busy} onConfirm={() => void mutate("POST", endpoint + "/sale", {}, "Sotuv tasdiqlandi.")} />
-      <ConfirmDialog open={confirmCancel} onOpenChange={setConfirmCancel} title="Buyurtmani bekor qilasizmi?" description="Bekor qilingan buyurtmada keyingi qadamlar yopiladi. To‘lov qayd etilgan buyurtmani bekor qilib bo‘lmaydi." confirmLabel="Bekor qilish" destructive busy={busy} onConfirm={() => setStatus("cancelled", "Buyurtma bekor qilindi.")} />
+      {p.customer && (
+        <Block
+          title="Mijoz"
+          action={
+            !linked && !cancelled ? (
+              <Button type="button" variant="outline" onClick={() => setSheet({ kind: "customer" })}>
+                Biriktirish
+              </Button>
+            ) : undefined
+          }
+        >
+          {linked ? (
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border p-3 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-muted-foreground">Ism</dt>
+                <dd className="font-medium">{linked.name}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Telefon</dt>
+                <dd className="font-medium tabular-nums">{linked.phone_masked}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Pasport</dt>
+                <dd className="font-medium">{linked.has_passport ? "Kiritilgan" : "Kiritilmagan"}</dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-sm text-muted-foreground">Mijoz biriktirilmagan.</p>
+          )}
+          {linked && <CustomerRatingCard customerId={linked.id} warn={!sold} />}
+        </Block>
+      )}
+
+      {admin && <OrderReviews orderId={o.id} version={version} hideEmpty />}
+      <HistoryBlock events={p.history} />
+
+      <ActionDialog open={sheet?.kind === "customer"} title="Mijoz" onClose={close}>
+        <OrderCustomer plain endpoint={endpoint} cancelled={cancelled} onLinked={done} websiteContact={website && !linked ? { name: website.name, phone: website.phone, existing: !!p.website?.existing_customer } : null} />
+      </ActionDialog>
+      <ActionDialog open={sheet?.kind === "terms"} title="To‘lov shartlari" onClose={close}>
+        <OrderPayments plain part="terms" endpoint={endpoint} cancelled={cancelled} onChanged={refreshQuiet} onDone={close} />
+      </ActionDialog>
+      <ActionDialog open={sheet?.kind === "receipt"} title={installment ? "Boshlang‘ich to‘lov" : "To‘lov qo‘shish"} onClose={close}>
+        <OrderPayments plain part="form" endpoint={endpoint} cancelled={cancelled} onChanged={refreshQuiet} onDone={close} />
+      </ActionDialog>
+      <ActionDialog open={sheet?.kind === "funding"} title="Investorlar" onClose={close}>
+        <OrderFunding plain endpoint={endpoint} locked={sold || cancelled} cash={!installment} onChanged={done} />
+      </ActionDialog>
+      <ActionDialog open={sheet?.kind === "returns"} title="Kapital qaytimi" onClose={close}>
+        <OrderCapitalReturns plain endpoint={endpoint} onChanged={refreshQuiet} version={version} />
+      </ActionDialog>
+      <ActionDialog open={sheet?.kind === "schedule"} title="Nasiya jadvali" onClose={close}>
+        <OrderInstallments plain endpoint={endpoint} cancelled={cancelled} onChanged={done} version={version} />
+      </ActionDialog>
+      {sheet?.kind === "month" && <OrderInstallments only="pay" target={sheet.id} endpoint={endpoint} cancelled={cancelled} onChanged={refreshQuiet} onDone={close} />}
+      {sheet?.kind === "correct" && sheet.of === "month" && <OrderInstallments only="correct" target={sheet.id} endpoint={endpoint} cancelled={cancelled} onChanged={refreshQuiet} onDone={close} />}
+      {sheet?.kind === "correct" && sheet.of === "manual" && <OrderPayments part="correct" target={sheet.id} endpoint={endpoint} cancelled={cancelled} onChanged={refreshQuiet} onDone={close} />}
+
+      <ConfirmDialog open={confirmSale} onOpenChange={setConfirmSale} title="Sotuvni tasdiqlaysizmi?" description="Mahsulot ombordan chiqariladi. Bu amalni bekor qilib bo‘lmaydi." confirmLabel="Sotuvni tasdiqlash" busy={busy} onConfirm={() => void mutate("POST", endpoint + "/sale", {}, "Sotuv tasdiqlandi.")}>
+        {principal !== null && !fundingDone && <Notice>Investorlar biriktirilmagan. Sotuvdan keyin ularni biriktirib bo‘lmaydi.</Notice>}
+        {terms && !firstPaid && <Notice>{installment ? "Boshlang‘ich to‘lov" : "To‘lov"} hali to‘liq qayd etilmagan.</Notice>}
+      </ConfirmDialog>
+      <ConfirmDialog open={confirmCancel} onOpenChange={setConfirmCancel} title="Buyurtmani bekor qilasizmi?" description="To‘lov qayd etilgan buyurtmani bekor qilib bo‘lmaydi." confirmLabel="Bekor qilish" destructive busy={busy} onConfirm={() => setStatus("cancelled", "Buyurtma bekor qilindi.")} />
     </>
   );
 }
