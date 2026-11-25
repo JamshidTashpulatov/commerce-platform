@@ -2,7 +2,7 @@ import {NextResponse} from "next/server";
 import {database,configuredStoreId} from "../../../../lib/server/db";
 import {requireStoreRole} from "../../../../lib/server/auth";
 import {isUuid,sameOrigin,smallJson,privateHeaders} from "../../../../lib/server/http";
-import {validGroups,validSelection,type OptionGroup} from "../../../../lib/catalog-options";
+import {validGroups,validSelection,canonicalGroups,type OptionGroup} from "../../../../lib/catalog-options";
 import {approvedImageUrl} from "../../../../lib/server/catalog-media";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -49,7 +49,7 @@ export async function POST(request:Request){
  if(create){
  const groups=b.optionGroups??[];
  const r=await c.query("INSERT INTO products(store_id,name,category,description,image_url,published,request_key,option_groups) VALUES($1,$2,$3,$4,$5,false,$6,$7::jsonb) ON CONFLICT(store_id,request_key) DO NOTHING RETURNING id",[store,name,category,description,b.imageUrl,b.key,JSON.stringify(groups)]);
- if(!r.rowCount){const d=(await c.query("SELECT id,name,category,description,image_url,option_groups FROM products WHERE store_id=$1 AND request_key=$2",[store,b.key])).rows[0];return d&&d.name===name&&d.category===category&&d.description===description&&d.image_url===b.imageUrl&&JSON.stringify(d.option_groups)===JSON.stringify(groups)?await repeat(d.id):await fail("So‘rov kaliti band");}id=r.rows[0].id;
+ if(!r.rowCount){const d=(await c.query("SELECT id,name,category,description,image_url,option_groups FROM products WHERE store_id=$1 AND request_key=$2",[store,b.key])).rows[0];return d&&d.name===name&&d.category===category&&d.description===description&&d.image_url===b.imageUrl&&canonicalGroups(d.option_groups)===canonicalGroups(groups as OptionGroup[])?await repeat(d.id):await fail("So‘rov kaliti band");}id=r.rows[0].id;
  }else{
  const lock=await c.query("SELECT revision,option_groups FROM products WHERE store_id=$1 AND id=$2 FOR UPDATE",[store,b.id]);
  if(!lock.rowCount)return await fail("Mahsulot topilmadi",404);
