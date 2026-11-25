@@ -51,6 +51,7 @@ jobs:
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/011_initial_capital_returns.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/012_cashbook.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/013_supplier_posting.sql
+          psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/014_stock_receipts.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/tests/constraints.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/tests/finance_constraints.sql
 
@@ -66,6 +67,7 @@ jobs:
           INSTALLMENT_SCHEDULE_ENABLED: "true"
           INVESTOR_FUNDING_ENABLED: "true"
           SUPPLIER_POSTING_ENABLED: "true"
+          STOCK_RECEIPTS_ENABLED: "true"
           INSTALLMENT_MIN_INITIAL_BPS: "2500"
           INSTALLMENT_MONTHLY_MARKUP_BPS: "400"
           CUSTOMER_DATA_KEY: "1111111111111111111111111111111111111111111111111111111111111111"
