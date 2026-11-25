@@ -17,9 +17,7 @@ export async function GET(){
         LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id
         WHERE s.store_id=$1 AND c.status='active' GROUP BY s.id
       ), invoices AS (
-        SELECT i.id,i.amount_uzs,COALESCE(SUM(p.amount_uzs),0) AS paid
-        FROM supplier_invoices i LEFT JOIN supplier_payments p ON p.store_id=i.store_id AND p.invoice_id=i.id
-        WHERE i.store_id=$1 GROUP BY i.id
+        SELECT i.id,i.amount_uzs,i.paid_uzs AS paid FROM supplier_invoice_balances i WHERE i.store_id=$1
       )
       SELECT
       COALESCE((SELECT SUM(amount_uzs-received) FROM schedules),0)::text AS installment_schedule_balance_uzs,
