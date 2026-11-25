@@ -131,7 +131,7 @@ export function CatalogView(){
       </EmptyHeader>
       <EmptyContent><button type="button" className={pill()} onClick={()=>setRetry(r=>r+1)}>Qayta urinish</button></EmptyContent>
     </Empty>
-    :loading&&!cards.length?<div className="grid grid-cols-1 gap-5 sm:grid-cols-2 desktop:grid-cols-3" aria-hidden="true">
+    :loading&&!cards.length?<div className="grid grid-cols-1 gap-5 min-[640px]:grid-cols-2 navbar:grid-cols-3" aria-hidden="true">
       {Array.from({length:6},(_,i)=><div key={i} className="overflow-hidden rounded-[18px] bg-sf-alt">
         <Skeleton className="aspect-3/2 rounded-none bg-[#ececf0]"/>
         <div className="flex flex-col gap-3 px-6 pt-5 pb-6"><Skeleton className="h-3 w-1/3 bg-[#e6e6ea]"/><Skeleton className="h-5 w-2/3 bg-[#e6e6ea]"/><Skeleton className="h-3 w-1/2 bg-[#e6e6ea]"/></div>
@@ -145,11 +145,11 @@ export function CatalogView(){
       </EmptyHeader>
       {(query||category)&&<EmptyContent><button type="button" className={pill({tone:"ghost"})} onClick={()=>{setQuery("");setCategory("");}}>Filtrlarni tozalash</button></EmptyContent>}
     </Empty>
-    :<div className={cn("grid grid-cols-1 gap-5 transition-opacity duration-200 sm:grid-cols-2 desktop:grid-cols-3",loading&&"opacity-50")} aria-busy={loading}>
+    :<div className={cn("grid grid-cols-1 gap-5 transition-opacity duration-200 min-[640px]:grid-cols-2 navbar:grid-cols-3",loading&&"opacity-50")} aria-busy={loading}>
       {cards.map(c=><article key={c.id} className="flex flex-col rounded-[18px] bg-sf-alt">
         <Link href={productHref(c.id)} className="flex flex-1 flex-col overflow-hidden rounded-t-[18px] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sf-blue">
           <div className="relative aspect-3/2 bg-sf-alt">
-            <ProductVisual image={c.image} name={c.name} category={c.category} sizes="(min-width:1069px) 320px, (min-width:640px) 50vw, 100vw" className="absolute inset-0"/>
+            <ProductVisual image={c.image} name={c.name} category={c.category} sizes="(min-width:1069px) 320px, (min-width:834px) 33vw, (min-width:640px) 50vw, 100vw" className="absolute inset-0"/>
           </div>
           <div className="flex flex-1 flex-col gap-1 px-6 pt-5 pb-6">
             {c.swatches.length>1&&<ul className="mb-2.5 flex gap-1.5" aria-label={c.swatches.length+" ta rang"}>
