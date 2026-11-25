@@ -97,6 +97,9 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
     try {
       quote = priceInstallment(BigInt(cost), BigInt(initial), months, policy);
     } catch {}
+  // The configured minimum is only the suggested initial payment; the seller may agree on less, or on none.
+  const suggested = type === "installment" && policy && validSum(cost) && BigInt(cost) > BigInt(0) ? minimumInitial(BigInt(cost), policy) : null;
+  const initialBad = type === "installment" && validSum(cost) && validSum(initial) && BigInt(cost) > BigInt(0) && BigInt(initial) >= BigInt(cost);
   const cashCostBad = type === "cash" && cost !== "" && !(validSum(cost) && BigInt(cost) > BigInt(0));
   const canSave = editable && (type === "cash" ? validSum(total) && BigInt(total) > BigInt(0) && !cashCostBad : !!quote);
   const cap = data?.terms ? BigInt(data.terms.payment_type === "cash" ? data.terms.agreed_total_uzs : data.terms.initial_due_uzs) - BigInt(data.manual_received_uzs) : BigInt(0);
@@ -153,7 +156,7 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
                       />
                     )}
                   </TextField>
-                  <TextField label="Boshlang‘ich to‘lov">{id => <MoneyInput id={id} name="initial" value={initial} disabled={!editable} onChange={setInitial} />}</TextField>
+                  <TextField label="Boshlang‘ich to‘lov" description={suggested !== null && !locked ? <>Tavsiya: <Money value={suggested} /> ({policy!.minimumInitialBps / 100}%). Kamroq yoki 0 ham mumkin.</> : undefined} error={initialBad ? "Tan narxidan kam bo‘lishi kerak." : undefined}>{id => <MoneyInput id={id} name="initial" value={initial} disabled={!editable} onChange={setInitial} />}</TextField>
                   <TextField label="Muddat, oy">{id => <Input id={id} name="months" type="number" inputMode="numeric" min={1} max={60} value={months} disabled={!editable} onChange={e => setMonths(Number(e.target.value))} />}</TextField>
                 </>
               )}
@@ -171,7 +174,7 @@ export function OrderPayments({ endpoint, cancelled, onChanged, plain, part }: {
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Boshlang‘ich to‘lov kamida {policy.minimumInitialBps / 100}%, ustama oyiga {policy.monthlyMarkupBps / 100}%.
+                  Tavsiya etilgan boshlang‘ich to‘lov {policy.minimumInitialBps / 100}%, ustama oyiga {policy.monthlyMarkupBps / 100}%.
                 </p>
               ))}
             {locked ? (

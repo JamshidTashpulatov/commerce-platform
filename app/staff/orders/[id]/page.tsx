@@ -117,7 +117,9 @@ export default function StaffOrderDetails() {
   const linked = p.customer?.linked ?? null;
   const receivedTarget = terms ? BigInt(installment ? terms.initial_due_uzs : terms.agreed_total_uzs) : BigInt(0);
   const manualReceived = BigInt(p.payments?.manual_received_uzs ?? "0");
-  const paymentDone = !!terms && manualReceived >= receivedTarget && receivedTarget > BigInt(0);
+  // An instalment may be agreed without an initial payment: then there is nothing to receive or return before the schedule.
+  const noInitial = installment && receivedTarget === BigInt(0);
+  const paymentDone = !!terms && manualReceived >= receivedTarget && (receivedTarget > BigInt(0) || noInitial);
   const principal = p.funding?.principal ? BigInt(p.funding.principal) : null;
   const funded = (p.funding?.allocations ?? []).reduce((n, a) => n + BigInt(a.amount_uzs), BigInt(0));
   const fundingDone = principal !== null && funded === principal;
@@ -180,7 +182,7 @@ export default function StaffOrderDetails() {
         {installment && (
           <>
             {" "}
-            · boshlang‘ich <Money value={terms.initial_due_uzs} />
+            · {noInitial ? "boshlang‘ich to‘lovsiz" : <>boshlang‘ich <Money value={terms.initial_due_uzs} /></>}
           </>
         )}
       </>
@@ -188,7 +190,7 @@ export default function StaffOrderDetails() {
     content: <OrderPayments plain part="terms" endpoint={endpoint} cancelled={cancelled} onChanged={refreshQuiet} />,
   });
 
-  drafts.push({
+  if (!noInitial) drafts.push({
     id: "payment",
     title: installment ? "Boshlang‘ich to‘lov" : "To‘lovni qabul qilish",
     description: installment ? "Olingan boshlang‘ich to‘lovni qayd eting. U to‘liq olingach nasiya jadvalini yaratish mumkin bo‘ladi." : "Mijozdan olingan to‘lovni qayd eting. Bu faqat qayd, pul o‘tkazilmaydi.",
@@ -267,7 +269,7 @@ export default function StaffOrderDetails() {
   });
 
   // Recording a capital return is an administrator action; sellers do not see the step.
-  if (installment && p.returns?.cost && p.returns.canPost)
+  if (installment && !noInitial && p.returns?.cost && p.returns.canPost)
     drafts.push({
       id: "returns",
       title: "Kapital qaytimi",
