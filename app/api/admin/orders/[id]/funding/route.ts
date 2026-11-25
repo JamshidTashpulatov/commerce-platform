@@ -10,7 +10,7 @@ type Allocation={accountId:string;amount:string};
 export async function GET(_request:Request,{params}:Ctx){
  try{
  const {id}=await params;if(!isUuid(id))return reply({error:"Buyurtma topilmadi"},404);
- const store=configuredStoreId();if(!await requireStoreRole(store,["owner","admin","seller"]))return reply({error:"Ruxsat yo‘q"},403);
+ const store=configuredStoreId();const viewer=await requireStoreRole(store,["owner","admin","seller"]);if(!viewer)return reply({error:"Ruxsat yo‘q"},403);
  const c=await database().connect();
  try{
  await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
@@ -22,7 +22,7 @@ export async function GET(_request:Request,{params}:Ctx){
  (COALESCE((SELECT SUM(CASE event_type WHEN 'contribution' THEN amount_uzs WHEN 'withdrawal' THEN -amount_uzs ELSE 0 END) FROM investor_capital_events e WHERE e.store_id=m.store_id AND e.investor_account_id=m.account_id),0)
  -COALESCE((SELECT SUM(a.outstanding_uzs) FROM investor_funding_balances a WHERE a.store_id=m.store_id AND a.investor_account_id=m.account_id AND a.order_id<>$2),0))::text AS available_for_order_uzs
  FROM memberships m LEFT JOIN investor_profiles p ON p.store_id=m.store_id AND p.account_id=m.account_id WHERE m.store_id=$1 AND m.role='investor' ORDER BY name LIMIT 200`,[store,id]);
- await c.query("COMMIT");return reply({principal:o.rows[0].principal,allocations:allocations.rows,investors:investors.rows,enabled:process.env.INVESTOR_FUNDING_ENABLED==="true"});
+ await c.query("COMMIT");return reply({principal:o.rows[0].principal,allocations:allocations.rows,investors:investors.rows,enabled:process.env.INVESTOR_FUNDING_ENABLED==="true",can_assign:viewer.role!=="seller"});
  }catch{await c.query("ROLLBACK");return reply({error:"Moliyalashtirishni yuklab bo‘lmadi"},503);}finally{c.release();}
  }catch{return reply({error:"Xizmat vaqtincha ishlamayapti"},503);}
 }
@@ -37,7 +37,8 @@ export async function PUT(request:Request,{params}:Ctx){
  }
  if(new Set(allocations.map(a=>a.accountId)).size!==allocations.length)return reply({error:"Investor takrorlangan"},400);
  try{
- const store=configuredStoreId();const member=await requireStoreRole(store,["owner","admin","seller"]);if(!member)return reply({error:"Ruxsat yo‘q"},403);
+ // Confirmed 2026-11-25: only the administrator (or owner) assigns investors. Sellers may read, not save.
+ const store=configuredStoreId();const member=await requireStoreRole(store,["owner","admin"]);if(!member)return reply({error:"Ruxsat yo‘q"},403);
  if(process.env.INVESTOR_FUNDING_ENABLED!=="true")return reply({error:"Moliyalashtirish hali yoqilmagan"},503);
  const c=await database().connect();
  try{
@@ -47,11 +48,14 @@ export async function PUT(request:Request,{params}:Ctx){
  const o=await c.query("SELECT request_status,sale_status FROM orders WHERE store_id=$1 AND id=$2 FOR UPDATE",[store,id]);
  if(!o.rowCount)return await fail("Buyurtma topilmadi",404);
  if(o.rows[0].request_status==="cancelled"||o.rows[0].sale_status==="sold")return await fail("Sotilgan yoki bekor qilingan buyurtmaning moliyalashtirishini o‘zgartirib bo‘lmaydi");
- const t=await c.query("SELECT cost_uzs FROM order_payment_terms WHERE store_id=$1 AND order_id=$2 AND payment_type='installment'",[store,id]);
- if(!t.rows[0]?.cost_uzs)return await fail("Avval nasiya shartlarini saqlang");
+ // Cash and instalment orders are both funded, against the recorded cost of the product.
+ const t=await c.query("SELECT cost_uzs FROM order_payment_terms WHERE store_id=$1 AND order_id=$2",[store,id]);
+ if(!t.rows[0]?.cost_uzs)return await fail("Avval to‘lov shartlarida tan narxini saqlang");
  const principal=BigInt(t.rows[0].cost_uzs);
  const sum=allocations.reduce((n,a)=>n+BigInt(a.amount),BigInt(0));
  if(sum>principal)return await fail("Ajratilgan kapital mahsulotning to‘liq tan narxidan oshmoqda",400);
+ // Funding covers the full cost or nothing: an empty list clears it, anything else must add up exactly.
+ if(allocations.length&&sum!==principal)return await fail("Ajratilgan summalar yig‘indisi tan narxiga teng bo‘lishi kerak",400);
  const previous=await c.query("SELECT investor_account_id FROM order_funding_allocations WHERE store_id=$1 AND order_id=$2",[store,id]);
  const ids=[...new Set([...allocations.map(a=>a.accountId),...previous.rows.map(r=>String(r.investor_account_id))])].sort();
  for(const accountId of ids){

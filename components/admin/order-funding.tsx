@@ -7,9 +7,9 @@ import { InvestorAllocator } from "./investor-allocator";
 import { Button } from "@/components/ui/button";
 import { staffFetch } from "@/lib/staff-client";
 
-type Data = { principal: string | null; allocations: { account_id: string; amount_uzs: string }[]; investors: { account_id: string; name: string; available_for_order_uzs: string }[]; enabled: boolean };
+type Data = { principal: string | null; allocations: { account_id: string; amount_uzs: string }[]; investors: { account_id: string; name: string; available_for_order_uzs: string }[]; enabled: boolean; can_assign?: boolean };
 
-export function OrderFunding({ endpoint, locked, version = 0, plain, onChanged }: { onChanged?: () => void; plain?: boolean; version?: number; endpoint: string; locked: boolean }) {
+export function OrderFunding({ endpoint, locked, version = 0, plain, onChanged, cash }: { cash?: boolean; onChanged?: () => void; plain?: boolean; version?: number; endpoint: string; locked: boolean }) {
   const url = endpoint + "/funding";
   const [data, setData] = useState<Data | null>(null);
   const [entries, setEntries] = useState<Record<string, string>>({});
@@ -40,12 +40,16 @@ export function OrderFunding({ endpoint, locked, version = 0, plain, onChanged }
 
   const sum = Object.values(entries).reduce((s, v) => s + BigInt(v || "0"), BigInt(0));
   const principal = BigInt(data?.principal ?? "0");
-  const editable = !!data?.enabled && !!data.principal && !locked && !busy && !loading;
+  const canAssign = data?.can_assign !== false;
+  const editable = !!data?.enabled && !!data.principal && !locked && !busy && !loading && canAssign;
   const overInvestor = (id: string) => {
     const n = BigInt(entries[id] || "0");
     return n > BigInt(0) && !data?.investors.some(i => i.account_id === id && n <= BigInt(i.available_for_order_uzs));
   };
-  const valid = sum <= principal && Object.keys(entries).every(id => !overInvestor(id)) && Object.values(entries).filter(v => BigInt(v || "0") > BigInt(0)).length <= 20;
+  const chosen = Object.values(entries).filter(v => BigInt(v || "0") > BigInt(0)).length;
+  // Funding covers the full cost exactly; saving an empty selection clears it.
+  const exact = sum === principal || chosen === 0;
+  const valid = exact && Object.keys(entries).every(id => !overInvestor(id)) && chosen <= 20;
   const allocations = () =>
     Object.entries(entries)
       .filter(([, v]) => BigInt(v || "0") > BigInt(0))
@@ -79,15 +83,23 @@ export function OrderFunding({ endpoint, locked, version = 0, plain, onChanged }
         <ErrorState message={loadError} onRetry={() => void load()} />
       ) : data ? (
         !data.principal ? (
-          <Notice>Avval yuqorida nasiya shartlarini saqlang. Moliyalashtirish tan narxi asosida hisoblanadi.</Notice>
+          <Notice>Avval to‘lov shartlarida tan narxini saqlang. Investorlar shu tan narxiga biriktiriladi.</Notice>
         ) : (
           <>
             {!data.enabled && <Notice>Moliyalashtirish moduli server sozlamalarida o‘chirilgan.</Notice>}
             {locked && <Notice>Sotilgan yoki bekor qilingan buyurtmada taqsimot tahrirlanmaydi.</Notice>}
-            <InvestorAllocator investors={data.investors} principal={principal} entries={entries} onChange={setEntries} disabled={!editable} />
-            {sum > principal && <InlineError message="Ajratilgan summa tan narxidan oshib ketdi." />}
+            {cash && <Notice>Naqd sotuvda investorga kapital va foyda qanday qaytarilishi hali tasdiqlanmagan. Biriktirilgan kapital sotuvdan keyin aylanmada qoladi.</Notice>}
+            {canAssign ? (
+              <InvestorAllocator investors={data.investors} principal={principal} entries={entries} onChange={setEntries} disabled={!editable} />
+            ) : (
+              <>
+                <Notice>Investorlarni faqat administrator biriktiradi. Siz buyurtmani davom ettiravering, taqsimotni administrator kiritadi.</Notice>
+                {data.allocations.length > 0 && <SummaryList rows={[...data.allocations.map(a => [data.investors.find(i => i.account_id === a.account_id)?.name ?? "Investor", <Money key={a.account_id} value={a.amount_uzs} />] as [string, React.ReactNode]), ["Tan narxi", <Money key="p" value={principal} />]]} />}
+              </>
+            )}
+            {canAssign && chosen > 0 && sum !== principal && <InlineError message={sum > principal ? "Ajratilgan summa tan narxidan oshib ketdi." : "Tan narxi to‘liq taqsimlanishi kerak. Qoldiq nol bo‘lguncha saqlab bo‘lmaydi."} />}
             <InlineError message={error} />
-            {data.investors.length > 0 && !locked && (
+            {data.investors.length > 0 && !locked && canAssign && (
               <Button type="button" className="self-start" disabled={!editable || !valid} onClick={() => setConfirm(true)}>
                 Taqsimotni saqlash
               </Button>

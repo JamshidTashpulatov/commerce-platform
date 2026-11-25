@@ -12,3 +12,19 @@ The implementation uses highest averages with stable investor-ID ties for cumula
 
 ## Capital availability (confirmed direction)
 Available principal = contributed principal - external capital withdrawals - original allocated principal + posted, unreversed recovered principal. Outstanding allocated principal = original allocated principal - posted, unreversed recovered principal. Keep profit separate until its reinvestment policy is approved. Reusing recovered principal must not count as a new external capital contribution. Reversals and subsequent reservations must be reconciled atomically to prevent double spending; Confirmed on 2026-11-25: when the recovered principal has already been reused, or the investor has a recorded profit distribution, the reversal stays blocked. The admin opens a discrepancy and closes it with documented evidence. The system does not post a negative investor balance or withhold from later receipts.
+
+## Assigning investors to orders (confirmed by the owner, 2026-11-25)
+The owner's answers, in their words: "1. Ikkalasiga ham. 2. to'liq taqsimlanadi. 3. faqat admin".
+
+1. **Cash and instalment sales are both attributed to investors.** A cash order records the product's cost with its payment terms (`cost_uzs`, migration 024; the instalment quote columns stay empty for cash), and investors are assigned against that cost exactly as for instalments. A cash order saved without a cost has nothing to fund against.
+2. **Funding covers the full cost.** `PUT /api/admin/orders/[id]/funding` accepts either an empty list (which clears the allocation, needed before terms can change) or amounts that add up to the cost exactly. A partial allocation is refused with 400. The form does the same: "Teng taqsimlash" and manual entry both have to end with nothing left over.
+3. **Only the administrator (or owner) assigns investors.** Sellers get 403 on saving funding. They can still read the allocation, create orders and record payments, and the form tells them the administrator assigns investors.
+
+Equal split (`lib/funding-split.ts`): whole so'm, leftover so'm one each to the first investors in list order, so the parts always add up. If an equal share is more than an investor has free, nothing is shifted to the others; the form names who is short and by how much.
+
+### Not confirmed: what a cash receipt returns to investors
+Only the assignment of investors to cash sales is confirmed. How a cash receipt is turned into returned principal and profit is **not**, and nothing posts it: `capital-returns` handles initial instalment receipts only, monthly posting handles instalment schedules only, and an integration test asserts that paying and confirming a funded cash sale leaves the investor ledgers untouched.
+
+Consequence until a rule is confirmed: capital assigned to a cash order stays outstanding after the sale and keeps reducing that investor's free capital, with no way in the application to return it.
+
+Open question for the owner, with an example. Cost 10 000 000, sold for cash at 11 000 000, A funded 6 000 000 and B 4 000 000. The natural extension of the approved instalment formula would be: principal returned = cost (A 6 000 000, B 4 000 000), profit = 11 000 000 − 10 000 000 = 1 000 000 shared in proportion to funding (A 600 000, B 400 000). This is a proposal, not a rule: it must not be built until the owner says yes, including when it is posted (on receipt or on sale) and what happens with a partial cash payment.

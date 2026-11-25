@@ -191,13 +191,13 @@ function NewOrder() {
     {
       id: "terms",
       title: "To‘lov turi va shartlari",
-      description: "To‘liq to‘lov yoki nasiyani tanlang. Nasiyada tan narxi kiritiladi va investorlarni belgilash ochiladi.",
+      description: "To‘liq to‘lov yoki nasiyani tanlang va tan narxini kiriting. Shundan keyin investorlarni belgilash ochiladi.",
       status: !orderId ? "blocked" : terms ? "done" : "current",
       reason: "Avval mahsulotni tanlab, buyurtma yarating.",
       summary: terms ? (
         <>
           {installment ? `Nasiya, ${terms.term_months} oy` : "To‘liq to‘lov"} · jami <Money value={terms.agreed_total_uzs} />
-          {installment && terms.cost_uzs && (
+          {terms.cost_uzs && (
             <>
               {" "}
               · tan narxi <Money value={terms.cost_uzs} />
@@ -210,15 +210,15 @@ function NewOrder() {
     {
       id: "investors",
       title: "Investorlar",
-      description: "Tan narxini qaysi investorlar qoplashini tanlang: teng taqsimlang yoki har biriga summani qo‘lda kiriting.",
-      status: !orderId || !terms ? "blocked" : !installment ? "blocked" : fundingDone ? "done" : "current",
-      reason: !orderId || !terms ? "Avval to‘lov shartlarini saqlang." : "Investor moliyalashtirishi hozircha faqat nasiya buyurtmalarida ishlaydi.",
+      description: "Tan narxini qaysi investorlar qoplashini administrator tanlaydi: teng taqsimlaydi yoki har biriga summani qo‘lda kiritadi. Tan narxi to‘liq taqsimlanadi.",
+      status: !orderId || !terms || principal === null ? "blocked" : fundingDone ? "done" : "current",
+      reason: !orderId || !terms ? "Avval to‘lov shartlarini saqlang." : "Tan narxi kiritilmagan. To‘lov shartlarida tan narxini saqlang.",
       summary: (
         <>
           Ajratilgan: <Money value={funded} /> / <Money value={principal ?? "0"} />
         </>
       ),
-      content: orderId && installment ? <OrderFunding plain endpoint={endpoint} locked={locked} onChanged={() => void refresh()} /> : null,
+      content: orderId && principal !== null ? <OrderFunding plain endpoint={endpoint} locked={locked} cash={!installment} onChanged={() => void refresh()} /> : null,
     },
   ];
 
@@ -238,7 +238,7 @@ function NewOrder() {
       {orderId && (
         <div className="flex flex-col gap-2 border-t pt-6">
           <p className="text-sm text-muted-foreground">Buyurtma saqlangan. Bu sahifani yopsangiz ham, qolgan qadamlarni buyurtma sahifasida davom ettirasiz.</p>
-          <Link href={"/staff/orders/" + orderId} className={buttonVariants({ variant: fundingDone || (!!terms && !installment) ? "default" : "outline", className: "self-start" })}>
+          <Link href={"/staff/orders/" + orderId} className={buttonVariants({ variant: fundingDone || (!!terms && principal === null) ? "default" : "outline", className: "self-start" })}>
             Buyurtma sahifasiga o‘tish
             <ArrowRightIcon data-icon="inline-end" />
           </Link>

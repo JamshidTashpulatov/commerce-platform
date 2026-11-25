@@ -58,7 +58,7 @@ test("a partial installment receipt credits only the investors who funded the so
     for(const [investor,amount] of [[a,"6000000"],[b,"4000000"],[c,"5000000"]]){
       assert.equal((await call("/api/admin/investors","POST",{accountId:investor.id,type:"contribution",amount,key:randomUUID()},admin)).status,201);
     }
-    assert.equal((await call(path+"/funding","PUT",{allocations:[{accountId:a.id,amount:"6000000"},{accountId:b.id,amount:"4000000"}]},seller)).status,200);
+    assert.equal((await call(path+"/funding","PUT",{allocations:[{accountId:a.id,amount:"6000000"},{accountId:b.id,amount:"4000000"}]},admin)).status,200);
     const revision=(await call(path,"GET",undefined,seller)).data.order.revision;
     assert.equal((await call(path+"/sale","POST",{revision},seller)).status,200);
     const initialReceipt=(await call(path+"/capital-returns","GET",undefined,admin)).data.receipts[0];

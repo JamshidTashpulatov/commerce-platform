@@ -188,9 +188,12 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   const fundingPath=nextPath+"/funding";
   const allocation={allocations:[{accountId:investorId,amount:"700"},{accountId:secondId,amount:"300"}]};
   assert.equal((await call(fundingPath,"PUT",allocation,investor)).status,403);
-  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:investorId,amount:"1001"}]},seller)).status,400);
-  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:secondId,amount:"401"}]},seller)).status,409);
-  assert.equal((await call(fundingPath,"PUT",allocation,seller)).status,200);
+  // Confirmed rules: only the administrator assigns investors, and funding covers the full cost (1000) exactly.
+  assert.equal((await call(fundingPath,"PUT",allocation,seller)).status,403);
+  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:investorId,amount:"1001"}]},admin)).status,400);
+  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:secondId,amount:"400"}]},admin)).status,400);
+  assert.equal((await call(fundingPath,"PUT",{allocations:[{accountId:investorId,amount:"599"},{accountId:secondId,amount:"401"}]},admin)).status,409);
+  assert.equal((await call(fundingPath,"PUT",allocation,admin)).status,200);
   assert.equal((await call(fundingPath,"GET",undefined,seller)).data.allocations.length,2);
   const own=await call("/api/investor/summary","GET",undefined,investor);
   assert.equal(own.status,200);assert.equal(own.data.allocated_uzs,"700");assert.equal(own.data.available_uzs,"300");
