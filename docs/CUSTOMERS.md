@@ -1,0 +1,7 @@
+# Mijozlar moduli — development preview
+
+Authorized staff can search by exact phone number, manually create a customer, and attach an existing or newly created record to an order. Customer accounts and staff-managed records remain separate. Passport or ID document number is optional in this development implementation; final required fields and retention rules are not yet approved.
+
+Name, phone and document number are encrypted with AES-256-GCM using unique random nonces and store/record/field-bound associated data. Phone equality lookup uses a separate derived HMAC key scoped to the store. Server responses expose the name, masked phone and document-presence flag only; no full document value is returned. Customer values are not included in audit events, public UI, investor reports or group notifications.
+
+The feature is disabled by default. For disposable testing only, configure CUSTOMER_RECORDS_ENABLED=true and a randomly generated 32-byte hex CUSTOMER_DATA_KEY in protected environment settings. Never commit actual keys; CI uses a non-secret fixture key. Key rotation, deletion/retention, permission narrowing, full customer correction workflow, identity document validation, abuse/rate limiting and production privacy/security review are still required. Existing customer records cannot be corrected, unlinked or supplemented with document details through this preview API. Do not collect real data until these requirements and local data-handling obligations have been reviewed.
