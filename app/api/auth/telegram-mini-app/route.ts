@@ -20,7 +20,7 @@ export async function POST(request:NextRequest){
     const client=await database().connect();
     try{
       await client.query("BEGIN");
-      const {rows}=await client.query("SELECT a.id,m.role FROM accounts a JOIN memberships m ON m.account_id=a.id WHERE a.telegram_user_id=$1 AND m.store_id=$2 AND m.role IN ('owner','admin','seller')",[verified.telegramUserId,storeId]);
+      const {rows}=await client.query("SELECT a.id,m.role FROM accounts a JOIN memberships m ON m.account_id=a.id WHERE a.telegram_user_id=$1 AND m.store_id=$2 AND m.role IN ('owner','admin','seller','investor')",[verified.telegramUserId,storeId]);
       if(!rows.length){await client.query("ROLLBACK");return NextResponse.json({error:"Access denied"},{status:403});}
       const assertion=await client.query("INSERT INTO telegram_auth_assertions(assertion_hash,expires_at) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING assertion_hash",[verified.hash,verified.expiresAt]);
       if(!assertion.rowCount){await client.query("ROLLBACK");return NextResponse.json({error:"Login already used"},{status:409});}
