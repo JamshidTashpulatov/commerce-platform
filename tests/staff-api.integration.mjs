@@ -141,7 +141,11 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   const firstRow=schedule.data.schedule[0];
   const monthly={action:"receipt",scheduleId:firstRow.id,amount:"262",date,method:"cash",key:randomUUID()};
   assert.equal((await call(schedulePath,"POST",{...monthly,amount:"263"},seller)).status,409);
-  assert.equal((await call(schedulePath,"POST",monthly,seller)).status,201);
+  assert.equal((await call(schedulePath,"POST",monthly,seller)).status,409);
+  // A pre-allocation historical receipt remains readable, retryable and reversible.
+  await pool.query(`INSERT INTO installment_receipts(store_id,schedule_id,amount_uzs,idempotency_key,recorded_by,received_on,method)
+    SELECT $1,$2,$3,$4,account_id,$5,'cash' FROM memberships WHERE role='seller' AND store_id=$1`,
+    [storeId,firstRow.id,monthly.amount,monthly.key,date]);
   assert.equal((await call(schedulePath,"POST",monthly,seller)).status,200);
   const consolidated=await call(nextPath+"/payments","GET",undefined,seller);
   assert.equal(consolidated.data.received_uzs,"562");
@@ -339,6 +343,28 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   );
   assert.deepEqual(Object.fromEntries(weights.rows.map(w=>[w.investor_account_id,w.invested_uzs])),{[investorId]:"700",[secondId]:"300"});
   assert.equal((await pool.query("SELECT count(*)::int AS n FROM installment_receipt_funding_weights WHERE receipt_id=$1",[reverseMonthly.receiptId])).rows[0].n,0);
+  const earnings = await call("/api/investor/summary","GET",undefined,investor);
+  const partner = await call("/api/investor/summary","GET",undefined,secondInvestor);
+  assert.equal(BigInt(earnings.data.received_profit_uzs)+BigInt(partner.data.received_profit_uzs),11n);
+  assert.equal(BigInt(earnings.data.returned_uzs)+BigInt(partner.data.returned_uzs),389n);
+  assert.equal((await call(schedulePath,"POST",{action:"reverse",receiptId:retryFunded.data.id,reason:"Correction"},admin)).status,409);
+  for (const [i,row] of schedule.data.schedule.entries()) {
+    const remainingAmount=BigInt(row.amount_uzs)-(i===0?100n:0n);
+    assert.equal((await call(schedulePath,"POST",{...monthly,scheduleId:row.id,key:randomUUID(),amount:String(remainingAmount)},seller)).status,201);
+  }
+  const settledOwn=(await call("/api/investor/summary","GET",undefined,investor)).data;
+  const settledOther=(await call("/api/investor/summary","GET",undefined,secondInvestor)).data;
+  assert.equal(settledOwn.outstanding_uzs,"0");
+  assert.equal(settledOther.outstanding_uzs,"0");
+  assert.equal(BigInt(settledOwn.received_profit_uzs)+BigInt(settledOther.received_profit_uzs),84n);
+  const periodReport=(await call(period,"GET",undefined,investor)).data;
+  assert.equal(periodReport.months[0].received_profit,settledOwn.received_profit_uzs);
+  assert.equal(periodReport.months[0].returned,"700");
+  const postedSchedule=(await call(schedulePath,"GET",undefined,seller)).data;
+  assert.equal(postedSchedule.contract.status,"settled");
+  const postedReceipt=postedSchedule.receipts.find(r=>r.id===retryFunded.data.id);
+  assert.equal(postedReceipt.principal_uzs,"89");
+  assert.equal(postedReceipt.profit_uzs,"11");
   // Product pages keep variants together and filter across the full published catalog.
   await pool.query(`WITH added AS (
     INSERT INTO products(store_id,name,category,published)

@@ -25,9 +25,11 @@ export async function GET(request:Request){
  const months=await c.query(`SELECT to_char(created_at AT TIME ZONE 'Asia/Tashkent','YYYY-MM') AS month,
  COALESCE(SUM(amount_uzs) FILTER(WHERE event_type='contribution'),0)::text AS contributed,
  COALESCE(SUM(amount_uzs) FILTER(WHERE event_type='withdrawal'),0)::text AS withdrawn,
- COALESCE(SUM(amount_uzs) FILTER(WHERE event_type='distribution'),0)::text AS distributed
- FROM investor_capital_events WHERE ${filter} GROUP BY 1 ORDER BY 1`,values);
- const entries=await c.query(`SELECT id,event_type,amount_uzs::text,created_at FROM investor_capital_events WHERE ${filter} ORDER BY created_at DESC,id DESC LIMIT 201`,values);
+ COALESCE(SUM(amount_uzs) FILTER(WHERE event_type='distribution'),0)::text AS distributed,
+ COALESCE(SUM(amount_uzs) FILTER(WHERE event_type='principal_return'),0)::text AS returned,
+ COALESCE(SUM(amount_uzs) FILTER(WHERE event_type='received_profit'),0)::text AS received_profit
+ FROM investor_report_movements WHERE ${filter} GROUP BY 1 ORDER BY 1`,values);
+ const entries=await c.query(`SELECT id,event_type,amount_uzs::text,created_at FROM investor_report_movements WHERE ${filter} ORDER BY created_at DESC,id DESC,event_type LIMIT 201`,values);
  await c.query("COMMIT");
  return reply({from,to,months:months.rows,entries:entries.rows.slice(0,200),truncated:entries.rows.length>200});
  }catch{await c.query("ROLLBACK");return reply({error:"Hisobotni yuklab bo‘lmadi"},503);}finally{c.release();}

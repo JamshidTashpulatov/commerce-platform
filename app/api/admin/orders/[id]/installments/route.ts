@@ -3,6 +3,7 @@ import {database,configuredStoreId} from "../../../../../../lib/server/db";
 import {requireStoreRole} from "../../../../../../lib/server/auth";
 import {isUuid,sameOrigin,smallJson,privateHeaders} from "../../../../../../lib/server/http";
 import {buildSchedule,validDate} from "../../../../../../lib/installment-schedule";
+import {postMonthlyAllocation} from "../../../../../../lib/server/monthly-posting";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const reply=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:privateHeaders});
@@ -25,7 +26,7 @@ export async function GET(_request:Request,{params}:Ctx){
  CASE WHEN COALESCE(SUM(r.amount_uzs) FILTER(WHERE v.receipt_id IS NULL),0)>=s.amount_uzs THEN 'paid' WHEN s.due_date < (now() AT TIME ZONE 'Asia/Tashkent')::date THEN 'overdue' ELSE 'pending' END AS state
  FROM installment_schedule s LEFT JOIN installment_receipts r ON r.store_id=s.store_id AND r.schedule_id=s.id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id
  WHERE s.store_id=$1 AND s.contract_id=$2 GROUP BY s.id ORDER BY s.sequence_no`,[store,cid]):{rows:[]};
- const receipts=cid?await c.query("SELECT r.id,s.sequence_no,r.amount_uzs::text,r.received_on::text,r.method,(v.receipt_id IS NOT NULL) AS reversed FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE s.store_id=$1 AND s.contract_id=$2 ORDER BY r.received_at DESC",[store,cid]):{rows:[]};
+ const receipts=cid?await c.query("SELECT r.id,s.sequence_no,r.amount_uzs::text,r.received_on::text,r.method,(SELECT SUM(a.principal_uzs)::text FROM investor_monthly_allocations a WHERE a.store_id=r.store_id AND a.receipt_id=r.id) AS principal_uzs,(SELECT SUM(a.profit_uzs)::text FROM investor_monthly_allocations a WHERE a.store_id=r.store_id AND a.receipt_id=r.id) AS profit_uzs,(v.receipt_id IS NOT NULL) AS reversed FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE s.store_id=$1 AND s.contract_id=$2 ORDER BY r.received_at DESC",[store,cid]):{rows:[]};
  await c.query("COMMIT");
  return reply({terms:t.rows[0]??null,initial_received_uzs:paid.rows[0].amount,has_passport:o.rows[0].has_passport,contract:contract.rows[0]??null,schedule:schedule.rows,receipts:receipts.rows});
  }catch{await c.query("ROLLBACK");return reply({error:"Nasiya jadvalini yuklab bo‘lmadi"},503);}finally{c.release();}
@@ -90,10 +91,14 @@ export async function POST(request:Request,{params}:Ctx){
    JOIN order_payment_terms t ON t.store_id=$1 AND t.order_id=$2 AND t.cost_uzs=p.funded`,
    [store,id,result.rows[0].id]);
  }
+ const postingError=await postMonthlyAllocation(c,store,id,result.rows[0].id,BigInt(String(b.amount)));
+ if(postingError)return await fail(postingError);
  event="installment_receipt_recorded";
  }else{
  const r=await c.query("SELECT r.id FROM installment_receipts r JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id WHERE r.store_id=$1 AND s.contract_id=$2 AND r.id=$3",[store,existing.id,b.receiptId]);
  if(!r.rowCount)return await fail("To‘lov topilmadi",404);
+ const posted=await c.query("SELECT 1 FROM investor_monthly_allocations WHERE store_id=$1 AND receipt_id=$2 LIMIT 1",[store,b.receiptId]);
+ if(posted.rowCount)return await fail("Investorlar hisobiga yozilgan tushum uchun kapital va foyda tuzatishi kerak");
  const reversal=await c.query("INSERT INTO installment_receipt_reversals(store_id,receipt_id,reversed_by,reason) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING receipt_id",[store,b.receiptId,member.account_id,String(b.reason).trim()]);
  if(!reversal.rowCount)return await fail("To‘lov avval bekor qilingan");event="installment_receipt_reversed";
  }
