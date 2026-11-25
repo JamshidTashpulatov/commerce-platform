@@ -49,6 +49,8 @@ export async function POST(request:Request,{params}:Ctx){
  if(order.rows[0].request_status==="cancelled")return await fail("Buyurtma bekor qilingan");
  const terms=await c.query("SELECT agreed_total_uzs,payment_type,initial_due_uzs FROM order_payment_terms WHERE store_id=$1 AND order_id=$2",[store,id]);
  const t=terms.rows[0];let event:string;
+ const activeContract=await c.query("SELECT 1 FROM installment_contracts WHERE store_id=$1 AND order_id=$2 AND status IN ('active','settled')",[store,id]);
+ if(activeContract.rowCount)return await fail("Faol nasiya shartnomasi mavjud. Ushbu to‘lovlar alohida boshqariladi.");
  if(action==="terms"){
   const existing=await c.query("SELECT 1 FROM order_manual_receipts WHERE store_id=$1 AND order_id=$2 LIMIT 1",[store,id]);
   if(existing.rowCount)return await fail("To‘lov qayd etilgan. Shartlarni o‘zgartirish bloklangan.");
@@ -58,6 +60,8 @@ export async function POST(request:Request,{params}:Ctx){
   event="payment_terms_saved";
  }else if(action==="receipt"){
   if(!t)return await fail("Avval to‘lov shartlarini saqlang");
+  const dateCheck=await c.query("SELECT $1::date <= (now() AT TIME ZONE 'Asia/Tashkent')::date AS valid",[b.date]);
+  if(!dateCheck.rows[0].valid)return await fail("Kelajakdagi to‘lovni olingan deb qayd etib bo‘lmaydi",400);
   const duplicate=await c.query("SELECT id,order_id,amount_uzs::text,method,received_on::text FROM order_manual_receipts WHERE store_id=$1 AND idempotency_key=$2",[store,b.key]);
   if(duplicate.rowCount){const d=duplicate.rows[0];await c.query("ROLLBACK");return d.order_id===id&&d.amount_uzs===b.amount&&d.method===b.method&&d.received_on===b.date?reply({id:d.id,repeated:true}):reply({error:"So‘rov kaliti band"},409);}
   const balance=await c.query("SELECT COALESCE(SUM(r.amount_uzs),0)::text AS received FROM order_manual_receipts r LEFT JOIN order_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE r.store_id=$1 AND r.order_id=$2 AND v.receipt_id IS NULL",[store,id]);
