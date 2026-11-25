@@ -8,7 +8,7 @@ export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const reply=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:privateHeaders});
 type Ctx={params:Promise<{id:string}>};
-const amount=(v:unknown):v is string=>typeof v==="string"&&/^(0|[1-9][0-9]{0,11})$/.test(v);
+const amount=(v:unknown):v is string=>typeof v==="string"&&/^(0|[1-9][0-9]{0,8})$/.test(v);
 const validDate=(v:unknown):v is string=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v;
 export async function GET(_request:Request,{params}:Ctx){
  try{

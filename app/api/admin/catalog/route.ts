@@ -33,7 +33,7 @@ export async function POST(request:Request){
  if(!str(b.name,1,120)||!str(b.category,1,80)||(b.model!==undefined&&b.model!==null&&!str(b.model,0,80))||!str(b.description,0,3000)||typeof b.published!=="boolean"||(b.imageUrl!==null&&(typeof b.imageUrl!=="string"||!approvedImageUrl(b.imageUrl))))return reply({error:"Mahsulot ma’lumotlarini yoki tasdiqlangan rasm manzilini tekshiring"},400);
  if(b.optionGroups!==undefined&&!validGroups(b.optionGroups,approvedImageUrl))return reply({error:"Xususiyatlar va qiymatlarni tekshiring"},400);
  if(create&&b.published)return reply({error:"Avval qoralama yarating va variant qo‘shing"},400);
- }else if((create&&!isUuid(b.productId))||!str(b.sku,1,80)||!str(b.color,1,80)||!str(b.storage,0,80)||typeof b.price!=="string"||!/^[1-9][0-9]{0,11}$/.test(b.price)||typeof b.active!=="boolean")return reply({error:"Variant ma’lumotlarini tekshiring"},400);
+ }else if((create&&!isUuid(b.productId))||!str(b.sku,1,80)||!str(b.color,1,80)||!str(b.storage,0,80)||typeof b.price!=="string"||!/^[1-9][0-9]{0,8}$/.test(b.price)||typeof b.active!=="boolean")return reply({error:"Variant ma’lumotlarini tekshiring"},400);
  if(!product&&b.imageUrl!==undefined&&b.imageUrl!==null&&(typeof b.imageUrl!=="string"||!approvedImageUrl(b.imageUrl)))return reply({error:"Variant rasmi tasdiqlangan manbadan bo‘lishi kerak"},400);
  try{
  const store=configuredStoreId();const actor=await requireStoreRole(store,["owner","admin"]);if(!actor)return reply({error:"Ruxsat yo‘q"},403);

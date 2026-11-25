@@ -129,7 +129,7 @@ export default function CatalogAdmin() {
     setCategoryOpen(false);
   }
   const productValid = !!productForm.name.trim() && !!productForm.category.trim();
-  const variantValid = !!product && !!variantForm.sku.trim() && (product.option_groups.length ? validSelection(product.option_groups, variantForm.optionValues) : !!variantForm.color.trim()) && /^[1-9][0-9]{0,11}$/.test(variantForm.price);
+  const variantValid = !!product && !!variantForm.sku.trim() && (product.option_groups.length ? validSelection(product.option_groups, variantForm.optionValues) : !!variantForm.color.trim()) && /^[1-9][0-9]{0,8}$/.test(variantForm.price);
 
   if (loading && !data) return <><PageHeader title="Mahsulotlar" /><LoadingBlock rows={6} label="Katalog yuklanmoqda" /></>;
   if (!data) return <><PageHeader title="Mahsulotlar" /><ErrorState message={loadError || "Katalog yuklanmadi"} onRetry={() => void load()} /></>;

@@ -33,6 +33,6 @@ export async function GET(){
       COALESCE((SELECT SUM(amount_uzs) FROM investor_capital_events WHERE store_id=$1 AND event_type='distribution'),0)::text AS recorded_distributions_uzs,
       COALESCE((SELECT SUM(amount_uzs) FROM recorded_fund_movements WHERE store_id=$1),0)::text AS recorded_fund_net_uzs
     `,[storeId]);
-    return NextResponse.json({currency:"UZS",...rows[0]},{headers});
+    return NextResponse.json({currency:"USD",...rows[0]},{headers});
   }catch{return NextResponse.json({error:"Xizmat vaqtincha ishlamayapti"},{status:503,headers});}
 }

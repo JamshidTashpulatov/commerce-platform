@@ -5,7 +5,7 @@ import {equalSplit} from "../lib/funding-split.ts";
 const inv=(id,available)=>({id,available:BigInt(available)});
 const sum=shares=>Object.values(shares).reduce((n,v)=>n+BigInt(v),0n);
 
-test("equal split gives whole so'm that add up exactly",()=>{
+test("equal split gives whole dollars that add up exactly",()=>{
   const r=equalSplit(10_000_000n,[inv("a",9_000_000),inv("b",9_000_000),inv("c",9_000_000)]);
   assert.deepEqual(r.shares,{a:"3333334",b:"3333333",c:"3333333"});
   assert.equal(sum(r.shares),10_000_000n);
@@ -29,6 +29,6 @@ test("no investors or no amount gives nothing",()=>{
   assert.deepEqual(equalSplit(1000n,[]),{shares:{},short:[]});
   assert.deepEqual(equalSplit(0n,[inv("a",5)]),{shares:{},short:[]});
 });
-test("more investors than so'm leaves the last ones out",()=>{
+test("more investors than dollars leaves the last ones out",()=>{
   assert.deepEqual(equalSplit(2n,[inv("a",5),inv("b",5),inv("c",5)]).shares,{a:"1",b:"1"});
 });

@@ -2,8 +2,8 @@ export type SplitInvestor = { id: string; available: bigint };
 export type EqualSplit = { shares: Record<string, string>; short: { id: string; share: bigint; missing: bigint }[] };
 
 /**
- * Split `total` so'm equally between the given investors, in whole so'm.
- * The leftover so'm (total not divisible by the count) go one each to the first investors in the
+ * Split `total` equally between the given investors, in whole currency units (US dollars).
+ * The leftover units (total not divisible by the count) go one each to the first investors in the
  * order given, so the parts always add up to exactly `total` and the result never depends on chance.
  * Nothing is shifted between investors: if an equal share is more than someone has available, that
  * investor is reported in `short` with the missing amount and no shares are returned.
