@@ -6,8 +6,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireStoreRole } from "@/lib/server/auth";
 import { configuredStoreId } from "@/lib/server/db";
+import { privateMetadata } from "@/lib/private-meta";
 
 export const dynamic = "force-dynamic";
+export const metadata = privateMetadata("Buyurtmalar", "Xodimlar uchun ish maydoni.");
 
 export default async function StaffLayout({ children }: { children: ReactNode }) {
   let role: string | null = null;
