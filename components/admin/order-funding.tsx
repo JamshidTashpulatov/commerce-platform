@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, RefreshButton, Section, Stat, StatGrid, SummaryList, TextField, errorText } from "./kit";
+import { InvestorAllocator } from "./investor-allocator";
 import { Button } from "@/components/ui/button";
 import { staffFetch } from "@/lib/staff-client";
 
@@ -81,33 +82,9 @@ export function OrderFunding({ endpoint, locked, version = 0, plain, onChanged }
           <Notice>Avval yuqorida nasiya shartlarini saqlang. Moliyalashtirish tan narxi asosida hisoblanadi.</Notice>
         ) : (
           <>
-            <StatGrid className="xl:grid-cols-3">
-              <Stat label="To‘liq tan narxi" value={<Money value={principal} />} />
-              <Stat label="Ajratilgan kapital" value={<Money value={sum} />} tone={sum > principal ? "danger" : "default"} />
-              <Stat label="Moliyalashtirish qoldig‘i" value={<Money value={principal - sum} />} tone={principal - sum < BigInt(0) ? "danger" : "default"} />
-            </StatGrid>
             {!data.enabled && <Notice>Moliyalashtirish moduli server sozlamalarida o‘chirilgan.</Notice>}
             {locked && <Notice>Sotilgan yoki bekor qilingan buyurtmada taqsimot tahrirlanmaydi.</Notice>}
-            {data.investors.length ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {data.investors.map(i => (
-                  <TextField
-                    key={i.account_id}
-                    label={i.name}
-                    description={
-                      <>
-                        Mavjud: <Money value={i.available_for_order_uzs} />
-                      </>
-                    }
-                    error={overInvestor(i.account_id) ? "Mavjud kapitaldan oshib ketdi." : undefined}
-                  >
-                    {id => <MoneyInput id={id} name={"allocation-" + i.account_id} disabled={!editable} value={entries[i.account_id] ?? ""} aria-invalid={overInvestor(i.account_id) || undefined} onChange={value => setEntries(old => ({ ...old, [i.account_id]: value }))} />}
-                  </TextField>
-                ))}
-              </div>
-            ) : (
-              <EmptyState title="Investor hisoblari mavjud emas" description="Administrator «Investorlar» bo‘limida hisob yaratadi va kapital kiritadi." />
-            )}
+            <InvestorAllocator investors={data.investors} principal={principal} entries={entries} onChange={setEntries} disabled={!editable} />
             {sum > principal && <InlineError message="Ajratilgan summa tan narxidan oshib ketdi." />}
             <InlineError message={error} />
             {data.investors.length > 0 && !locked && (
