@@ -18,7 +18,7 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
    await pool.query("INSERT INTO sessions(token_hash,account_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[createHash("sha256").update(token).digest("hex"),account]);
    return "__Host-store_session="+token;
   }
-  const seller=await session("seller");const investor=await session("investor");
+  const seller=await session("seller");const investor=await session("investor");const admin=await session("admin");
   const product=randomUUID();const variant=randomUUID();
   await pool.query("INSERT INTO products(id,store_id,name,category,published) VALUES($1,$2,'Test phone','Test',true)",[product,storeId]);
   await pool.query("INSERT INTO variants(id,store_id,product_id,sku,color,storage_label,price_uzs,quantity) VALUES($1,$2,$3,'CI-001','Oq','512 GB',1000,3)",[variant,storeId,product]);
@@ -48,5 +48,32 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   const detail=await call(path,"GET",undefined,seller);assert.equal(detail.data.order.fulfillment_status,"delivered");
   assert.equal((await pool.query("SELECT count(*)::int AS n FROM stock_movements WHERE store_id=$1 AND reason='sale'",[storeId])).rows[0].n,1);
   assert.equal((await pool.query("SELECT count(*)::int AS n FROM audit_events WHERE store_id=$1 AND entity_id=$2",[storeId,id])).rows[0].n,4);
+  const paymentPath=path+"/payments";
+  assert.equal((await call(paymentPath,"GET",undefined,investor)).status,403);
+  assert.equal((await call(paymentPath,"POST",{action:"terms",total:"2000",type:"cash",initial:"0"},seller)).status,201);
+  const date=(await pool.query("SELECT ((now() AT TIME ZONE 'Asia/Tashkent')::date)::text AS d")).rows[0].d;
+  const receipt={action:"receipt",amount:"700",method:"cash",date,key:randomUUID()};
+  assert.equal((await call(paymentPath,"POST",receipt,seller)).status,201);
+  assert.equal((await call(paymentPath,"POST",receipt,seller)).status,200);
+  assert.equal((await call(paymentPath,"POST",{...receipt,amount:"1400",key:randomUUID()},seller)).status,409);
+  assert.equal((await call(paymentPath,"POST",{action:"terms",total:"3000",type:"cash",initial:"0"},seller)).status,409);
+  const paid=await call(paymentPath,"GET",undefined,seller);
+  assert.equal(paid.data.received_uzs,"700");
+  assert.equal(paid.data.remaining_uzs,"1300");
+  assert.equal(paid.data.receipts.length,1);
+  const reversal={action:"reverse",receiptId:paid.data.receipts[0].id,reason:"Fixture correction"};
+  assert.equal((await call(paymentPath,"POST",reversal,seller)).status,403);
+  assert.equal((await call(paymentPath,"POST",reversal,admin)).status,201);
+  assert.equal((await call(paymentPath,"POST",reversal,admin)).status,409);
+  const corrected=await call(paymentPath,"GET",undefined,seller);
+  assert.equal(corrected.data.received_uzs,"0");assert.equal(corrected.data.remaining_uzs,"2000");assert.equal(corrected.data.receipts[0].reversed,true);
+  const next=await call("/api/admin/orders","POST",{variantId:variant,quantity:1,requestKey:randomUUID()},seller);
+  assert.equal(next.status,201);
+  const nextPath="/api/admin/orders/"+next.data.id;
+  assert.equal((await call(nextPath+"/payments","POST",{action:"terms",total:"1000",type:"installment",initial:"300"},seller)).status,201);
+  assert.equal((await call(nextPath+"/payments","POST",{action:"receipt",amount:"301",method:"cash",date,key:randomUUID()},seller)).status,409);
+  assert.equal((await call(nextPath+"/payments","POST",{action:"receipt",amount:"300",method:"cash",date,key:randomUUID()},seller)).status,201);
+  assert.equal((await call(nextPath,"PATCH",{revision:0,status:"cancelled"},seller)).status,409);
+
  }finally{await pool.end();}
 });
