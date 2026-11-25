@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {parseRate,retailDollars} from "../scripts/convert-prices-to-usd.mjs";
+import {isDollarTable,parseRate,retailDollars} from "../scripts/convert-prices-to-usd.mjs";
 
 test("so'm prices become retail whole-dollar prices", () => {
   const rate = 12500;
@@ -12,4 +12,9 @@ test("the rate must be a plausible so'm per dollar figure", () => {
   assert.equal(parseRate("--rate=12500"), 12500);
   assert.equal(parseRate("--rate=12650.5"), 12650.5);
   for (const bad of [undefined, "--rate=", "--rate=12,500", "--rate=0.0001", "--rate=500", "--rate=1e4", "--rate=-12500"]) assert.throws(() => parseRate(bad), bad);
+});
+
+test("only investor capital is reported as already dollars", () => {
+  for (const t of ["investor_capital_events", "investor_initial_returns", "investor_monthly_allocations"]) assert.equal(isDollarTable(t), true, t);
+  for (const t of ["orders", "order_items", "order_payment_terms", "order_manual_receipts", "installment_receipts", "supplier_payments", "purchase_stock_receipts"]) assert.equal(isDollarTable(t), false, t);
 });
