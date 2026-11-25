@@ -320,5 +320,21 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.ok(secondPage.items.every(o=>!seen.has(o.id)));
   const match = await call("/api/admin/orders?q="+id+"&status=in_progress","GET",undefined,seller);
   assert.deepEqual(match.data.items.map(o=>o.id),[id]);
+  // Product pages keep variants together and filter across the full published catalog.
+  await pool.query(`WITH added AS (
+    INSERT INTO products(store_id,name,category,published)
+    SELECT $1,'Catalog fixture '||n,'Fixture category',true FROM generate_series(1,25) n RETURNING id,store_id
+  ) INSERT INTO variants(store_id,product_id,sku,color,price_uzs)
+    SELECT store_id,id,id::text,'White',100 FROM added`,[storeId]);
+  const catalogPage = (await call("/api/catalog?category=Fixture+category")).data;
+  assert.equal(new Set(catalogPage.items.map(i=>i.id)).size,24);
+  const remaining = (await call("/api/catalog?category=Fixture+category&after="+catalogPage.next)).data;
+  assert.equal(remaining.items.length,1);
+  assert.equal(remaining.next,null);
+  assert.ok(!catalogPage.items.some(i=>i.id===remaining.items[0].id));
+  await pool.query("INSERT INTO variants(store_id,product_id,sku,color,price_uzs) SELECT $1,$2,'extra-'||n,'Rare colour',50 FROM generate_series(1,205) n",[storeId,product]);
+  const colors = (await call("/api/catalog?q=Rare+colour")).data;
+  assert.equal(colors.items.length,206);
+  assert.ok(colors.items.every(i=>i.id===product));
  }finally{await pool.end();}
 });
