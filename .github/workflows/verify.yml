@@ -33,7 +33,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run build
-      - run: node --experimental-strip-types --test tests/telegram-verify.test.mjs
+      - run: node --experimental-strip-types --test tests/telegram-verify.test.mjs tests/customer-crypto.test.mjs
       - name: Verify PostgreSQL schema
         env:
           PGPASSWORD: test_only
@@ -43,6 +43,7 @@ jobs:
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/003_finance.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/004_order_workflow.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/005_manual_payments.sql
+          psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/006_customers.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/tests/constraints.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/tests/finance_constraints.sql
 
@@ -54,6 +55,8 @@ jobs:
           STORE_ID: 00000000-0000-4000-8000-000000000001
           APP_ORIGIN: http://127.0.0.1:3100
           STAFF_WORKSPACE_ENABLED: "true"
+          CUSTOMER_RECORDS_ENABLED: "true"
+          CUSTOMER_DATA_KEY: "1111111111111111111111111111111111111111111111111111111111111111"
         run: |
           npm run start -- --hostname 127.0.0.1 --port 3100 > /tmp/commerce-server.log 2>&1 &
           server_pid=$!
