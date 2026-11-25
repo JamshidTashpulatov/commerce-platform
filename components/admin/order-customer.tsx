@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ErrorState, InlineError, LoadingBlock, Notice, RefreshButton, Section, StatusBadge, SubmitButton, TextField, errorText } from "./kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CustomerRatingCard } from "./customer-rating";
 import { staffFetch } from "@/lib/staff-client";
 
 type Customer = { id: string; name: string; phone_masked: string; has_passport: boolean };
@@ -124,7 +125,10 @@ export function OrderCustomer({ endpoint, cancelled, onLinked, plain, websiteCon
       ) : loadError ? (
         <ErrorState message={loadError} onRetry={() => void load()} />
       ) : !available ? null : linked ? (
-        <CustomerCard customer={linked} />
+        <>
+          <CustomerCard customer={linked} />
+          <CustomerRatingCard customerId={linked.id} warn />
+        </>
       ) : cancelled ? (
         <Notice>Buyurtma bekor qilingan. Mijoz biriktirilmaydi.</Notice>
       ) : (
@@ -185,6 +189,7 @@ export function OrderCustomer({ endpoint, cancelled, onLinked, plain, websiteCon
           {found && (
             <div className="flex flex-col gap-3 rounded-lg border p-3">
               <CustomerCard customer={found} />
+              <CustomerRatingCard customerId={found.id} warn />
               <Button type="button" className="self-start" disabled={busy} onClick={() => void attach()}>
                 Buyurtmaga biriktirish
               </Button>
