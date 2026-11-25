@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { staffFetch } from "@/lib/staff-client";
 
 type Data = { reviews: ReceiptReview[]; from: string; to: string; opening_uzs: string; incoming_uzs: string; outgoing_uzs: string; closing_uzs: string; groups: { kind: string; count: number; amount_uzs: string }[]; entries: { source_id: string; kind: string; amount_uzs: string; movement_date: string }[]; truncated: boolean; complete: boolean };
-const labels: Record<string, string> = { capital_contribution: "Investor kapitali kiritildi", capital_withdrawal: "Kapitaldan yechildi", profit_distribution: "Foyda taqsimoti qaydi", initial_receipt: "Boshlang‘ich to‘lov", cash_sale_receipt: "To‘liq to‘lov", manual_receipt_reversal: "To‘lov qaydi bekor qilindi", monthly_receipt: "Oylik to‘lov", monthly_receipt_reversal: "Oylik to‘lov qaydi bekor qilindi", supplier_payment: "Ta’minotchiga tovar uchun to‘lov", supplier_payment_reversal: "Ta’minotchi to‘lov qaydi bekor qilindi" };
+const labels: Record<string, string> = { capital_contribution: "Investor kapitali kiritildi", capital_withdrawal: "Kapitaldan yechildi", profit_distribution: "Foyda taqsimoti qaydi", initial_receipt: "Boshlang‘ich to‘lov", cash_sale_receipt: "To‘liq to‘lov", manual_receipt_reversal: "To‘lov qaydi bekor qilindi", monthly_receipt: "Oylik to‘lov", monthly_receipt_reversal: "Oylik to‘lov qaydi bekor qilindi" };
 
 export default function Cashbook() {
   const [from, setFrom] = useState("");

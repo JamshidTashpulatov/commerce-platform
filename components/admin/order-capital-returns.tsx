@@ -1,26 +1,27 @@
 "use client";
 
-import { SplitIcon } from "lucide-react";
+import { ScaleIcon, SplitIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, RefreshButton, Section, StatusBadge, SummaryList, TableFrame, TextField, errorText, formatDay } from "./kit";
+import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, Notice, RefreshButton, Section, StatusBadge, TableFrame, errorText, formatDay } from "./kit";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { staffFetch } from "@/lib/staff-client";
 
-type Data = { cost: string | null; sold: boolean; canPost: boolean; allocations: { account_id: string; name: string; amount_uzs: string; returned_uzs: string; outstanding_uzs: string }[]; receipts: { id: string; amount_uzs: string; received_on: string; posted: boolean }[] };
+type Data = { cost: string | null; sold: boolean; canPost: boolean; allocations: { account_id: string; name: string; amount_uzs: string; returned_uzs: string; outstanding_uzs: string }[]; receipts: { id: string; amount_uzs: string; received_on: string; posted: boolean; shares: { account_id: string; amount_uzs: string }[] | null }[];
+  /** Present only when an older hand-typed split is off the proportion. */
+  correction: { allowed: boolean; reason: string | null; rows: { account_id: string; name: string; amount_uzs: string; current_uzs: string; target_uzs: string }[] } | null;
+};
 
 export function OrderCapitalReturns({ endpoint, onChanged, version = 0, plain }: { plain?: boolean; version?: number; endpoint: string; onChanged: () => void }) {
   const url = endpoint + "/capital-returns";
   const [data, setData] = useState<Data | null>(null);
   const [selected, setSelected] = useState("");
-  const [entries, setEntries] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
-  const [confirm, setConfirm] = useState(false);
+  const [fixing, setFixing] = useState(false);
   const pending = useRef(false);
 
   const load = useCallback(async () => {
@@ -40,35 +41,28 @@ export function OrderCapitalReturns({ endpoint, onChanged, version = 0, plain }:
   }, [load, version]);
 
   const receipt = data?.receipts.find(r => r.id === selected && !r.posted);
-  const sum = Object.values(entries).reduce((n, v) => n + BigInt(v || "0"), BigInt(0));
   const full = !!data?.cost && data.allocations.reduce((n, a) => n + BigInt(a.amount_uzs), BigInt(0)) === BigInt(data.cost);
-  const over = (id: string) => {
-    const a = data?.allocations.find(a => a.account_id === id);
-    return !a || BigInt(entries[id] || "0") > BigInt(a.outstanding_uzs);
-  };
-  const valid = !!receipt && sum === BigInt(receipt.amount_uzs) && !!data?.canPost && data.sold && full && !busy && !loading && Object.keys(entries).every(id => !over(id));
+  const valid = !!receipt?.shares && !!data?.canPost && data.sold && full && !busy && !loading;
+  const nameOf = (id: string) => data?.allocations.find(a => a.account_id === id)?.name ?? "Investor";
 
-  async function post() {
-    if (!valid || !confirm || pending.current) return;
+  // The shares are computed on the server. The administrator only confirms them.
+  async function send(body: Record<string, unknown>, success: string) {
+    if (pending.current) return;
     pending.current = true;
     setBusy(true);
     setError("");
     try {
-      await staffFetch(url, "POST", {
-        receiptId: selected,
-        entries: Object.entries(entries)
-          .filter(([, v]) => BigInt(v || "0") > BigInt(0))
-          .map(([accountId, v]) => ({ accountId, amount: BigInt(v).toString() })),
-      });
+      await staffFetch(url, "POST", body);
       setSelected("");
-      setEntries({});
-      setConfirm(false);
+      setFixing(false);
       await load();
-      toast.success("Kapital qaytimi qayd etildi.");
+      toast.success(success);
       onChanged();
     } catch (e) {
-      setConfirm(false);
+      setSelected("");
+      setFixing(false);
       setError(errorText(e, "Saqlanmadi"));
+      void load();
     } finally {
       pending.current = false;
       setBusy(false);
@@ -77,7 +71,7 @@ export function OrderCapitalReturns({ endpoint, onChanged, version = 0, plain }:
 
   if ((!loading || data) && !loadError && !data?.cost) return null;
   return (
-    <Section plain={plain} title="Kapital qaytimi" description="Haqiqatan olingan boshlang‘ich to‘lov investorlarning asosiy kapitaliga qaytim sifatida yoziladi. Pul o‘tkazilmaydi." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
+    <Section plain={plain} title="Kapital qaytimi" description="Olingan boshlang‘ich to‘lov investorlarga mahsulotga qo‘shgan puliga mutanosib qaytadi. Ulushlarni tizim hisoblaydi. Pul o‘tkazilmaydi." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
       {loading && !data ? (
         <LoadingBlock label="Kapital qaytimi yuklanmoqda" />
       ) : loadError ? (
@@ -145,10 +139,8 @@ export function OrderCapitalReturns({ endpoint, onChanged, version = 0, plain }:
                            
                             disabled={busy}
                             onClick={() => {
-                              setSelected(r.id);
-                              setEntries({});
                               setError("");
-                              setConfirm(false);
+                              setSelected(r.id);
                             }}
                           >
                             <SplitIcon data-icon="inline-start" />
@@ -164,54 +156,86 @@ export function OrderCapitalReturns({ endpoint, onChanged, version = 0, plain }:
           ) : (
             <EmptyState title="Boshlang‘ich to‘lovlar mavjud emas" />
           )}
-          {!data.canPost && data.receipts.some(r => !r.posted) && <p className="text-sm text-muted-foreground">Qaytimni faqat administrator taqsimlaydi.</p>}
+          {!data.canPost && data.receipts.some(r => !r.posted) && <p className="text-sm text-muted-foreground">Qaytimni faqat administrator tasdiqlaydi.</p>}
+          {data.correction && (
+            <>
+              <Notice>
+                Boshlang‘ich to‘lov investorlarga ulushiga mos taqsimlanmagan, shu sabab oylik to‘lov qabul qilinmaydi. {data.correction.reason ?? (data.canPost ? "Taqsimotni tuzatsangiz, har bir investorga o‘z ulushi yoziladi." : "Administrator taqsimotni tuzatishi kerak.")}
+              </Notice>
+              <ShareTable head={["Investor", "Hozir yozilgan", "Ulushi bo‘yicha"]} rows={data.correction.rows.map(r => [r.account_id, r.name, r.current_uzs, r.target_uzs])} />
+              {data.correction.allowed && (
+                <Button type="button" className="self-start" disabled={busy} onClick={() => { setError(""); setFixing(true); }}>
+                  <ScaleIcon data-icon="inline-start" />
+                  Taqsimotni tuzatish
+                </Button>
+              )}
+            </>
+          )}
+          <InlineError message={error} />
 
-          <Dialog open={!!receipt && !confirm} onOpenChange={next => !next && !busy && setSelected("")}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Qaytimni taqsimlash</DialogTitle>
-                <DialogDescription>
-                  <Money value={receipt?.amount_uzs} /> to‘liq taqsimlanishi kerak. Har bir investorga uning aylanmadagi kapitalidan ko‘p yozib bo‘lmaydi.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4">
-                {data.allocations.map(a => (
-                  <TextField
-                    key={a.account_id}
-                    label={a.name}
-                    description={
-                      <>
-                        Aylanmada: <Money value={a.outstanding_uzs} />
-                      </>
-                    }
-                    error={entries[a.account_id] && over(a.account_id) ? "Aylanmadagi kapitaldan oshib ketdi." : undefined}
-                  >
-                    {id => <MoneyInput id={id} name={"return-" + a.account_id} value={entries[a.account_id] ?? ""} disabled={busy} onChange={value => setEntries(old => ({ ...old, [a.account_id]: value }))} />}
-                  </TextField>
-                ))}
-                <SummaryList
-                  rows={[
-                    ["Jami taqsimlangan", <Money key="s" value={sum} />],
-                    ["Qolgan", <Money key="r" value={BigInt(receipt?.amount_uzs ?? "0") - sum} />],
-                  ]}
-                />
-                <InlineError message={error} />
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" disabled={busy} onClick={() => setSelected("")}>
-                  Ortga
-                </Button>
-                <Button type="button" disabled={!valid} onClick={() => setConfirm(true)}>
-                  Davom etish
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          <ConfirmDialog open={confirm} onOpenChange={setConfirm} title="Qaytimni tasdiqlaysizmi?" description="Qayd tasdiqlangach mablag‘ qayta moliyalashtirish uchun ochiladi. Bu qaydni keyin tahrirlab yoki bekor qilib bo‘lmaydi." confirmLabel="Qaytimni tasdiqlash" busy={busy} disabled={!valid} onConfirm={() => void post()}>
-            <SummaryList rows={data.allocations.filter(a => BigInt(entries[a.account_id] || "0") > BigInt(0)).map(a => [a.name, <Money key={a.account_id} value={entries[a.account_id]} />])} />
+          <ConfirmDialog
+            open={!!receipt}
+            onOpenChange={next => !next && setSelected("")}
+            title="Qaytimni tasdiqlaysizmi?"
+            description={
+              <>
+                <Money value={receipt?.amount_uzs} /> investorlarga mahsulotga qo‘shgan puliga mutanosib yoziladi. Ulushlarni tizim hisoblagan, ularni o‘zgartirib bo‘lmaydi. Tasdiqlangach mablag‘ qayta moliyalashtirish uchun ochiladi.
+              </>
+            }
+            confirmLabel="Qaytimni tasdiqlash"
+            busy={busy}
+            disabled={!valid}
+            onConfirm={() => void send({ receiptId: selected }, "Kapital qaytimi qayd etildi.")}
+          >
+            <ShareTable
+              head={["Investor", "Qo‘shgan puli", "Qaytim"]}
+              rows={(receipt?.shares ?? []).map(x => [x.account_id, nameOf(x.account_id), data.allocations.find(a => a.account_id === x.account_id)?.amount_uzs ?? "0", x.amount_uzs])}
+            />
+          </ConfirmDialog>
+          <ConfirmDialog
+            open={fixing && !!data.correction}
+            onOpenChange={setFixing}
+            title="Taqsimotni tuzatasizmi?"
+            description="Har bir investorga boshlang‘ich to‘lovdan o‘z ulushi yoziladi. Ortiqcha yozilgan qaytim kamayadi, kam yozilgani ko‘payadi. Eski va yangi summalar tarixda saqlanadi."
+            confirmLabel="Tuzatishni tasdiqlash"
+            busy={busy}
+            disabled={!data.correction?.allowed}
+            onConfirm={() => void send({ action: "rebalance" }, "Qaytim ulushlarga mos qayta taqsimlandi.")}
+          >
+            <ShareTable head={["Investor", "Hozir", "Tuzatilgach"]} rows={(data.correction?.rows ?? []).map(r => [r.account_id, r.name, r.current_uzs, r.target_uzs])} />
           </ConfirmDialog>
         </>
       ) : null}
     </Section>
+  );
+}
+
+/** Read-only money table: a name and two amounts per investor. */
+function ShareTable({ head, rows }: { head: [string, string, string]; rows: [string, string, string, string][] }) {
+  return (
+    <TableFrame>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{head[0]}</TableHead>
+            <TableHead className="text-right">{head[1]}</TableHead>
+            <TableHead className="text-right">{head[2]}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map(([id, name, first, second]) => (
+            <TableRow key={id}>
+              <TableCell className="font-medium">{name}</TableCell>
+              <TableCell className="text-right text-muted-foreground">
+                <Money value={first} />
+              </TableCell>
+              <TableCell className="text-right font-medium">
+                <Money value={second} />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableFrame>
   );
 }

@@ -87,7 +87,7 @@ export function Section({ title, description, action, children, className, plain
   if (plain)
     return (
       <section aria-label={title} className={cn("flex flex-col gap-4", className)}>
-        {action && <div className="flex justify-end">{action}</div>}
+        {action && <div data-section-action className="flex justify-end">{action}</div>}
         {children}
       </section>
     );

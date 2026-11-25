@@ -3,7 +3,7 @@
 import { PlusIcon, WrenchIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, RefreshButton, Section, StatusBadge, SummaryList, TableFrame, TextField, errorText, formatDay, tashkentToday } from "./kit";
+import { ConfirmDialog, EmptyState, ErrorState, InlineError, LoadingBlock, Money, MoneyInput, Notice, RefreshButton, Section, StatusBadge, SummaryList, TableFrame, TextField, errorText, formatDay, formatSum, tashkentToday } from "./kit";
 import { paymentMethods } from "./order-payments";
 import { ReceiptCorrectionDialog } from "./receipt-correction";
 import { RecordBadge } from "./status";
@@ -14,15 +14,16 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { buildSchedule } from "@/lib/installment-schedule";
+import { remainingBalance, spreadPayment, type SpreadPart } from "@/lib/installment-spread";
 import { staffFetch } from "@/lib/staff-client";
 
 type Row = { id: string; sequence_no: number; due_date: string; amount_uzs: string; paid_uzs: string; state: string };
-type MonthlyReceipt = { id: string; sequence_no: number; amount_uzs: string; received_on: string; method: string; principal_uzs: string | null; profit_uzs: string | null; reversed: boolean };
+type MonthlyReceipt = { id: string; payment_key: string | null; sequence_no: number; amount_uzs: string; received_on: string; method: string; principal_uzs: string | null; profit_uzs: string | null; reversed: boolean };
 type Data = { can_review: boolean; terms: { agreed_total_uzs: string; initial_due_uzs: string; payment_type: string; term_months: number | null } | null; initial_received_uzs: string; has_passport: boolean; contract: { id: string; status: string } | null; schedule: Row[]; receipts: MonthlyReceipt[] };
 const stateTone = { paid: "success", overdue: "danger", pending: "neutral" } as const;
 const stateLabels: Record<string, string> = { paid: "To‘langan", overdue: "Kechikkan", pending: "Kutilmoqda" };
 
-export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0, plain }: { plain?: boolean; version?: number; endpoint: string; cancelled: boolean; onChanged: () => void }) {
+export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0, plain, only, target, onDone }: { plain?: boolean; version?: number; endpoint: string; cancelled: boolean; onChanged: () => void; only?: "pay" | "correct"; target?: string; onDone?: () => void }) {
   const url = endpoint + "/installments";
   const [data, setData] = useState<Data | null>(null);
   const [months, setMonths] = useState(6);
@@ -60,6 +61,18 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
     void load();
   }, [load, version]);
 
+  // Opened from the order page for one month row or one receipt.
+  useEffect(() => {
+    if (!only || !data || !target) return;
+    if (only === "pay") {
+      const r = data.schedule.find(x => x.id === target);
+      if (r) {
+        setSelected(r.id);
+        setAmount((BigInt(r.amount_uzs) - BigInt(r.paid_uzs)).toString());
+      }
+    } else setCorrecting(data.receipts.find(x => x.id === target) ?? null);
+  }, [only, target, data]);
+
   async function post(body: Record<string, unknown>, success: string, report: (message: string) => void = setError) {
     if (pending.current) return;
     pending.current = true;
@@ -76,6 +89,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
       setCorrecting(null);
       await load();
       onChanged();
+      if (only) onDone?.();
     } catch (e) {
       setConfirm(false);
       report(errorText(e, "Amal bajarilmadi"));
@@ -96,8 +110,145 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
   const row = data?.schedule.find(r => r.id === selected);
   const cap = row ? BigInt(row.amount_uzs) - BigInt(row.paid_uzs) : BigInt(0);
   const amountOk = /^[1-9][0-9]{0,8}$/.test(amount);
-  const canPay = !!row && amountOk && BigInt(amount) <= cap && !!date && !busy && !cancelled;
+  // A payment may be larger than the month's balance: the excess goes to the following months.
+  const balances = (data?.schedule ?? []).map(r => ({ id: r.id, sequence_no: r.sequence_no, balance: BigInt(r.amount_uzs) - BigInt(r.paid_uzs) }));
+  const owed = remainingBalance(balances);
+  let spread: SpreadPart[] = [];
+  if (row && amountOk)
+    try {
+      spread = spreadPayment(BigInt(amount), balances, row.id);
+    } catch {}
+  const overContract = amountOk && BigInt(amount) > owed;
+  const canPay = !!row && amountOk && spread.length > 0 && !!date && !busy && !cancelled;
+  // Every month row of the payment being corrected: a payment spread over months is reversed as a whole.
+  const correctingGroup = correcting ? (correcting.payment_key ? (data?.receipts ?? []).filter(r => r.payment_key === correcting.payment_key) : [correcting]) : [];
 
+  const closePay = () => {
+    setSelected("");
+    if (only) onDone?.();
+  };
+  const closeCorrection = () => {
+    setCorrecting(null);
+    if (only) onDone?.();
+  };
+  const payDialog = (
+            <Dialog open={!!row} onOpenChange={next => !next && !busy && closePay()}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{row?.sequence_no}-oy to‘lovi</DialogTitle>
+                  <DialogDescription>
+                    Muddat: {formatDay(row?.due_date)}. Shu oy qoldig‘i: <Money value={cap} />, shartnoma bo‘yicha jami qarz: <Money value={owed} />. Tizim to‘lovni asosiy kapital va foydaga o‘zi ajratadi.
+                  </DialogDescription>
+                </DialogHeader>
+                <form
+                  id="monthly-receipt"
+                  className="grid gap-4"
+                  onSubmit={e => {
+                    e.preventDefault();
+                    if (!canPay || !row) return;
+                    key.current ||= crypto.randomUUID();
+                    void post({ action: "receipt", scheduleId: row.id, amount, date, method, key: key.current }, "Oylik to‘lov qayd etildi.", setDialogError);
+                  }}
+                >
+                  <TextField label="Summa" description="Shu oy qoldig‘idan ko‘p bo‘lsa, ortig‘i keyingi oylarga o‘tadi." error={overContract ? `Summa shartnomaning qolgan qarzidan (${formatSum(owed)}) oshmasligi kerak.` : undefined}>
+                    {id => (
+                      <MoneyInput
+                        id={id}
+                        name="amount"
+                        value={amount}
+                        disabled={busy}
+                        onChange={value => {
+                          setAmount(value);
+                          key.current = "";
+                        }}
+                      />
+                    )}
+                  </TextField>
+                  <div className="grid grid-cols-2 gap-4">
+                    <TextField label="Sana">
+                      {id => (
+                        <Input
+                          id={id}
+                          name="date"
+                          type="date"
+                          value={date}
+                          disabled={busy}
+                          onChange={e => {
+                            setDate(e.target.value);
+                            key.current = "";
+                          }}
+                        />
+                      )}
+                    </TextField>
+                    <TextField label="Usul">
+                      {id => (
+                        <NativeSelect
+                          id={id}
+                          name="method"
+                          className="w-full"
+                          value={method}
+                          disabled={busy}
+                          onChange={e => {
+                            setMethod(e.target.value);
+                            key.current = "";
+                          }}
+                        >
+                          {Object.entries(paymentMethods).map(([k, v]) => (
+                            <NativeSelectOption key={k} value={k}>
+                              {v}
+                            </NativeSelectOption>
+                          ))}
+                        </NativeSelect>
+                      )}
+                    </TextField>
+                  </div>
+                  {spread.length > 1 && (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm font-medium">To‘lov oylarga shunday bo‘linadi</p>
+                      <SummaryList rows={spread.map(p => [p.sequence_no + "-oy", <Money key={p.id} value={p.amount} />])} />
+                    </div>
+                  )}
+                  <InlineError message={dialogError} />
+                </form>
+                <DialogFooter>
+                  <Button type="button" variant="outline" disabled={busy} onClick={closePay}>
+                    Ortga
+                  </Button>
+                  <Button type="submit" form="monthly-receipt" disabled={!canPay}>
+                    {busy && <Spinner data-icon="inline-start" />}
+                    To‘lovni qayd etish
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+  );
+  const correctionDialog = (
+            <ReceiptCorrectionDialog
+              open={!!correcting}
+              busy={busy}
+              error={dialogError}
+              summary={
+                correcting && (
+                  <>
+                    {correctingGroup.length > 1 ? (
+                      <>
+                        {formatDay(correcting.received_on)} · <Money value={correctingGroup.reduce((n, r) => n + BigInt(r.amount_uzs), BigInt(0))} /> · {correctingGroup.map(r => r.sequence_no).sort((a, b) => a - b).join(", ")}-oylarga bo‘lingan bitta to‘lov. Bekor qilinsa, hammasi birga bekor bo‘ladi.
+                      </>
+                    ) : (
+                      <>
+                        {correcting.sequence_no}-oy · {formatDay(correcting.received_on)} · <Money value={correcting.amount_uzs} />
+                      </>
+                    )}
+                  </>
+                )
+              }
+              onClose={closeCorrection}
+              onReverse={reason => correcting && void post({ action: "reverse", receiptId: correcting.id, reason }, "Qayd bekor qilindi.", setDialogError)}
+              onReview={reason => correcting && void post({ action: "review", kind: "monthly", receiptId: correcting.id, reason }, "Tafovut kassadagi tekshiruvlar ro‘yxatiga yozildi.", setDialogError)}
+            />
+  );
+  // `only`: the order page shows its own tables and opens just one of these dialogs.
+  if (only) return only === "pay" ? payDialog : correctionDialog;
   if ((!loading || data) && !loadError && t?.payment_type !== "installment") return null;
   return (
     <Section plain={plain} title="Nasiya jadvali" description="Oylik to‘lov qayd etilganda tizim uni asosiy kapital va foydaga o‘zi ajratadi." action={<RefreshButton busy={loading || busy} onClick={() => void load()} />}>
@@ -116,9 +267,13 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
               </li>
               <li className="flex flex-wrap items-center gap-2">
                 <StatusBadge tone={initialPaid ? "success" : "warning"}>{initialPaid ? "Tayyor" : "Kerak"}</StatusBadge>
-                <span>
-                  Boshlang‘ich to‘lov: <Money value={data.initial_received_uzs} /> / <Money value={t.initial_due_uzs} />
-                </span>
+                {t.initial_due_uzs === "0" ? (
+                  <span>Boshlang‘ich to‘lovsiz nasiya: butun summa oylik to‘lovlarga bo‘linadi.</span>
+                ) : (
+                  <span>
+                    Boshlang‘ich to‘lov: <Money value={data.initial_received_uzs} /> / <Money value={t.initial_due_uzs} />
+                  </span>
+                )}
               </li>
             </ul>
             <div className="grid gap-4 sm:grid-cols-2 lg:max-w-md">
@@ -284,105 +439,8 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
               <EmptyState title="Hozircha oylik to‘lovlar yo‘q" />
             )}
 
-            <Dialog open={!!row} onOpenChange={next => !next && !busy && setSelected("")}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{row?.sequence_no}-oy to‘lovi</DialogTitle>
-                  <DialogDescription>
-                    Muddat: {formatDay(row?.due_date)}. Qoldiq: <Money value={cap} />. Tizim to‘lovni asosiy kapital va foydaga o‘zi ajratadi.
-                  </DialogDescription>
-                </DialogHeader>
-                <form
-                  id="monthly-receipt"
-                  className="grid gap-4"
-                  onSubmit={e => {
-                    e.preventDefault();
-                    if (!canPay || !row) return;
-                    key.current ||= crypto.randomUUID();
-                    void post({ action: "receipt", scheduleId: row.id, amount, date, method, key: key.current }, "Oylik to‘lov qayd etildi.", setDialogError);
-                  }}
-                >
-                  <TextField label="Summa" error={amountOk && BigInt(amount) > cap ? "Summa shu oy qoldig‘idan oshmasligi kerak." : undefined}>
-                    {id => (
-                      <MoneyInput
-                        id={id}
-                        name="amount"
-                        value={amount}
-                        disabled={busy}
-                        onChange={value => {
-                          setAmount(value);
-                          key.current = "";
-                        }}
-                      />
-                    )}
-                  </TextField>
-                  <div className="grid grid-cols-2 gap-4">
-                    <TextField label="Sana">
-                      {id => (
-                        <Input
-                          id={id}
-                          name="date"
-                          type="date"
-                          value={date}
-                          disabled={busy}
-                          onChange={e => {
-                            setDate(e.target.value);
-                            key.current = "";
-                          }}
-                        />
-                      )}
-                    </TextField>
-                    <TextField label="Usul">
-                      {id => (
-                        <NativeSelect
-                          id={id}
-                          name="method"
-                          className="w-full"
-                          value={method}
-                          disabled={busy}
-                          onChange={e => {
-                            setMethod(e.target.value);
-                            key.current = "";
-                          }}
-                        >
-                          {Object.entries(paymentMethods).map(([k, v]) => (
-                            <NativeSelectOption key={k} value={k}>
-                              {v}
-                            </NativeSelectOption>
-                          ))}
-                        </NativeSelect>
-                      )}
-                    </TextField>
-                  </div>
-                  <InlineError message={dialogError} />
-                </form>
-                <DialogFooter>
-                  <Button type="button" variant="outline" disabled={busy} onClick={() => setSelected("")}>
-                    Ortga
-                  </Button>
-                  <Button type="submit" form="monthly-receipt" disabled={!canPay}>
-                    {busy && <Spinner data-icon="inline-start" />}
-                    To‘lovni qayd etish
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <ReceiptCorrectionDialog
-              open={!!correcting}
-              busy={busy}
-              error={dialogError}
-              summary={
-                correcting && (
-                  <>
-                    {correcting.sequence_no}-oy · {formatDay(correcting.received_on)} · <Money value={correcting.amount_uzs} />
-                  </>
-                )
-              }
-              onClose={() => setCorrecting(null)}
-              onReverse={reason => correcting && void post({ action: "reverse", receiptId: correcting.id, reason }, "Qayd bekor qilindi.", setDialogError)}
-              onReview={reason => correcting && void post({ action: "review", kind: "monthly", receiptId: correcting.id, reason }, "Tafovut kassadagi tekshiruvlar ro‘yxatiga yozildi.", setDialogError)}
-            />
+            {payDialog}
+            {correctionDialog}
           </>
         )
       ) : (

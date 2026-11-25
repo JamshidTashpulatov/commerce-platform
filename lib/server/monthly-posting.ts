@@ -1,6 +1,7 @@
 import "server-only";
 import type { PoolClient } from "pg";
 import { cumulativeMonthlyShares } from "../monthly-allocation";
+import { initialReturnIsProportional } from "../initial-return";
 
 // Caller holds the order lock for the entire receipt transaction.
 export async function postMonthlyAllocation(c: PoolClient, store: string, order: string, receipt: string, amount: bigint) {
@@ -22,12 +23,10 @@ export async function postMonthlyAllocation(c: PoolClient, store: string, order:
     initial:BigInt(r.returned_uzs)-BigInt(r.prior_capital)}));
   const principal = BigInt(terms.financed_principal_uzs);
   const cost = BigInt(terms.cost_uzs);
-  if (shares.reduce((sum,s)=>sum+s.invested-s.initial,BigInt(0)) !== principal) return "Boshlang‘ich kapital qaytimini to‘liq taqsimlang";
-  // An earlier manually posted, materially nonproportional return needs reconciliation.
-  if (shares.some(s=>{
-    const discrepancy = s.initial*cost - (cost-principal)*s.invested;
-    return discrepancy >= cost || discrepancy <= -cost;
-  })) return "Boshlang‘ich qaytim ulushlarini moliyalashtirish bilan solishtiring";
+  if (shares.reduce((sum,s)=>sum+s.invested-s.initial,BigInt(0)) !== principal) return "Boshlang‘ich to‘lov hali investorlarga taqsimlanmagan. Administrator «Kapital qaytimi» bo‘limida uni tasdiqlashi kerak.";
+  // An earlier manually posted, materially nonproportional return needs the administrator's correction.
+  if (!initialReturnIsProportional(cost-principal,cost,shares.map(s=>({invested:s.invested,returned:s.initial}))))
+    return "Boshlang‘ich to‘lov investorlarga ulushiga mos taqsimlanmagan. To‘lovni qabul qilish uchun administrator «Kapital qaytimi» bo‘limida taqsimotni tuzatishi kerak.";
   const prior = participants.reduce((sum,r)=>sum+BigInt(r.prior_capital)+BigInt(r.prior_profit),BigInt(0));
   const received = await c.query(`SELECT COALESCE(SUM(r.amount_uzs),0) AS total FROM installment_receipts r
     JOIN installment_schedule s ON s.store_id=r.store_id AND s.id=r.schedule_id

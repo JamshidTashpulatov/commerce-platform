@@ -10,7 +10,7 @@ import { staffFetch } from "@/lib/staff-client";
  * (administrator only), which always includes every open discrepancy, and filters by order.
  * norman: closed discrepancies older than this month are not shown here, add when the API returns reviews per order.
  */
-export function OrderReviews({ orderId, version }: { orderId: string; version: number }) {
+export function OrderReviews({ orderId, version, hideEmpty }: { orderId: string; version: number; hideEmpty?: boolean }) {
   const [reviews, setReviews] = useState<ReceiptReview[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -32,6 +32,8 @@ export function OrderReviews({ orderId, version }: { orderId: string; version: n
     void load();
   }, [load, version]);
 
+  // On the order page the block appears only when there is a discrepancy to look at.
+  if (hideEmpty && !error && !reviews?.length) return null;
   return (
     <Section title="Tafovutlar" description="Bekor qilib bo‘lmaydigan xato to‘lov qaydlari bo‘yicha tekshiruvlar. Ochiq tafovutlar va shu oyda yopilganlari ko‘rsatiladi." action={<RefreshButton busy={loading} onClick={() => void load()} />}>
       {loading ? <LoadingBlock rows={2} label="Tafovutlar yuklanmoqda" /> : error ? <ErrorState message={error} onRetry={() => void load()} /> : reviews?.length ? <ReviewList reviews={reviews} onResolved={() => void load()} /> : <EmptyState title="Bu buyurtmada ochiq tafovut yo‘q" description="Xato to‘lov qaydini bekor qilib bo‘lmasa, to‘lovlar tarixidagi «Tuzatish» orqali tafovut oching." />}
