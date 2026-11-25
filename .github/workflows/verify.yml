@@ -41,7 +41,8 @@ jobs:
           for file in db/migrations/*.sql db/tests/*.sql; do
             psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f "$file"
           done
-      - name: Verify staff API lifecycle
+      - run: npx playwright install --with-deps chromium
+      - name: Verify staff API and browser lifecycle
         env:
           TELEGRAM_BOT_TOKEN: "ci-only-token"
           COMMERCE_TEST_MODE: "1"
@@ -69,3 +70,4 @@ jobs:
           done
           curl -fsS http://127.0.0.1:3100/ >/dev/null
           node --test tests/staff-api.integration.mjs
+          node --test tests/workspace.browser.mjs
