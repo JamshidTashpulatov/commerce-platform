@@ -47,6 +47,7 @@ jobs:
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/007_installment_posting.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/008_installment_pricing.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/009_funding.sql
+          psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/010_investor_access.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/tests/constraints.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/tests/finance_constraints.sql
 
