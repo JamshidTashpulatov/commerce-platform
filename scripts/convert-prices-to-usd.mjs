@@ -17,15 +17,16 @@
 //   to run again if one exists. Each row is updated only if it still holds the price that was read.
 // - Refuses when prices already look like dollars (the cheapest active price is under 10,000).
 // - Changes nothing but variants.price_uzs. Every other column ending in _uzs is listed, found from
-//   the schema, in two groups: order amounts (orders, order_items), which still hold so'm from test
-//   orders and need a decision; and finance amounts (capital events, receipts, allocations, ...),
-//   which are already whole US dollars, entered after the dollar decision, and are never converted.
+//   the schema, in two groups. Investor capital (tables starting with investor_) was entered after the
+//   dollar decision and is already whole US dollars. Everything else (orders, order items, payment
+//   terms, manual receipts, installments, suppliers, stock receipts, ...) only held test data from the
+//   so'm era when the switch was made, so it is listed as possibly so'm, to review by hand.
 import pg from "pg";
 import {pathToFileURL} from "node:url";
 
 export const MARKER="catalog_prices_converted_to_usd";
-/** Tables whose amounts may still be so'm from before the dollar decision. Every other money column is already dollars. */
-export const SOM_ERA_TABLES=new Set(["orders","order_items"]);
+/** Only investor capital was recorded in dollars before the switch; any other money column may hold so'm-era test data. */
+export const isDollarTable=(table)=>table.startsWith("investor_");
 
 /** So'm to a retail whole-dollar price, as described above. */
 export function retailDollars(soum,rate){
@@ -102,13 +103,13 @@ async function main(){
     const others=[];
     for(const {table_name:t,column_name:c} of columns){
       const r=(await client.query(`SELECT count(*)::int AS rows,count("${c}")::int AS filled,coalesce(sum("${c}"),0)::text AS total FROM "${t}" WHERE store_id=$1`,[STORE_ID])).rows[0];
-      if(r.filled)others.push({table:t,column:c,rows:r.rows,"non-null":r.filled,sum:fmt(r.total),som:SOM_ERA_TABLES.has(t)});
+      if(r.filled)others.push({table:t,column:c,rows:r.rows,"non-null":r.filled,sum:fmt(r.total),som:!isDollarTable(t)});
     }
     const pending=others.filter(o=>o.som),dollars=others.filter(o=>!o.som);
     const view=list=>list.map(({som,...o})=>o);
-    console.log(pending.length?"\nOrder amounts still in so'm (NOT converted, need a decision):":"\nNo order amounts in so'm.");
+    console.log(pending.length?"\nAmounts that may still be so'm from test data before the switch (NOT converted, review by hand):":"\nNo other amounts that may be so'm.");
     if(pending.length)console.table(view(pending));
-    console.log(dollars.length?"\nFinance amounts already in whole US dollars (never converted by this script):":"\nNo finance amounts recorded yet.");
+    console.log(dollars.length?"\nInvestor capital, already whole US dollars (never converted by this script):":"\nNo investor capital recorded yet.");
     if(dollars.length)console.table(view(dollars));
     const orders=(await client.query(`SELECT o.id,o.source,o.status,o.request_status,o.created_at,p.name,i.quantity,i.unit_price_uzs::text AS unit
       FROM order_items i JOIN orders o ON o.store_id=i.store_id AND o.id=i.order_id

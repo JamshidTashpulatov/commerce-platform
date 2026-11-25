@@ -30,8 +30,8 @@ DATABASE_URL=... STORE_ID=... node scripts/convert-prices-to-usd.mjs --rate=1265
 - **Scope.** Only `variants.price_uzs` is converted. Option groups hold no price amounts (only an `affectsPrice` flag); the script checks this and lists any number it finds.
 - **Runs once.** `--apply` records the audit event `catalog_prices_converted_to_usd` and refuses to run again. Each row is updated only if it still holds the price that was read. It also stops when the cheapest active price is under 10,000, since that already looks like dollars.
 - **Other amounts.** It lists every other `*_uzs` column with amounts for the store (base tables, found from the schema) and changes none of them. They are listed in two groups:
-  - **Order amounts** (`orders`, `order_items`): these may still hold so'm from test orders, and need a decision.
-  - **Finance amounts** (capital events, receipts, allocations and the rest): already whole US dollars, never converted. Investor capital imported after the dollar decision belongs here.
+  - **Investor capital** (tables starting with `investor_`): already whole US dollars, entered after the dollar decision, never converted.
+  - **Everything else** (orders, order items, payment terms, manual receipts, installments, suppliers, stock receipts and the rest): when the switch was made these only held test data from the so'm era, so they are listed as possibly so'm, to review by hand.
 
 Tested on a copy of the local catalog: 475 variants converted, a second run refused, and a run with the marker removed refused on the dollar check.
 
