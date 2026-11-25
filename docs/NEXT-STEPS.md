@@ -12,9 +12,9 @@ This is a public demonstration, not a production application.
 - Server-verified identity, sessions, role and tenant authorization on every protected request.
 - No personal documents or production credentials in public code, logs or messaging groups.
 - Confirm contractual/payment calculations and test rounding, refunds, partial and missed payments.
-- Add secure payment recording, audit log, reconciliation, messaging outbox and retries.
+- Add authorized staff-only manual payment recording, audit log, reconciliation, messaging outbox and retries. No payment gateway, online card collection or automatic debit is in scope.
 - Add consent, data retention, and authorized access for identity data.
 - Connect Telegram login/bot and authorized Mini App only using server-side verification.
 - Automated integration tests, visual review, accessibility review, deployment and monitoring.
 
-No payment, authentication, identity collection, or financial advice is enabled in this demonstration.
+The demo does not record real payments, authenticate real users or collect identity documents. The production payment workflow will record externally received payments manually; the application will not transfer money.
