@@ -1,0 +1,8 @@
+# Nasiya jadvali — development preview
+The staff member records the agreed total and initial amount in the manual payments module. The schedule allocates the remaining agreed total in integer UZS over the selected months. The first due date anchors following calendar months, with shorter months clamped to their last day. Rounding remainders are allocated one UZS at a time to the earliest rows.
+
+Activation requires an attached customer record with a document number and the full agreed initial amount recorded. The pricing base for the initial-payment percentage, monthly markup and capital recovery formula are not approved; they are not automatically calculated or enforced. The agreed total is not automatically increased. Schedule activation is disabled by default and is intended only for disposable testing until those rules and legal/privacy review are complete.
+
+Monthly receipts are recorded manually against a specific schedule row. The server serializes posting per order, prevents overpayment and duplicate receipts, and records audit events. Owner/admin reversals preserve original records and reopen a settled contract if necessary. Initial receipts cannot be edited or reversed after schedule activation. The order payment summary combines unreversed initial and scheduled receipts; the finance summary excludes reversed receipts.
+
+No money is transferred. Rescheduling, initial-payment corrections after activation, contract cancellation, customer document corrections, funding attribution, and notifications remain pending. Do not use for real contracts until acceptance testing and reconciliation are complete.
