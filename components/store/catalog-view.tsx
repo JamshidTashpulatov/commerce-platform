@@ -11,6 +11,7 @@ import type {OptionGroup,OptionSelection} from "../../lib/catalog-options";
 import {fromSoum,isColorGroup,productHref,sortCategories,swatchColor} from "../../lib/storefront";
 import {ProductVisual} from "./product-visual";
 import {Availability,eyebrow,pill} from "./bits";
+import {CompareToggle} from "./compare-toggle";
 
 type Row={id:string;name:string;category:string;description:string;image_url:string|null;variant_id:string;color:string;
   storage_label:string|null;price_uzs:string;in_stock:boolean;option_groups:OptionGroup[];option_values:OptionSelection};
@@ -141,8 +142,8 @@ export function CatalogView(){
       {(query||category)&&<EmptyContent><button type="button" className={pill({tone:"ghost"})} onClick={()=>{setQuery("");setCategory("");}}>Filtrlarni tozalash</button></EmptyContent>}
     </Empty>
     :<div className={cn("grid grid-cols-1 gap-5 transition-opacity duration-200 sm:grid-cols-2 desktop:grid-cols-3",loading&&"opacity-50")} aria-busy={loading}>
-      {cards.map(c=><article key={c.id} className="overflow-hidden rounded-[18px] bg-sf-alt transition-[translate,box-shadow] duration-300 ease-sf pointer-fine:hover:-translate-y-0.5 pointer-fine:hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
-        <Link href={productHref(c.id)} className="flex h-full flex-col rounded-[18px] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sf-blue">
+      {cards.map(c=><article key={c.id} className="flex flex-col rounded-[18px] bg-sf-alt transition-[translate,box-shadow] duration-300 ease-sf pointer-fine:hover:-translate-y-0.5 pointer-fine:hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+        <Link href={productHref(c.id)} className="flex flex-1 flex-col overflow-hidden rounded-t-[18px] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sf-blue">
           <div className="relative aspect-3/2 bg-sf-alt">
             <ProductVisual image={c.image} name={c.name} category={c.category} fit="blend" sizes="(min-width:1069px) 320px, (min-width:640px) 50vw, 100vw" className="absolute inset-0"/>
           </div>
@@ -157,6 +158,9 @@ export function CatalogView(){
             {c.variants>1&&<p className="text-xs text-sf-ink-3">{c.variants} ta variant</p>}
           </div>
         </Link>
+        <div className="flex items-center justify-between gap-3 border-t border-black/5 px-6 py-3.5">
+          <CompareToggle item={{id:c.id,name:c.name,category:c.category,image:c.image}}/>
+        </div>
       </article>)}
     </div>}
 

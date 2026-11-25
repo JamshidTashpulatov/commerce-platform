@@ -6,7 +6,7 @@ import {NativeSelect,NativeSelectOption} from "@/components/ui/native-select";
 import {Separator} from "@/components/ui/separator";
 import type {OptionGroup} from "../../lib/catalog-options";
 import type {StoreProductDetail,StoreVariant} from "../../lib/server/storefront";
-import {TELEGRAM_URL,isColorGroup,soum,swatchColor} from "../../lib/storefront";
+import {TELEGRAM_URL,bySize,isColorGroup,soum,swatchColor} from "../../lib/storefront";
 import {Availability,pill} from "./bits";
 import {Gallery} from "./gallery";
 
@@ -84,7 +84,7 @@ export function BuyPanel({product,demo=false}:{product:StoreProductDetail;demo?:
 function OptionSection({group,skus,selected,onPick}:{group:OptionGroup;skus:StoreVariant[];selected:StoreVariant;onPick:(value:string)=>void}){
   const color=isColorGroup(group.name);
   const chosen=selected.options[group.name];
-  const values=group.values.map(v=>({...v,best:closest(skus,selected,group.name,v.label)}));
+  const values=bySize(group.values,v=>v.label).map(v=>({...v,best:closest(skus,selected,group.name,v.label)}));
   const titleId="opt-"+group.name.replace(/\s+/g,"-");
   if(color)return <section aria-labelledby={titleId}>
     <h2 className={sectionTitle} id={titleId}>{group.name}. <span className="text-sf-ink-2">{chosen}</span></h2>

@@ -90,3 +90,9 @@ export function splitDescription(text:string):DescriptionParts{
   }
   return {body:rest,config,demoNote:demoNote?(demoNote.endsWith(".")?demoNote:demoNote+"."):null};
 }
+
+// "256 GB" before "1 TB": capacities sort by size, other values keep catalog order.
+const capacity=(v:string)=>{const m=/^(\d+(?:[.,]\d+)?)\s*(GB|TB)\b/i.exec(v.trim());return m?parseFloat(m[1].replace(",","."))*(m[2].toUpperCase()==="TB"?1024:1):null;};
+export function bySize<T>(values:T[],label:(v:T)=>string=(v=>String(v))):T[]{
+  return values.every(v=>capacity(label(v))!==null)?[...values].sort((a,b)=>capacity(label(a))!-capacity(label(b))!):values;
+}

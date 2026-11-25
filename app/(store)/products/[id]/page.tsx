@@ -3,6 +3,7 @@ import Link from "next/link";
 import {notFound} from "next/navigation";
 import {cache} from "react";
 import {BuyPanel} from "../../../../components/store/buy-panel";
+import {CompareToggle} from "../../../../components/store/compare-toggle";
 import {pill,wrap} from "../../../../components/store/bits";
 import {getProduct} from "../../../../lib/server/storefront";
 import {InfoIcon} from "lucide-react";
@@ -32,7 +33,10 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
     <header className="flex flex-col gap-2 pt-8 pb-8 tablet:pt-14 tablet:pb-12">
       <Link className="self-start text-sm text-sf-link hover:underline" href={catalogHref(product.category)}>{product.category}</Link>
       <h1 className="text-[32px] leading-[1.125] font-semibold tracking-[0.004em] tablet:text-5xl tablet:leading-[1.08] tablet:tracking-[-0.003em]">{product.name}</h1>
-      <p className="text-[17px] tablet:text-[19px]">{oneprice?soum(product.fromPrice):fromSoum(product.fromPrice)}</p>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <p className="text-[17px] tablet:text-[19px]">{oneprice?soum(product.fromPrice):fromSoum(product.fromPrice)}</p>
+        <CompareToggle size="md" item={{id:product.id,name:product.name,category:product.category,image:product.image}}/>
+      </div>
     </header>
     <BuyPanel product={product} demo={!!about.demoNote}/>
     {(about.body||config.length>0||about.demoNote)&&<section className="mt-20 max-w-[692px] border-t border-sf-line pt-12" aria-labelledby="about-title">
