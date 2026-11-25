@@ -1,0 +1,14 @@
+"use client";
+import {useEffect,useState} from "react";
+import Link from "next/link";
+import {formatUzs,staffFetch} from "../../lib/staff-client";
+type Item={id:string;name:string;category:string;description:string;image_url:string|null;variant_id:string;color:string;storage_label:string|null;price_uzs:string;in_stock:boolean};
+export default function PublishedCatalog(){
+ const [items,setItems]=useState<Item[]>([]);const [error,setError]=useState("");const [loading,setLoading]=useState(true);const [query,setQuery]=useState("");const [category,setCategory]=useState("");const [chosen,setChosen]=useState<Record<string,string>>({});
+ useEffect(()=>{let active=true;staffFetch<{items:Item[]}>("/api/catalog").then(d=>{if(active)setItems(d.items);}).catch(e=>{if(active)setError(e instanceof Error?e.message:"Katalog yuklanmadi");}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[]);
+ const categories=[...new Set(items.map(i=>i.category))].sort();
+ const groups=Array.from(new Set(items.map(i=>i.id))).map(id=>items.filter(i=>i.id===id)).filter(g=>(!category||g[0].category===category)&&g.some(i=>[i.name,i.category,i.color,i.storage_label].join(" ").toLowerCase().includes(query.toLowerCase().trim())));
+ return <><header className="topbar"><Link href="/" className="brand">Do‘kon.</Link><span>Katalog</span></header><main className="container"><section className="hero"><h1>Mahsulotlar.</h1><p>Katalogdagi e’lon qilingan mahsulotlar va mavjud variantlar.</p></section><div className="form-grid"><label>Qidirish<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Mahsulot, rang yoki xotira"/></label><label>Kategoriya<select value={category} onChange={e=>setCategory(e.target.value)}><option value="">Barchasi</option>{categories.map(c=><option key={c}>{c}</option>)}</select></label></div>
+ {loading&&<p role="status">Katalog yuklanmoqda…</p>}{error&&<p role="alert">{error}</p>}{!loading&&!error&&!groups.length&&<p>Mahsulot topilmadi.</p>}
+ <div className="products">{groups.map(g=>{const p=g[0];const selected=g.find(v=>v.variant_id===chosen[p.id])??g.find(v=>v.in_stock)??p;return <article className="surface" key={p.id}>{p.image_url&&<img src={p.image_url} alt={p.name} referrerPolicy="no-referrer" loading="lazy" style={{width:"100%",height:220,objectFit:"contain"}}/>}<p className="muted">{p.category}</p><h2>{p.name}</h2><p>{p.description}</p><label>Variant<select value={selected.variant_id} onChange={e=>setChosen(o=>({...o,[p.id]:e.target.value}))}>{g.map(v=><option key={v.variant_id} value={v.variant_id}>{[v.color,v.storage_label].filter(Boolean).join(" · ")}</option>)}</select></label><h3>{formatUzs(selected.price_uzs)}</h3><p>{selected.in_stock?"Mavjud":"Hozircha mavjud emas"}</p></article>;})}</div><p className="muted">Hozircha server katalogidan mahsulotlarni ko‘rish mumkin. Buyurtma va Telegram autentifikatsiyasi hali ulanmagan.</p></main></>;
+}
