@@ -58,6 +58,11 @@ try {
       const split = image.uses.filter(u => u.role.startsWith("split:"));
       if (split.length) {
         for (const u of split) await swap("variants", u.variantId, u.replaces, url, u.role);
+        // The product's own cover was the shared photo: it takes the first colour's photo.
+        for (const u of split) {
+          const p = await client.query("SELECT id FROM products WHERE store_id=$1 AND id=$2 AND image_url=$3", [STORE_ID, u.productId, u.replaces]);
+          if (p.rowCount) await swap("products", u.productId, u.replaces, url, "cover from " + u.role);
+        }
         continue;
       }
       // Every product and variant row that stores this URL, active or not.
