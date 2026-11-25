@@ -35,7 +35,11 @@ test("Mini App login, logout and catalog navigation at mobile and desktop widths
       await page.getByRole("button", { name: "Oldingi sahifa" }).waitFor();
       await page.getByLabel("Qidirish").fill("Rare colour");
       await page.getByRole("heading", { name: "Test phone" }).waitFor();
-      assert.equal(await page.locator("article select option").count(), 206);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+      // Catalog cards link to the product page, which lists every stored variant.
+      await page.getByRole("link", { name: /Test phone/ }).click();
+      await page.getByRole("heading", { level: 1, name: "Test phone" }).waitFor();
+      assert.equal(await page.locator("main select option").count(), 206);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
     }
   } finally {

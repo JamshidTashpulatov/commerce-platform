@@ -1,27 +1,104 @@
-"use client";
-import {useState} from "react";
 import Link from "next/link";
-import {products,money,type Product} from "../lib/catalog";
-import {ProductArt} from "../components/product-art";
-type Line={id:string;color:string;qty:number};
-export default function Store(){
-const [search,setSearch]=useState("");
-const [category,setCategory]=useState("Barchasi");
-const [selected,setSelected]=useState<Product|null>(null);
-const [color,setColor]=useState("");
-const [qty,setQty]=useState(1);
-const [cart,setCart]=useState<Line[]>([]);
-const [compare,setCompare]=useState<string[]>([]);
-const [panel,setPanel]=useState<"cart"|"compare"|null>(null);
-const [notice,setNotice]=useState("");
-const visible=products.filter(p=>(category==="Barchasi"||p.category===category)&&(p.name+" "+p.category).toLowerCase().includes(search.toLowerCase().trim()));
-const total=cart.reduce((s,l)=>s+(products.find(p=>p.id===l.id)?.price??0)*l.qty,0);
-function open(p:Product){setSelected(p);setColor(p.colors[0]);setQty(1);setNotice("");}
-function add(){if(!selected)return;const p=selected;const used=cart.filter(l=>l.id===p.id).reduce((s,l)=>s+l.qty,0);if(used+qty>p.stock){setNotice("Omborda yetarli mahsulot yo‘q.");return;}setCart(prev=>prev.some(l=>l.id===p.id&&l.color===color)?prev.map(l=>l.id===p.id&&l.color===color?{...l,qty:l.qty+qty}:l):[...prev,{id:p.id,color,qty}]);setSelected(null);setPanel("cart");}
-function toggle(id:string){setCompare(prev=>prev.includes(id)?prev.filter(x=>x!==id):prev.length<3?[...prev,id]:prev);}
-return <><header className="topbar"><Link href="/" className="brand">Do‘kon.</Link><nav aria-label="Asosiy"><a href="#catalog">Namuna mahsulotlar</a><Link href="/catalog">Server katalogi</Link><button onClick={()=>setPanel("compare")}>Taqqoslash ({compare.length})</button><Link href="/dashboard">Boshqaruv paneli (namuna)</Link></nav><button className="secondary" onClick={()=>setPanel("cart")}>Savat ({cart.reduce((n,l)=>n+l.qty,0)})</button></header>
-<main className="container"><section className="hero"><p className="eyebrow">NAMUNAVIY TO‘PLAM</p><h1>Texnologiya. Siz uchun.</h1><p>Har kuni kerak bo‘ladigan mahsulotlarni bir joyda toping.</p><a className="primary" href="#catalog">Mahsulotlarni ko‘rish</a><div className="hero-art"><ProductArt symbol="phone"/><ProductArt symbol="laptop"/><ProductArt symbol="tablet"/></div></section>
-{selected&&<section className="surface config" aria-label="Mahsulot konfiguratsiyasi"><button className="secondary" onClick={()=>setSelected(null)}>Yopish</button><ProductArt symbol={selected.symbol}/><h2>{selected.name}</h2><p>{money(selected.price)}</p><label>Rang<select value={color} onChange={e=>setColor(e.target.value)}>{selected.colors.map(c=><option key={c}>{c}</option>)}</select></label><label>Miqdor<input type="number" min={1} max={selected.stock} value={qty} onChange={e=>setQty(Math.max(1,Math.min(selected.stock,Math.floor(Number(e.target.value)||1))))}/></label><p className="muted">Omborda: {selected.stock} ta</p>{notice&&<p role="alert">{notice}</p>}<button className="primary" onClick={add}>Savatga qo‘shish — {money(selected.price*qty)}</button></section>}
-{panel&&<section className="surface config" aria-label={panel==="cart"?"Savat":"Taqqoslash"}><button className="secondary" onClick={()=>setPanel(null)}>Yopish</button>{panel==="cart"?<><h2>Savat.</h2>{cart.length?cart.map(l=>{const p=products.find(p=>p.id===l.id)!;return <div className="cart-line" key={l.id+l.color}><div><strong>{p.name}</strong><p>{l.color} · {l.qty} ta</p></div><div><strong>{money(p.price*l.qty)}</strong><button className="text-button" onClick={()=>setCart(prev=>prev.filter(x=>x.id!==l.id||x.color!==l.color))}>O‘chirish</button></div></div>}):<p>Savatingiz bo‘sh.</p>}<h3>Jami: {money(total)}</h3><p className="muted">Savatdan buyurtma yuborish hali mavjud emas.</p></>:<><h2>Taqqoslash.</h2>{compare.length?<div className="table-scroll"><table><thead><tr><th>Parametr</th>{compare.map(id=><th key={id}>{products.find(p=>p.id===id)?.name}<button className="text-button" onClick={()=>toggle(id)}>O‘chirish</button></th>)}</tr></thead><tbody>{["Narx","Displey","Xotira","Protsessor"].map(key=><tr key={key}><th>{key}</th>{compare.map(id=>{const p=products.find(p=>p.id===id)!;return <td key={id}>{key==="Narx"?money(p.price):p.specs[key]}</td>})}</tr>)}</tbody></table></div>:<p>Taqqoslash uchun mahsulotlarni tanlang.</p>}</>}</section>}
-<section id="catalog" className="section"><div className="section-head"><h2>Mahsulotlar.</h2><label className="search"><span>Qidirish</span><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Mahsulot nomi"/></label></div><div className="chips">{["Barchasi",...new Set(products.map(p=>p.category))].map(c=><button key={c} aria-pressed={category===c} className={category===c?"chip active":"chip"} onClick={()=>setCategory(c)}>{c}</button>)}</div><div className="product-grid">{visible.map(p=><article className="product-card" key={p.id}><Link className="art-button" aria-label={p.name+" batafsil"} href={"/products/"+p.id}><ProductArt symbol={p.symbol}/></Link><p className="eyebrow">{p.category}</p><h3>{p.name}</h3><p>{money(p.price)}</p><div className="actions"><Link className="primary" href={"/products/"+p.id}>Tanlash</Link><button className="secondary" onClick={()=>open(p)}>Savatga</button><button className="secondary" aria-pressed={compare.includes(p.id)} disabled={compare.length===3&&!compare.includes(p.id)} onClick={()=>toggle(p.id)}>{compare.includes(p.id)?"Tanlangan":"Taqqoslash"}</button></div></article>)}</div>{!visible.length&&<p role="status">Hech qanday mahsulot topilmadi.</p>}</section><footer>Namuna — mahsulotlar va narxlar shartli. Real buyurtma yoki to‘lov qabul qilinmaydi.</footer></main></>;
+import type {CSSProperties} from "react";
+import {ProductVisual} from "../../components/store/product-visual";
+import {Shelf} from "../../components/store/shelf";
+import {Availability,Chevron} from "../../components/store/bits";
+import {listProducts,sortCategories,type StoreProduct,type Tone} from "../../lib/server/storefront";
+import {TELEGRAM_URL,catalogHref,fromSoum,productHref} from "../../lib/storefront";
+
+export const dynamic="force-dynamic";
+
+const toneStyle=(tone:Tone|null)=>(tone?{"--tile-bg":tone.background}:{}) as CSSProperties;
+const toneClass=(tone:Tone|null)=>tone?.dark?" is-dark":"";
+
+// The most expensive product with a photo leads each category.
+function flagships(products:StoreProduct[]){
+  const byCategory=new Map<string,StoreProduct[]>();
+  for(const p of products)byCategory.set(p.category,[...(byCategory.get(p.category)??[]),p]);
+  return sortCategories([...byCategory.keys()]).map(category=>{
+    const list=byCategory.get(category)!;
+    const pick=[...list].sort((a,b)=>Number(!!b.image)-Number(!!a.image)||(BigInt(b.fromPrice)>BigInt(a.fromPrice)?1:BigInt(b.fromPrice)<BigInt(a.fromPrice)?-1:0))[0];
+    return {category,count:list.length,product:pick};
+  });
 }
+
+export default async function Home(){
+  let products:StoreProduct[]=[];let failed=false;
+  try{products=await listProducts();}catch{failed=true;}
+  const leads=flagships(products);
+  const heroIndex=Math.max(0,leads.findIndex(l=>l.category.toLowerCase()==="iphone"));
+  const hero=leads[heroIndex];
+  const tiles=leads.filter((_,i)=>i!==heroIndex);
+  const shelf=[...products].sort((a,b)=>Number(!!b.image)-Number(!!a.image)||Number(b.inStock)-Number(a.inStock)).slice(0,12);
+
+  if(!hero)return <section className="sf-empty-page">
+    <h1>{failed?"Katalog vaqtincha ochilmadi.":"Mahsulotlar tez orada."}</h1>
+    <p>{failed?"Birozdan keyin sahifani yangilang yoki Telegram orqali yozing.":"Hozircha e’lon qilingan mahsulot yo‘q. Savollar bo‘lsa, Telegram orqali yozing."}</p>
+    <a className="sf-btn" href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer">Telegram’da yozish</a>
+  </section>;
+
+  return <>
+    <section className={"sf-hero"+toneClass(hero.product.tone)} style={toneStyle(hero.product.tone)} aria-labelledby="hero-title">
+      <div className="sf-hero-copy">
+        <p className="sf-eyebrow">{hero.category}</p>
+        <h1 id="hero-title">{hero.product.name}</h1>
+        <p className="sf-hero-sub">{fromSoum(hero.product.fromPrice)}. Buyurtma Telegram orqali.</p>
+        <div className="sf-ctas">
+          <Link className="sf-btn" href={productHref(hero.product.id)}>Batafsil</Link>
+          <Link className="sf-btn sf-btn-ghost" href={catalogHref(hero.category)}>Barcha {hero.category}</Link>
+        </div>
+      </div>
+      <Link href={productHref(hero.product.id)} className="sf-hero-media" tabIndex={-1} aria-hidden="true">
+        <ProductVisual image={hero.product.image} name={hero.product.name} category={hero.category} priority/>
+      </Link>
+    </section>
+
+    {tiles.length>0&&<section className="sf-tiles" aria-label="Turkumlar bo‘yicha tanlov">
+      {tiles.map(({category,count,product},i)=><article key={category}
+        className={"sf-tile sf-reveal"+toneClass(product.tone)+(tiles.length%2&&i===tiles.length-1?" is-wide":"")} style={toneStyle(product.tone)}>
+        <div className="sf-tile-copy">
+          <p className="sf-eyebrow">{category}</p>
+          <h2>{product.name}</h2>
+          <p>{fromSoum(product.fromPrice)}{count>1?`. Turkumda ${count} ta model.`:"."}</p>
+          <div className="sf-ctas">
+            <Link className="sf-btn" href={productHref(product.id)} aria-label={product.name+" haqida batafsil"}>Batafsil</Link>
+            <Link className="sf-btn sf-btn-ghost" href={catalogHref(category)} aria-label={"Barcha "+category+" mahsulotlari"}>Barchasi</Link>
+          </div>
+        </div>
+        <Link href={productHref(product.id)} className="sf-tile-media" tabIndex={-1} aria-hidden="true">
+          <ProductVisual image={product.image} name={product.name} category={category}/>
+        </Link>
+      </article>)}
+    </section>}
+
+    <section className="sf-section" aria-labelledby="shelf-title">
+      <div className="sf-section-head">
+        <h2 id="shelf-title">Katalogdan. <span>Hozir ko‘pchilik qiziqayotganlar.</span></h2>
+        <Link className="sf-link" href="/catalog">Barcha mahsulotlar <Chevron/></Link>
+      </div>
+      <Shelf label="Katalogdan">
+        {shelf.map(p=><Link key={p.id} href={productHref(p.id)} className="sf-shelf-card">
+          <div className="sf-shelf-media" style={toneStyle(p.tone)}><ProductVisual image={p.image} name={p.name} category={p.category}/></div>
+          <div className="sf-shelf-copy">
+            <p className="sf-eyebrow">{p.category}</p>
+            <h3>{p.name}</h3>
+            <p className="sf-price">{fromSoum(p.fromPrice)}</p>
+            <Availability inStock={p.inStock}/>
+          </div>
+        </Link>)}
+      </Shelf>
+    </section>
+
+    <section className="sf-section" id="buyurtma" aria-labelledby="how-title">
+      <div className="sf-section-head">
+        <h2 id="how-title">Buyurtma berish. <span>Uch qadamda, ortiqcha shaklsiz.</span></h2>
+      </div>
+      <ol className="sf-steps">
+        <li className="sf-reveal"><span className="sf-step-n">1</span><h3>Tanlang</h3><p>Katalogda model, rang va xotirani tanlang. Narx tanlovga qarab darhol yangilanadi.</p></li>
+        <li className="sf-reveal"><span className="sf-step-n">2</span><h3>Telegram’da yozing</h3><p>Mahsulot sahifasidagi tugma do‘konning Telegram botini ochadi. Tanlovingizni nusxa olib yuborishingiz mumkin.</p></li>
+        <li className="sf-reveal"><span className="sf-step-n">3</span><h3>Sotuvchi tasdiqlaydi</h3><p>Sotuvchi narx, mavjudlik va topshirish shartlarini siz bilan kelishadi. Onlayn to‘lov yo‘q.</p></li>
+      </ol>
+    </section>
+  </>;
+}
+
