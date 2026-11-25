@@ -88,7 +88,10 @@ export async function imageTone(url:string|null):Promise<Tone|null>{
   let tone:Tone|null=null;
   try{
     const r=await database().query("SELECT image_bytes FROM catalog_media WHERE store_id=$1 AND id=$2",[configuredStoreId(),id]);
-    if(r.rowCount){
+    // A transparent cut-out has no background to match: the tile keeps its own
+    // colour. (removeAlpha would read the hidden black under clear pixels.)
+    if(r.rowCount&&await hasClearEdge(r.rows[0].image_bytes as Buffer))tone=null;
+    else if(r.rowCount){
       const {data,info}=await sharp(r.rows[0].image_bytes as Buffer).resize(32,18,{fit:"fill"}).removeAlpha().raw().toBuffer({resolveWithObject:true});
       // Sample the top edge and the upper half of both sides: that is where the
       // photo meets the tile. A busy edge has no single colour, so skip it.
@@ -105,6 +108,17 @@ export async function imageTone(url:string|null):Promise<Tone|null>{
   if(tones.size>2000)tones.clear();
   tones.set(id,tone);
   return tone;
+}
+
+async function hasClearEdge(bytes:Buffer):Promise<boolean>{
+  const image=sharp(bytes);
+  if(!(await image.metadata()).hasAlpha)return false;
+  const {data,info}=await image.resize(32,18,{fit:"fill"}).extractChannel(3).raw().toBuffer({resolveWithObject:true});
+  for(let y=0;y<info.height;y++)for(let x=0;x<info.width;x++){
+    if(y>0&&y<info.height-1&&x>0&&x<info.width-1)continue;
+    if(data[y*info.width+x]<250)return true;
+  }
+  return false;
 }
 
 /** Model count and lowest price of a published category, for metadata. One cheap query. */

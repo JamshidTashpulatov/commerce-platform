@@ -1,0 +1,34 @@
+{
+  "assets": {
+    "ipad-pro-13-select-wifi-silver-202405": {
+      "source": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-13-select-wifi-silver-202405?wid=3000&hei=2600&fmt=png-alpha",
+      "note": "Apple's portrait 940x1112 frame cuts the 13-inch iPad Pro at both sides; a wider frame shows all of it."
+    },
+    "ipad-pro-13-select-wifi-spaceblack-202405": {
+      "source": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-13-select-wifi-spaceblack-202405?wid=3000&hei=2600&fmt=png-alpha",
+      "note": "Apple's portrait 940x1112 frame cuts the 13-inch iPad Pro at both sides; a wider frame shows all of it."
+    },
+    "ipad-pro-13-select-wificell-silver-202405": {
+      "source": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-13-select-wificell-silver-202405?wid=3000&hei=2600&fmt=png-alpha",
+      "note": "Apple's portrait 940x1112 frame cuts the 13-inch iPad Pro at both sides; a wider frame shows all of it."
+    },
+    "ipad-pro-13-select-wificell-spaceblack-202405": {
+      "source": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-13-select-wificell-spaceblack-202405?wid=3000&hei=2600&fmt=png-alpha",
+      "note": "Apple's portrait 940x1112 frame cuts the 13-inch iPad Pro at both sides; a wider frame shows all of it."
+    }
+  },
+  "splitByOption": [
+    {
+      "product": "iPhone 16 Plus",
+      "option": "Rang",
+      "note": "The stored photo shows all five colours side by side and fills the frame. Apple publishes one transparent photo per colour.",
+      "sources": {
+        "Black": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-16-plus-black-select-202409?wid=1880&hei=2224&fmt=png-alpha",
+        "Pink": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-16-plus-pink-select-202409?wid=1880&hei=2224&fmt=png-alpha",
+        "Teal": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-16-plus-teal-select-202409?wid=1880&hei=2224&fmt=png-alpha",
+        "Ultramarine": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-16-plus-ultramarine-select-202409?wid=1880&hei=2224&fmt=png-alpha",
+        "White": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/iphone-16-plus-white-select-202409?wid=1880&hei=2224&fmt=png-alpha"
+      }
+    }
+  ]
+}
