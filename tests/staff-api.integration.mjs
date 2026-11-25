@@ -70,7 +70,7 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   const next=await call("/api/admin/orders","POST",{variantId:variant,quantity:1,requestKey:randomUUID()},seller);
   assert.equal(next.status,201);
   const nextPath="/api/admin/orders/"+next.data.id;
-  assert.equal((await call(nextPath+"/payments","POST",{action:"terms",total:"1000",type:"installment",initial:"300"},seller)).status,201);
+  assert.equal((await call(nextPath+"/payments","POST",{action:"terms",cost:"1000",type:"installment",initial:"300",months:3},seller)).status,201);
   assert.equal((await call(nextPath+"/payments","POST",{action:"receipt",amount:"301",method:"cash",date,key:randomUUID()},seller)).status,409);
   assert.equal((await call(nextPath+"/payments","POST",{action:"receipt",amount:"300",method:"cash",date,key:randomUUID()},seller)).status,201);
   assert.equal((await call(nextPath,"PATCH",{revision:0,status:"cancelled"},seller)).status,409);
@@ -94,23 +94,24 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal((await call(nextPath+"/customer","GET",undefined,investor)).status,403);
   assert.equal((await call(nextPath+"/customer","PUT",{customerId},seller)).status,409);
   const schedulePath=nextPath+"/installments";
+  assert.equal((await call(schedulePath,"POST",{action:"activate",months:4,firstDate:"2027-01-31"},seller)).status,400);
   assert.equal((await call(schedulePath,"GET",undefined,investor)).status,403);
   assert.equal((await call(schedulePath,"POST",{action:"activate",months:3,firstDate:"2027-01-31"},seller)).status,201);
   const schedule=await call(schedulePath,"GET",undefined,seller);
-  assert.deepEqual(schedule.data.schedule.map(s=>s.amount_uzs),["234","233","233"]);
+  assert.deepEqual(schedule.data.schedule.map(s=>s.amount_uzs),["262","261","261"]);
   const firstRow=schedule.data.schedule[0];
-  const monthly={action:"receipt",scheduleId:firstRow.id,amount:"234",date,method:"cash",key:randomUUID()};
-  assert.equal((await call(schedulePath,"POST",{...monthly,amount:"235"},seller)).status,409);
+  const monthly={action:"receipt",scheduleId:firstRow.id,amount:"262",date,method:"cash",key:randomUUID()};
+  assert.equal((await call(schedulePath,"POST",{...monthly,amount:"263"},seller)).status,409);
   assert.equal((await call(schedulePath,"POST",monthly,seller)).status,201);
   assert.equal((await call(schedulePath,"POST",monthly,seller)).status,200);
   const consolidated=await call(nextPath+"/payments","GET",undefined,seller);
-  assert.equal(consolidated.data.received_uzs,"534");
-  assert.equal(consolidated.data.remaining_uzs,"466");
+  assert.equal(consolidated.data.received_uzs,"562");
+  assert.equal(consolidated.data.remaining_uzs,"522");
   const monthlyHistory=await call(schedulePath,"GET",undefined,seller);
   const reverseMonthly={action:"reverse",receiptId:monthlyHistory.data.receipts[0].id,reason:"Fixture correction"};
   assert.equal((await call(schedulePath,"POST",reverseMonthly,seller)).status,403);
   assert.equal((await call(schedulePath,"POST",reverseMonthly,admin)).status,201);
-  assert.equal((await call(nextPath+"/payments","GET",undefined,seller)).data.remaining_uzs,"700");
+  assert.equal((await call(nextPath+"/payments","GET",undefined,seller)).data.remaining_uzs,"784");
 
  }finally{await pool.end();}
 });
