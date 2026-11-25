@@ -6,7 +6,7 @@ A Next.js and PostgreSQL application for a store with staff-managed orders, inve
 | --- | --- |
 | `/`, `/dashboard` | Fictional storefront and management demo |
 | `/catalog` | Published products, SKU availability, option photos and prices |
-| `/login` | Telegram Mini App entry point for pre-provisioned staff and investors |
+| `/login` | Email/password login for admins and owners, Telegram Mini App login for sellers and investors |
 | `/staff` | Protected order inbox and role-specific administration |
 | `/investor` | Read-only portfolio and permitted peer summaries |
 

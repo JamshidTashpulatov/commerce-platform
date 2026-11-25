@@ -44,6 +44,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Verify staff API and browser lifecycle
         env:
+          ADMIN_SETUP_CODE: "test-only-admin-setup-value-for-fixtures"
           TELEGRAM_BOT_TOKEN: "ci-only-token"
           COMMERCE_TEST_MODE: "1"
           DATABASE_URL: postgresql://test:test_only@127.0.0.1:5432/commerce_test

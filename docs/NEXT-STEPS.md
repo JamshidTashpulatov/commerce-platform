@@ -4,7 +4,7 @@ This branch includes a live database-backed workspace and separate fictional pre
 
 ## Implemented and covered by automated checks
 
-- PostgreSQL migrations 001–020, store-scoped staff authorization, Telegram signed launch verification, replay protection, session issuance and logout.
+- PostgreSQL migrations 001–021, store-scoped staff authorization, Telegram signed launch verification, replay protection, session issuance and logout.
 - Staff-created order requests with retry protection. Confirmation changes inventory transactionally. Delivery and externally received payments have separate records.
 - Customer records behind a feature flag, installment pricing snapshots and schedules, manual capital and supplier events, stock receipts and a provisional cashbook.
 - Admin-created investor accounts, read-only portfolios, optional peer summaries and explicit allocation of initial principal returns to participating investors.

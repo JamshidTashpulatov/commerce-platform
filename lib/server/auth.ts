@@ -16,7 +16,7 @@ export async function requireStoreRole(storeId: string, allowed: readonly Role[]
   const hash = await currentSessionHash();
   if (!hash) return null;
   const { rows } = await database().query<{account_id:string;role:Role}>(
-    "SELECT s.account_id,m.role FROM sessions s JOIN memberships m ON m.account_id=s.account_id WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>now() AND m.store_id=$2",
+    "SELECT s.account_id,m.role FROM sessions s JOIN memberships m ON m.account_id=s.account_id WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>now() AND m.store_id=$2 AND ((m.role IN ('admin','owner') AND s.password_store_id=m.store_id) OR (m.role NOT IN ('admin','owner') AND s.password_store_id IS NULL))",
     [hash,storeId]
   );
   const membership = rows[0];

@@ -38,7 +38,7 @@ export function TelegramLogin() {
   return <section className="surface">
     {initData ? <button className="primary" onClick={login} disabled={busy}>
       {busy ? "Tekshirilmoqda…" : "Telegram orqali kirish"}
-    </button> : <p>Kirish uchun do‘konning Telegram botidagi mini ilovani oching.</p>}
+    </button> : <p>Sotuvchi yoki investor sifatida kirish uchun do‘konning Telegram botidagi mini ilovani oching.</p>}
     {error && <p role="alert">{error}</p>}
   </section>;
 }

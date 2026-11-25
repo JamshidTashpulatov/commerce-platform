@@ -16,7 +16,7 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
    const account=randomUUID();const token=randomBytes(32).toString("base64url");
    await pool.query("INSERT INTO accounts(id) VALUES($1)",[account]);
    await pool.query("INSERT INTO memberships(store_id,account_id,role) VALUES($1,$2,$3)",[storeId,account,role]);
-   await pool.query("INSERT INTO sessions(token_hash,account_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[createHash("sha256").update(token).digest("hex"),account]);
+   await pool.query("INSERT INTO sessions(token_hash,account_id,password_store_id,expires_at) VALUES($1,$2,$3,now()+interval '1 hour')",[createHash("sha256").update(token).digest("hex"),account,role==="admin"||role==="owner"?storeId:null]);
    return "__Host-store_session="+token;
   }
   const seller=await session("seller");const investor=await session("investor");const admin=await session("admin");
@@ -27,6 +27,27 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
    const res=await fetch(origin+path,{method,headers:{...(auth?{Cookie:auth}:{}),...(body===undefined?{}:{"Content-Type":"application/json",Origin:requestOrigin})},...(body===undefined?{}:{body:JSON.stringify(body)})});
    return {status:res.status,data:await res.json()};
   }
+  const adminId=(await pool.query("SELECT account_id FROM memberships WHERE store_id=$1 AND role='admin'",[storeId])).rows[0].account_id;
+  const email="admin@example.test";
+  await pool.query("INSERT INTO admin_credentials(store_id,account_id,email) VALUES($1,$2,$3)",[storeId,adminId,email]);
+  const password=randomBytes(24).toString("hex");
+  const payload={email,password,action:"activate",code:process.env.ADMIN_SETUP_CODE};
+  assert.equal((await call("/api/auth/admin","POST",{...payload,code:"incorrect"})).status,401);
+  assert.equal((await call("/api/auth/admin","POST",{...payload,email:"other@example.test"})).status,401);
+  assert.equal((await call("/api/auth/admin","POST",payload)).status,200);
+  assert.equal((await call("/api/auth/admin","POST",payload)).status,401);
+  const signedIn=await fetch(origin+"/api/auth/admin",{method:"POST",headers:{Origin:origin,"Content-Type":"application/json"},
+    body:JSON.stringify({email:email.toUpperCase(),password,action:"login"})});
+  assert.equal(signedIn.status,200);
+  assert.equal((await call("/api/admin/orders","GET",undefined,signedIn.headers.get("set-cookie").split(";")[0])).status,200);
+  const oldAdminToken=randomBytes(32).toString("base64url");
+  await pool.query("INSERT INTO sessions(token_hash,account_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",
+    [createHash("sha256").update(oldAdminToken).digest("hex"),adminId]);
+  assert.equal((await call("/api/admin/orders","GET",undefined,"__Host-store_session="+oldAdminToken)).status,403);
+  for(let attempt=0;attempt<10;attempt++){
+    assert.equal((await call("/api/auth/admin","POST",{email,password:"incorrect",action:"login"})).status,401);
+  }
+  assert.equal((await call("/api/auth/admin","POST",{email,password,action:"login"})).status,429);
   // Verify the complete login and logout path using a synthetic Telegram identity.
   const telegramId = "1000001";
   await pool.query("UPDATE accounts SET telegram_user_id=$1 WHERE id=(SELECT account_id FROM sessions WHERE token_hash=$2)", [
