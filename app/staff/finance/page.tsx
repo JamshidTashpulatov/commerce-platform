@@ -28,7 +28,7 @@ export default function Finance() {
     void load();
   }, [load]);
 
-  const linkClass = buttonVariants({ variant: "outline", size: "sm", className: "self-start" });
+  const linkClass = buttonVariants({ variant: "outline", className: "self-start" });
   return (
     <>
       <PageHeader title="Fond hisoboti" description="Tizimda qayd etilgan pul harakati, investorlar kapitali va qarzdorlik.">

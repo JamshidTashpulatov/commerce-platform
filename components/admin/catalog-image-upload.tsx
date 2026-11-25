@@ -69,7 +69,7 @@ export function CatalogImageUpload({ label, value, onChange, disabled, onBusy }:
           ) : (
             <p className="min-w-0 flex-1 text-sm text-muted-foreground">Tashqi rasm manzili biriktirilgan.</p>
           )}
-          <Button type="button" variant="ghost" size="sm" className="ml-auto" disabled={disabled || loading} onClick={() => onChange("")}>
+          <Button type="button" variant="ghost" className="ml-auto" disabled={disabled || loading} onClick={() => onChange("")}>
             Olib tashlash
           </Button>
         </div>

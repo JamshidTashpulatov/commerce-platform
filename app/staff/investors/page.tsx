@@ -106,7 +106,7 @@ export default function Investors() {
         <RefreshButton busy={loading || busy} onClick={() => void load()} />
         <Button
           type="button"
-          size="sm"
+         
           onClick={() => {
             setCreateError("");
             setCreateOpen(true);

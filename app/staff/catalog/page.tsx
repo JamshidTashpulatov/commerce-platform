@@ -121,7 +121,7 @@ export default function CatalogAdmin() {
       <>
         <PageHeader title="Mahsulotlar" description="Mahsulot, variant, narx va e’lon holati. Ombor qoldig‘i kirim va sotuv orqali o‘zgaradi.">
           <RefreshButton busy={loading} onClick={() => void load()} />
-          <Button type="button" size="sm" onClick={create}>
+          <Button type="button" onClick={create}>
             <PlusIcon data-icon="inline-start" />
             Yangi mahsulot
           </Button>
@@ -154,7 +154,7 @@ export default function CatalogAdmin() {
                       <StatusBadge tone={p.published ? "success" : "neutral"}>{p.published ? "E’lon qilingan" : "Qoralama"}</StatusBadge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button type="button" variant="outline" size="sm" onClick={() => select(p)}>
+                      <Button type="button" variant="outline" onClick={() => select(p)}>
                         Tahrirlash
                       </Button>
                     </TableCell>
@@ -171,7 +171,7 @@ export default function CatalogAdmin() {
 
   return (
     <>
-      <Button type="button" variant="ghost" size="sm" className="self-start" disabled={locked} onClick={() => setView("list")}>
+      <Button type="button" variant="ghost" className="self-start" disabled={locked} onClick={() => setView("list")}>
         <ArrowLeftIcon data-icon="inline-start" />
         Mahsulotlar
       </Button>
@@ -213,7 +213,7 @@ export default function CatalogAdmin() {
           title="Variantlar"
           description="Yangi variant qoldig‘i nol bo‘ladi. Qoldiq «Ombor» bo‘limidagi kirim orqali oshadi."
           action={
-            <Button type="button" variant="outline" size="sm" disabled={locked || !data.enabled} onClick={() => openVariant(null)}>
+            <Button type="button" variant="outline" disabled={locked || !data.enabled} onClick={() => openVariant(null)}>
               <PlusIcon data-icon="inline-start" />
               Variant
             </Button>
@@ -245,7 +245,7 @@ export default function CatalogAdmin() {
                         <StatusBadge tone={v.active ? "success" : "neutral"}>{v.active ? "Faol" : "Faol emas"}</StatusBadge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button type="button" variant="outline" size="sm" disabled={locked} onClick={() => openVariant(v)}>
+                        <Button type="button" variant="outline" disabled={locked} onClick={() => openVariant(v)}>
                           Tahrirlash
                         </Button>
                       </TableCell>

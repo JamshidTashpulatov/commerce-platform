@@ -367,7 +367,7 @@ export default function Suppliers() {
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
+                                 
                                   disabled={!enabled}
                                   onClick={() => {
                                     setReverseId(p.id);

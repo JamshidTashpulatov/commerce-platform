@@ -141,7 +141,7 @@ export function OrderCapitalReturns({ endpoint, onChanged, version = 0 }: { vers
                           <Button
                             type="button"
                             variant="outline"
-                            size="sm"
+                           
                             disabled={busy}
                             onClick={() => {
                               setSelected(r.id);

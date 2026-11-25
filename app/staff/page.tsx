@@ -59,7 +59,7 @@ export default function StaffInbox() {
     <>
       <PageHeader title="Buyurtmalar" description="Sayt va sotuvchilardan kelgan buyurtmalar. Bir sahifada 100 tagacha buyurtma ko‘rsatiladi.">
         <RefreshButton busy={loading} onClick={() => setRevision(r => r + 1)} />
-        <Link href="/staff/new" className={buttonVariants({ size: "sm" })}>
+        <Link href="/staff/new" className={buttonVariants({})}>
           <PlusIcon data-icon="inline-start" />
           Buyurtma yaratish
         </Link>
@@ -184,11 +184,11 @@ export default function StaffInbox() {
         <nav aria-label="Buyurtma sahifalari" className="flex items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">{pages.length + 1}-sahifa</p>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" disabled={loading || pages.length === 0} onClick={() => setPages(p => p.slice(0, -1))}>
+            <Button type="button" variant="outline" disabled={loading || pages.length === 0} onClick={() => setPages(p => p.slice(0, -1))}>
               <ChevronLeftIcon data-icon="inline-start" />
               Oldingi
             </Button>
-            <Button type="button" variant="outline" size="sm" disabled={loading || !next} onClick={() => next && setPages(p => [...p, next])}>
+            <Button type="button" variant="outline" disabled={loading || !next} onClick={() => next && setPages(p => [...p, next])}>
               Keyingi
               <ChevronRightIcon data-icon="inline-end" />
             </Button>

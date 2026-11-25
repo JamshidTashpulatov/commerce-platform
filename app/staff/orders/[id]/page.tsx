@@ -22,7 +22,7 @@ type Detail = { order: StaffOrder; items: StaffItem[] };
 
 function BackLink() {
   return (
-    <Link href="/staff" className={buttonVariants({ variant: "ghost", size: "sm", className: "self-start" })}>
+    <Link href="/staff" className={buttonVariants({ variant: "ghost", className: "self-start" })}>
       <ArrowLeftIcon data-icon="inline-start" />
       Buyurtmalar
     </Link>
@@ -172,7 +172,7 @@ export default function StaffOrderDetails() {
                 </NativeSelect>
               )}
             </TextField>
-            <Button type="button" variant="outline" size="sm" className="self-start" disabled={busy || status === o.request_status || sold} onClick={() => void mutate("PATCH", endpoint, { status }, "Buyurtma holati saqlandi.")}>
+            <Button type="button" variant="outline" className="self-start" disabled={busy || status === o.request_status || sold} onClick={() => void mutate("PATCH", endpoint, { status }, "Buyurtma holati saqlandi.")}>
               Holatni saqlash
             </Button>
           </div>
@@ -185,7 +185,7 @@ export default function StaffOrderDetails() {
               <p className="text-sm text-muted-foreground">Ombor qoldig‘i sotuv tasdiqlanganda kamayadi. Bu amal to‘lovni qayd etmaydi.</p>
             </div>
             {!sold && !cancelled && (
-              <Button type="button" size="sm" className="self-start" disabled={busy} onClick={() => setConfirm(true)}>
+              <Button type="button" className="self-start" disabled={busy} onClick={() => setConfirm(true)}>
                 Sotuvni tasdiqlash
               </Button>
             )}
@@ -202,7 +202,7 @@ export default function StaffOrderDetails() {
                 </NativeSelect>
               )}
             </TextField>
-            <Button type="button" variant="outline" size="sm" className="self-start" disabled={busy || delivery === o.fulfillment_status || !sold || o.fulfillment_status === "delivered"} onClick={() => void mutate("PUT", endpoint, { fulfillment: delivery }, "Yetkazib berish holati saqlandi.")}>
+            <Button type="button" variant="outline" className="self-start" disabled={busy || delivery === o.fulfillment_status || !sold || o.fulfillment_status === "delivered"} onClick={() => void mutate("PUT", endpoint, { fulfillment: delivery }, "Yetkazib berish holati saqlandi.")}>
               Yetkazish holatini saqlash
             </Button>
           </div>

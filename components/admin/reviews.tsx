@@ -71,7 +71,7 @@ export function ReviewList({ reviews, showOrder, onResolved }: { reviews: Receip
               )}
             </div>
             {!r.resolved_at && (
-              <Button type="button" variant="outline" size="sm" className="shrink-0 self-start" onClick={() => setSelected(r)}>
+              <Button type="button" variant="outline" className="shrink-0 self-start" onClick={() => setSelected(r)}>
                 Tafovutni yopish
               </Button>
             )}

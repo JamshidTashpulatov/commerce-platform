@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -80,25 +79,29 @@ export function PageHeader({ title, description, children }: { title: string; de
 
 export function RefreshButton({ onClick, busy, label = "Yangilash" }: { onClick: () => void; busy?: boolean; label?: string }) {
   return (
-    <Button type="button" variant="outline" size="sm" onClick={onClick} disabled={busy}>
+    <Button type="button" variant="outline" onClick={onClick} disabled={busy}>
       <RefreshCwIcon data-icon="inline-start" className={cn(busy && "animate-spin")} />
       {label}
     </Button>
   );
 }
 
+/**
+ * A page section: heading, optional description and action, then content directly on the page.
+ * Deliberately not a card, so tables, stat tiles and sub-forms inside are the only framed level.
+ */
 export function Section({ title, description, action, children, className }: { title: string; description?: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>
-          <h2>{title}</h2>
-        </CardTitle>
-        {description && <CardDescription className="text-pretty">{description}</CardDescription>}
-        {action && <CardAction>{action}</CardAction>}
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">{children}</CardContent>
-    </Card>
+    <section className={cn("flex flex-col gap-4 border-t pt-6", className)}>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
+          <h2 className="font-heading text-base font-medium">{title}</h2>
+          {description && <p className="mt-1 max-w-2xl text-sm text-pretty text-muted-foreground">{description}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
   );
 }
 

@@ -19,7 +19,7 @@ export function CatalogOptionEditor({ groups, onChange, disabled, onBusy }: { gr
           <h3 className="text-sm font-medium">Xususiyatlar</h3>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Masalan, rang, xotira yoki komplektatsiya. Har bir qiymatga o‘z rasmini biriktirish mumkin. Narx variantlarda belgilanadi.</p>
         </div>
-        <Button type="button" variant="outline" size="sm" disabled={disabled || groups.length >= 8} onClick={() => onChange([...groups, { name: "", affectsPrice: false, values: [{ label: "", imageUrl: null }] }])}>
+        <Button type="button" variant="outline" disabled={disabled || groups.length >= 8} onClick={() => onChange([...groups, { name: "", affectsPrice: false, values: [{ label: "", imageUrl: null }] }])}>
           <PlusIcon data-icon="inline-start" />
           Xususiyat
         </Button>
@@ -38,7 +38,7 @@ export function CatalogOptionEditor({ groups, onChange, disabled, onBusy }: { gr
                 </NativeSelect>
               )}
             </TextField>
-            <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={() => onChange(groups.filter((_, k) => k !== i))}>
+            <Button type="button" variant="ghost" disabled={disabled} onClick={() => onChange(groups.filter((_, k) => k !== i))}>
               <Trash2Icon data-icon="inline-start" />
               Xususiyatni olib tashlash
             </Button>
@@ -54,7 +54,7 @@ export function CatalogOptionEditor({ groups, onChange, disabled, onBusy }: { gr
               </li>
             ))}
           </ul>
-          <Button type="button" variant="outline" size="sm" className="self-start" disabled={disabled || g.values.length >= 30} onClick={() => patch(i, { values: [...g.values, { label: "", imageUrl: null }] })}>
+          <Button type="button" variant="outline" className="self-start" disabled={disabled || g.values.length >= 30} onClick={() => patch(i, { values: [...g.values, { label: "", imageUrl: null }] })}>
             <PlusIcon data-icon="inline-start" />
             Qiymat
           </Button>

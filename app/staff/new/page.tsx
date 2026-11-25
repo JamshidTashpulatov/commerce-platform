@@ -61,7 +61,7 @@ export default function StaffNew() {
 
   return (
     <>
-      <Link href="/staff" className={buttonVariants({ variant: "ghost", size: "sm", className: "self-start" })}>
+      <Link href="/staff" className={buttonVariants({ variant: "ghost", className: "self-start" })}>
         <ArrowLeftIcon data-icon="inline-start" />
         Buyurtmalar
       </Link>

@@ -285,7 +285,7 @@ export function OrderPayments({ endpoint, cancelled, onChanged }: { endpoint: st
                             <Button
                               type="button"
                               variant="ghost"
-                              size="sm"
+                             
                               disabled={busy}
                               onClick={() => {
                                 setCorrectionError("");

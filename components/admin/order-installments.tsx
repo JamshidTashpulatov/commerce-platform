@@ -198,7 +198,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0 
                           <Button
                             type="button"
                             variant="outline"
-                            size="sm"
+                           
                             disabled={busy}
                             onClick={() => {
                               setSelected(r.id);
@@ -258,7 +258,7 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0 
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
+                                 
                                   disabled={busy}
                                   onClick={() => {
                                     setDialogError("");

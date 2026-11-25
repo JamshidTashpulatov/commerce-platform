@@ -175,7 +175,7 @@ export function AppShell({ role, children }: { role: StaffRole; children: ReactN
   return (
     <RoleProvider role={role}>
       <TooltipProvider>
-        <SidebarProvider data-ui="shadcn">
+        <SidebarProvider data-ui="shadcn" data-ui-size="m">
           <Sidebar collapsible="icon">
             <SidebarHeader>
               <SidebarMenu>
@@ -204,7 +204,7 @@ export function AppShell({ role, children }: { role: StaffRole; children: ReactN
               <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4 data-[orientation=vertical]:self-center" />
               <p className="truncate text-sm font-medium">{currentTitle(pathname)}</p>
             </header>
-            <main className="mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col gap-5 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-6">{children}</main>
+            <main className="mx-auto flex w-full max-w-6xl min-w-0 flex-1 flex-col gap-6 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-6">{children}</main>
           </SidebarInset>
           <Toaster theme="light" position="top-center" />
         </SidebarProvider>
