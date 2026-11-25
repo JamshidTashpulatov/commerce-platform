@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+// SortUI is set in Inter.
+const inter = Inter({subsets:['latin','latin-ext'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "Do‘kon — savdo platformasi",
@@ -12,5 +13,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return <html lang="uz" className={cn("font-sans", geist.variable)}><body>{children}</body></html>;
+  return <html lang="uz" className={cn("font-sans", inter.variable)}><body>{children}</body></html>;
 }
