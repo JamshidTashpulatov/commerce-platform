@@ -10,10 +10,11 @@ export async function GET(){
     if(!await requireStoreRole(storeId,["owner","admin"]))return NextResponse.json({error:"Access denied"},{status:403,headers});
     const {rows}=await database().query(`
       WITH schedules AS (
-        SELECT s.id,s.amount_uzs,s.due_date,COALESCE(SUM(r.amount_uzs),0) AS received
+        SELECT s.id,s.amount_uzs,s.due_date,COALESCE(SUM(r.amount_uzs) FILTER(WHERE v.receipt_id IS NULL),0) AS received
         FROM installment_schedule s
         JOIN installment_contracts c ON c.store_id=s.store_id AND c.id=s.contract_id
         LEFT JOIN installment_receipts r ON r.store_id=s.store_id AND r.schedule_id=s.id
+        LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id
         WHERE s.store_id=$1 AND c.status='active' GROUP BY s.id
       ), invoices AS (
         SELECT i.id,i.amount_uzs,COALESCE(SUM(p.amount_uzs),0) AS paid
@@ -24,7 +25,8 @@ export async function GET(){
       COALESCE((SELECT SUM(amount_uzs-received) FROM schedules),0)::text AS installment_schedule_balance_uzs,
       COALESCE((SELECT SUM(amount_uzs-received) FROM schedules WHERE due_date < (now() AT TIME ZONE 'Asia/Tashkent')::date AND amount_uzs>received),0)::text AS overdue_schedule_balance_uzs,
       COALESCE((SELECT SUM(amount_uzs-paid) FROM invoices),0)::text AS supplier_invoice_balance_uzs,
-      COALESCE((SELECT SUM(amount_uzs) FROM installment_receipts WHERE store_id=$1),0)::text AS scheduled_receipts_uzs,
+      COALESCE((SELECT SUM(r.amount_uzs) FROM installment_receipts r LEFT JOIN installment_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE r.store_id=$1 AND v.receipt_id IS NULL),0)::text AS scheduled_receipts_uzs,
+      COALESCE((SELECT SUM(r.amount_uzs) FROM order_manual_receipts r LEFT JOIN order_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE r.store_id=$1 AND v.receipt_id IS NULL),0)::text AS manual_receipts_uzs,
       COALESCE((SELECT SUM(CASE event_type WHEN 'contribution' THEN amount_uzs WHEN 'withdrawal' THEN -amount_uzs ELSE 0 END) FROM investor_capital_events WHERE store_id=$1),0)::text AS net_contributed_capital_uzs
     `,[storeId]);
     return NextResponse.json({currency:"UZS",...rows[0]},{headers});
