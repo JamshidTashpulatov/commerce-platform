@@ -9,7 +9,8 @@ export function minimumInitial(cost:bigint,policy:PricingPolicy){
 }
 export function priceInstallment(cost:bigint,initial:bigint,months:number,policy:PricingPolicy){
  const minimum=minimumInitial(cost,policy);
- if(initial<minimum||initial>=cost||!Number.isSafeInteger(months)||months<1||months>60)throw new Error("INVALID_TERMS");
+ // The minimum is a suggestion for the seller, not a limit: any initial from 0 up to less than the cost is valid.
+ if(initial<BigInt(0)||initial>=cost||!Number.isSafeInteger(months)||months<1||months>60)throw new Error("INVALID_TERMS");
  const principal=cost-initial;
  // Flat markup on original financed principal, rounded once to whole UZS.
  const markup=(principal*BigInt(policy.monthlyMarkupBps)*BigInt(months)+BPS/BigInt(2))/BPS;

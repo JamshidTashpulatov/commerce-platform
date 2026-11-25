@@ -116,9 +116,13 @@ export function OrderInstallments({ endpoint, cancelled, onChanged, version = 0,
               </li>
               <li className="flex flex-wrap items-center gap-2">
                 <StatusBadge tone={initialPaid ? "success" : "warning"}>{initialPaid ? "Tayyor" : "Kerak"}</StatusBadge>
-                <span>
-                  Boshlang‘ich to‘lov: <Money value={data.initial_received_uzs} /> / <Money value={t.initial_due_uzs} />
-                </span>
+                {t.initial_due_uzs === "0" ? (
+                  <span>Boshlang‘ich to‘lovsiz nasiya: butun summa oylik to‘lovlarga bo‘linadi.</span>
+                ) : (
+                  <span>
+                    Boshlang‘ich to‘lov: <Money value={data.initial_received_uzs} /> / <Money value={t.initial_due_uzs} />
+                  </span>
+                )}
               </li>
             </ul>
             <div className="grid gap-4 sm:grid-cols-2 lg:max-w-md">
