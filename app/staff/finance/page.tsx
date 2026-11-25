@@ -7,7 +7,7 @@ import { ErrorState, LoadingBlock, Money, PageHeader, RefreshButton, Section, St
 import { buttonVariants } from "@/components/ui/button";
 import { staffFetch } from "@/lib/staff-client";
 
-type Summary = { installment_schedule_balance_uzs: string; overdue_schedule_balance_uzs: string; supplier_invoice_balance_uzs: string; scheduled_receipts_uzs: string; manual_receipts_uzs: string; net_contributed_capital_uzs: string; allocated_principal_uzs: string; returned_principal_uzs: string; outstanding_principal_uzs: string; available_principal_uzs: string; recorded_distributions_uzs: string; recorded_fund_net_uzs: string };
+type Summary = { installment_schedule_balance_uzs: string; overdue_schedule_balance_uzs: string; scheduled_receipts_uzs: string; manual_receipts_uzs: string; net_contributed_capital_uzs: string; allocated_principal_uzs: string; returned_principal_uzs: string; outstanding_principal_uzs: string; available_principal_uzs: string; recorded_distributions_uzs: string; recorded_fund_net_uzs: string };
 
 export default function Finance() {
   const [data, setData] = useState<Summary | null>(null);
@@ -82,17 +82,15 @@ export default function Finance() {
             </Link>
           </Section>
           <Section title="Qarzdorlik" description="Faollashtirilmagan shartnomalar va tarixiy Excel ma’lumotlari bu hisobotga kiritilmagan.">
-            <StatGrid className="xl:grid-cols-3">
+            <StatGrid className="xl:grid-cols-2">
               <Stat label="Faol nasiya jadvallari qoldig‘i" value={<Money value={data.installment_schedule_balance_uzs} />} />
               <Stat label="Muddati o‘tgan to‘lovlar" value={<Money value={data.overdue_schedule_balance_uzs} />} tone={data.overdue_schedule_balance_uzs !== "0" ? "danger" : "default"} />
-              <Stat label="Yetkazib beruvchilarga qarz" value={<Money value={data.supplier_invoice_balance_uzs} />} />
             </StatGrid>
             <AmountBars
               label="Qarzdorlik turlari"
               data={[
                 { name: "Faol nasiya jadvallari qoldig‘i", value: Number(data.installment_schedule_balance_uzs), color: chartColors[0] },
                 { name: "Shundan muddati o‘tgan", value: Number(data.overdue_schedule_balance_uzs), color: "var(--destructive)" },
-                { name: "Yetkazib beruvchilarga qarz", value: Number(data.supplier_invoice_balance_uzs), color: chartColors[2] },
               ]}
             />
           </Section>
