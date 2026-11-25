@@ -19,7 +19,7 @@ export function validGroups(raw:unknown,imageAllowed:(url:string)=>boolean):raw 
 export function validSelection(groups:OptionGroup[],raw:unknown):raw is OptionSelection{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))return false;
  const entries=Object.entries(raw);
- return entries.length===groups.length&&groups.every(g=>Object.hasOwn(raw,g.name)&&g.values.some(v=>v.label===(raw as OptionSelection)[g.name]));
+ return entries.length===groups.length&&groups.every(g=>Object.prototype.hasOwnProperty.call(raw,g.name)&&g.values.some(v=>v.label===(raw as OptionSelection)[g.name]));
 }
 export function variantImage(groups:OptionGroup[],selection:OptionSelection,override:string|null,fallback:string|null):string|null{
  if(override)return override;
@@ -29,3 +29,5 @@ export function variantImage(groups:OptionGroup[],selection:OptionSelection,over
 export function matchingVariants<T extends {option_values:OptionSelection}>(variants:T[],selection:OptionSelection){
  return variants.filter(v=>Object.entries(selection).every(([k,value])=>v.option_values[k]===value));
 }
+
+export function canonicalGroups(groups:OptionGroup[]){return JSON.stringify(groups.map(g=>({name:g.name,affectsPrice:g.affectsPrice,values:g.values.map(v=>({label:v.label,imageUrl:v.imageUrl}))})));}
