@@ -7,6 +7,11 @@ test("integer UZS allocation reconciles exactly and preserves monthly anchor",()
  assert.deepEqual(s.map(x=>x.due_date),["2027-01-31","2027-02-28","2027-03-31"]);
  assert.equal(s.reduce((n,x)=>n+BigInt(x.amount_uzs),0n),700n);
 });
+test("without an initial payment the whole total is scheduled",()=>{
+ const s=buildSchedule(1120n,0n,3,"2027-01-31");
+ assert.deepEqual(s.map(x=>x.amount_uzs),["374","373","373"]);
+ assert.throws(()=>buildSchedule(1120n,-1n,3,"2027-01-31"));
+});
 test("rejects invalid dates, durations and zero balance",()=>{
  assert.equal(validDate("2027-02-29"),false);
  assert.throws(()=>buildSchedule(100n,100n,1,"2027-01-01"));

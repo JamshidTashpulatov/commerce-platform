@@ -16,8 +16,8 @@ import {
   PlusCircleIcon,
   SettingsIcon,
   ShoppingBagIcon,
-  TruckIcon,
   UserRoundIcon,
+  UsersRoundIcon,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -57,6 +57,7 @@ const groups: NavGroup[] = [
     items: [
       { href: "/staff", label: "Buyurtmalar", icon: ShoppingBagIcon, exact: true, match: ["/staff/orders"] },
       { href: "/staff/new", label: "Yangi buyurtma", icon: PlusCircleIcon },
+      { href: "/staff/customers", label: "Mijozlar", icon: UsersRoundIcon },
     ],
   },
   {
@@ -68,7 +69,6 @@ const groups: NavGroup[] = [
       { href: "/staff/inventory", label: "Ombor", icon: BoxesIcon },
     ],
   },
-  { label: "Ta’minot", adminOnly: true, items: [{ href: "/staff/suppliers", label: "Yetkazib beruvchilar", icon: TruckIcon }] },
   { label: "Investorlar", adminOnly: true, items: [{ href: "/staff/investors", label: "Investorlar", icon: HandCoinsIcon }] },
   {
     label: "Moliya",

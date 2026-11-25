@@ -2,7 +2,7 @@ export function validDate(v:unknown):v is string{
  return typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v;
 }
 export function buildSchedule(total:bigint,initial:bigint,months:number,first:string){
- if(!Number.isSafeInteger(months)||months<1||months>60||!validDate(first)||total<=initial||initial<=BigInt(0))throw new Error("INVALID_SCHEDULE");
+ if(!Number.isSafeInteger(months)||months<1||months>60||!validDate(first)||total<=initial||initial<BigInt(0))throw new Error("INVALID_SCHEDULE");
  const balance=total-initial;const count=BigInt(months);
  if(balance<count)throw new Error("INVALID_SCHEDULE");
  const base=balance/count;const extra=balance%count;

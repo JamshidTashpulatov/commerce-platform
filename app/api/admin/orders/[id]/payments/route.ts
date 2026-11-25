@@ -72,7 +72,7 @@ export async function POST(request:Request,{params}:Ctx){
   let quote:ReturnType<typeof priceInstallment>|null=null;
   if(b.type==="installment"){
    const policy=installmentPolicy();if(!policy)return await fail("Nasiya hisoblash qoidalari sozlanmagan",503);
-   try{quote=priceInstallment(BigInt(String(b.cost)),BigInt(String(b.initial)),Number(b.months),policy);}catch{return await fail("Boshlang‘ich to‘lov, tan narxi yoki muddat talabga mos emas",400);}
+   try{quote=priceInstallment(BigInt(String(b.cost)),BigInt(String(b.initial)),Number(b.months),policy);}catch{return await fail("Boshlang‘ich to‘lov 0 dan boshlab, tan narxidan kam bo‘lishi kerak. Muddat 1 oydan 60 oygacha.",400);}
   }
   await c.query("INSERT INTO order_payment_terms(store_id,order_id,agreed_total_uzs,payment_type,initial_due_uzs,cost_uzs,financed_principal_uzs,markup_uzs,term_months,minimum_initial_bps,monthly_markup_bps) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(store_id,order_id) DO UPDATE SET agreed_total_uzs=EXCLUDED.agreed_total_uzs,payment_type=EXCLUDED.payment_type,initial_due_uzs=EXCLUDED.initial_due_uzs,cost_uzs=EXCLUDED.cost_uzs,financed_principal_uzs=EXCLUDED.financed_principal_uzs,markup_uzs=EXCLUDED.markup_uzs,term_months=EXCLUDED.term_months,minimum_initial_bps=EXCLUDED.minimum_initial_bps,monthly_markup_bps=EXCLUDED.monthly_markup_bps",[store,id,quote?.total??b.total,b.type,b.initial,quote?.cost??(b.type==="cash"&&typeof b.cost==="string"&&b.cost!==""?b.cost:null),quote?.principal??null,quote?.markup??null,quote?.months??null,quote?.minimumInitialBps??null,quote?.monthlyMarkupBps??null]);
   event="payment_terms_saved";
@@ -84,6 +84,7 @@ export async function POST(request:Request,{params}:Ctx){
   if(duplicate.rowCount){const d=duplicate.rows[0];await c.query("ROLLBACK");return d.order_id===id&&d.amount_uzs===b.amount&&d.method===b.method&&d.received_on===b.date?reply({id:d.id,repeated:true}):reply({error:"So‘rov kaliti band"},409);}
   const balance=await c.query("SELECT COALESCE(SUM(r.amount_uzs),0)::text AS received FROM order_manual_receipts r LEFT JOIN order_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE r.store_id=$1 AND r.order_id=$2 AND v.receipt_id IS NULL",[store,id]);
   const cap=BigInt(t.payment_type==="cash"?t.agreed_total_uzs:t.initial_due_uzs);
+  if(t.payment_type==="installment"&&cap===BigInt(0))return await fail("Bu nasiyada boshlang‘ich to‘lov yo‘q. Oylik to‘lovlar nasiya jadvali orqali qayd etiladi.");
   if(BigInt(balance.rows[0].received)+BigInt(String(b.amount))>cap)return await fail("To‘lov ruxsat etilgan qoldiqdan oshmoqda");
   const result=await c.query("INSERT INTO order_manual_receipts(store_id,order_id,amount_uzs,kind,method,received_on,idempotency_key,recorded_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(store_id,idempotency_key) DO NOTHING RETURNING id",[store,id,b.amount,t.payment_type==="cash"?"cash":"initial",b.method,b.date,b.key,member.account_id]);
   if(!result.rowCount)return await fail("So‘rov takrorlandi. Yangilang.");

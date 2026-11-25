@@ -1,4 +1,7 @@
 # Supplier purchases and recorded payments
+
+> **Removed from the app on 2026-11-26 (owner decision).** The suppliers section, its API and the stock receipt against a supplier purchase are gone. The tables described here stay in the database, unused. Stock is now set by a plain adjustment (new quantity and a reason, administrator only): `POST /api/admin/inventory`, table `stock_adjustments` (migration 030).
+
 The delivery status workflow remains independent. Separate delivery fees are out of scope for now. Supplier payments refer only to the actual cost of goods acquired from suppliers, not shipping or delivery services.
 The administrator records a supplier, purchase obligation and optional due date, and separately records amounts actually paid outside the system. Partial payments reduce the obligation; only actual recorded payments affect the cashbook. Corrections are audit-linked reversals, not automatic money refunds. Overpayment, duplicate request keys, and cross-store references are checked. This module does not transfer money.
 The supplier workspace, balance views, cashbook integration and integration tests are implemented in development. Actual purchase line items, stock receipts, links to order cost snapshots and reconciliation of historical data are pending. A purchase obligation does not automatically increase stock. Supplier posting remains disabled by default; production readiness requires successful tests and acceptance review.
