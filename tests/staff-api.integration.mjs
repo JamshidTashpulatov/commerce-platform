@@ -74,6 +74,25 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal((await call(nextPath+"/payments","POST",{action:"receipt",amount:"301",method:"cash",date,key:randomUUID()},seller)).status,409);
   assert.equal((await call(nextPath+"/payments","POST",{action:"receipt",amount:"300",method:"cash",date,key:randomUUID()},seller)).status,201);
   assert.equal((await call(nextPath,"PATCH",{revision:0,status:"cancelled"},seller)).status,409);
+  const customerPath="/api/admin/customers";
+  const fixture={action:"create",name:"CI Fixture",phone:"+12025550100",passport:"FIXTURE01"};
+  assert.equal((await call(customerPath,"POST",fixture,investor)).status,403);
+  const customer=await call(customerPath,"POST",fixture,seller);
+  assert.equal(customer.status,201);
+  const customerId=customer.data.customer.id;
+  assert.equal(customer.data.customer.has_passport,true);
+  assert.notEqual(customer.data.customer.phone_masked,fixture.phone);
+  assert.equal(JSON.stringify(customer.data).includes(fixture.passport),false);
+  assert.equal((await call(customerPath,"POST",fixture,seller)).status,409);
+  assert.equal((await call(customerPath,"POST",{action:"find",phone:fixture.phone},seller)).data.customer.id,customerId);
+  const encrypted=(await pool.query("SELECT name_cipher,phone_cipher,passport_cipher FROM customers WHERE id=$1",[customerId])).rows[0];
+  assert.notEqual(encrypted.name_cipher,fixture.name);
+  assert.notEqual(encrypted.phone_cipher,fixture.phone);
+  assert.notEqual(encrypted.passport_cipher,fixture.passport);
+  assert.equal((await call(nextPath+"/customer","PUT",{customerId},seller)).status,200);
+  assert.equal((await call(nextPath+"/customer","GET",undefined,seller)).data.customer.id,customerId);
+  assert.equal((await call(nextPath+"/customer","GET",undefined,investor)).status,403);
+  assert.equal((await call(nextPath+"/customer","PUT",{customerId},seller)).status,409);
 
  }finally{await pool.end();}
 });
