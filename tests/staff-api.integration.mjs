@@ -204,6 +204,32 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal(fundReport.data.returned_principal_uzs,"300");
   assert.equal(fundReport.data.outstanding_principal_uzs,"700");
   assert.equal(fundReport.data.available_principal_uzs,"300");
+  const supplierPath="/api/admin/suppliers";
+  const supplierBody={action:"supplier",name:"Fixture supplier",key:randomUUID()};
+  assert.equal((await call(supplierPath,"POST",supplierBody,seller)).status,403);
+  assert.equal((await call(supplierPath,"GET",undefined,investor)).status,403);
+  const supplier=await call(supplierPath,"POST",supplierBody,admin);
+  assert.equal(supplier.status,201);
+  assert.equal((await call(supplierPath,"POST",supplierBody,admin)).status,200);
+  const invoiceBody={action:"invoice",supplierId:supplier.data.id,amount:"1000",reference:"Fixture acquisition",dueDate:null,key:randomUUID()};
+  const invoice=await call(supplierPath,"POST",invoiceBody,admin);
+  assert.equal(invoice.status,201);
+  assert.equal((await call(supplierPath,"POST",invoiceBody,admin)).status,200);
+  assert.equal((await call("/api/admin/finance","GET",undefined,admin)).data.supplier_invoice_balance_uzs,"1000");
+  const supplierPayment={action:"payment",invoiceId:invoice.data.id,amount:"400",date,method:"cash",key:randomUUID()};
+  assert.equal((await call(supplierPath,"POST",{...supplierPayment,amount:"1001"},admin)).status,409);
+  const paidSupplier=await call(supplierPath,"POST",supplierPayment,admin);
+  assert.equal(paidSupplier.status,201);
+  assert.equal((await call(supplierPath,"POST",supplierPayment,admin)).status,200);
+  assert.equal((await call("/api/admin/finance","GET",undefined,admin)).data.supplier_invoice_balance_uzs,"600");
+  const supplierCash=await call(cashPath,"GET",undefined,admin);
+  assert.equal(supplierCash.data.groups.find(g=>g.kind==="supplier_payment").amount_uzs,"-400");
+  const reversalSupplier={action:"reverse",paymentId:paidSupplier.data.id,reason:"Fixture correction"};
+  assert.equal((await call(supplierPath,"POST",reversalSupplier,admin)).status,201);
+  assert.equal((await call(supplierPath,"POST",reversalSupplier,admin)).status,409);
+  assert.equal((await call("/api/admin/finance","GET",undefined,admin)).data.supplier_invoice_balance_uzs,"1000");
+  const correctedSupplier=await call(cashPath,"GET",undefined,admin);
+  assert.equal(correctedSupplier.data.groups.find(g=>g.kind==="supplier_payment_reversal").amount_uzs,"400");
 
 
  }finally{await pool.end();}
