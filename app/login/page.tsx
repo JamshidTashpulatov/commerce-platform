@@ -3,7 +3,7 @@ import { AuthFrame } from "@/components/admin/auth-frame";
 import { AdminLogin } from "@/components/admin-login";
 import { TelegramLogin } from "@/components/telegram-login";
 
-export const metadata = privateMetadata("Hisobga kirish");
+export const metadata = privateMetadata("Hisobga kirish", undefined, "/login/opengraph-image");
 
 export default function LoginPage() {
   return (
