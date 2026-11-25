@@ -251,6 +251,34 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal((await call("/api/admin/finance","GET",undefined,admin)).data.supplier_invoice_balance_uzs,"1000");
   const afterStockCash=await call(cashPath,"GET",undefined,admin);
   assert.equal(afterStockCash.data.closing_uzs,correctedSupplier.data.closing_uzs);
+  // Synthetic product media; no external image or real user data.
+  const sharp=(await import("sharp")).default;
+  const png=await sharp({create:{width:16,height:16,channels:3,background:"#547890"}}).png().toBuffer();
+  async function uploadMedia(bytes,auth,type="image/png"){
+   const response=await fetch(origin+"/api/admin/catalog/media",{method:"POST",headers:{Origin:origin,"Content-Type":type,Cookie:auth},body:bytes});
+   return {status:response.status,data:await response.json()};
+  }
+  assert.equal((await uploadMedia(png,seller)).status,403);
+  assert.equal((await uploadMedia(png,investor)).status,403);
+  assert.equal((await uploadMedia(png,admin,"image/svg+xml")).status,415);
+  const media=await uploadMedia(png,admin);
+  assert.equal(media.status,201);
+  assert.equal((await uploadMedia(png,admin)).data.url,media.data.url);
+  assert.equal((await fetch(origin+media.data.url)).status,404);
+  const preview=await fetch(origin+media.data.url,{headers:{Cookie:admin}});
+  assert.equal(preview.status,200);
+  assert.equal(preview.headers.get("content-type"),"image/webp");
+  const mediaProduct={action:"createProduct",name:"Media fixture",category:"Test",description:"",imageUrl:media.data.url,published:false,optionGroups:[],key:randomUUID()};
+  const mediaProductResult=await call("/api/admin/catalog","POST",mediaProduct,admin);
+  assert.equal(mediaProductResult.status,201);
+  const mediaProductId=mediaProductResult.data.id;
+  const mediaVariant=await call("/api/admin/catalog","POST",{action:"createVariant",productId:mediaProductId,sku:"MEDIA-FIXTURE",color:"Test",storage:"",price:"1000",active:true,key:randomUUID()},admin);
+  assert.equal(mediaVariant.status,201);
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:0,published:true},admin)).status,200);
+  assert.equal((await fetch(origin+media.data.url)).status,200);
+  assert.equal((await call("/api/admin/catalog","POST",{...mediaProduct,action:"updateProduct",id:mediaProductId,revision:1,published:false},admin)).status,200);
+  assert.equal((await fetch(origin+media.data.url)).status,404);
+
 
 
  }finally{await pool.end();}
