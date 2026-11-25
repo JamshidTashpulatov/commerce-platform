@@ -78,4 +78,5 @@ jobs:
           node --test tests/checkout.integration.mjs
           node --test tests/website-order.integration.mjs
           node --test tests/investor-phone.integration.mjs
+          node --test tests/order-overview.integration.mjs
           node --test tests/workspace.browser.mjs
