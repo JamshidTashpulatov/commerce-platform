@@ -145,6 +145,30 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal(adminReport.status,200);
   assert.equal(adminReport.data.months[0].contributed,"400");
   assert.equal((await call("/api/investor/activity?from=2027-02-30&to=2027-03-01","GET",undefined,investor)).status,400);
+  const accountPath="/api/admin/investors/accounts";
+  const accountFixture={name:"New fixture investor",telegramId:"123456789"};
+  assert.equal((await call(accountPath,"POST",accountFixture,investor)).status,403);
+  assert.equal((await call(accountPath,"POST",accountFixture,seller)).status,403);
+  const newInvestor=await call(accountPath,"POST",accountFixture,admin);
+  assert.equal(newInvestor.status,201);
+  assert.equal((await call(accountPath,"POST",accountFixture,admin)).status,409);
+  assert.equal((await pool.query("SELECT role FROM memberships WHERE store_id=$1 AND account_id=$2",[storeId,newInvestor.data.id])).rows[0].role,"investor");
+  assert.equal((await call(investorPath,"POST",{...contribution,key:randomUUID()},investor)).status,403);
+  const settingsPath="/api/admin/settings/investors";
+  const peerPath="/api/investor/portfolios";
+  assert.equal((await call(settingsPath,"GET",undefined,admin)).data.allowPeerPortfolios,false);
+  assert.deepEqual((await call(peerPath,"GET",undefined,investor)).data,{enabled:false,items:[]});
+  assert.equal((await call(settingsPath,"PUT",{allowPeerPortfolios:true},investor)).status,403);
+  assert.equal((await call(settingsPath,"PUT",{allowPeerPortfolios:true},seller)).status,403);
+  assert.equal((await call(settingsPath,"PUT",{allowPeerPortfolios:true},admin)).status,200);
+  const peers=await call(peerPath,"GET",undefined,investor);
+  assert.equal(peers.data.enabled,true);
+  assert.equal(peers.data.items.some(x=>x.account_id===investorId),false);
+  assert.equal(peers.data.items.find(x=>x.account_id===secondId).principal,"400");
+  assert.equal("telegram_user_id" in peers.data.items[0],false);
+  assert.equal((await call(period+"&accountId="+secondId,"GET",undefined,investor)).status,403);
+  assert.equal((await call(settingsPath,"PUT",{allowPeerPortfolios:false},admin)).status,200);
+  assert.deepEqual((await call(peerPath,"GET",undefined,investor)).data,{enabled:false,items:[]});
 
  }finally{await pool.end();}
 });
