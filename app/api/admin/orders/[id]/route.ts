@@ -27,6 +27,13 @@ export async function PATCH(request:Request,{params}:Context){
   const c=await database().connect();
   try{
    await c.query("BEGIN");
+   const lock=await c.query("SELECT id FROM orders WHERE store_id=$1 AND id=$2 FOR UPDATE",[storeId,id]);
+   if(!lock.rowCount){await c.query("ROLLBACK");return response({error:"Buyurtma topilmadi"},404);}
+   if(body.status==="cancelled"){
+    const receipts=await c.query("SELECT 1 FROM order_manual_receipts r LEFT JOIN order_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE r.store_id=$1 AND r.order_id=$2 AND v.receipt_id IS NULL LIMIT 1",[storeId,id]);
+    const contract=await c.query("SELECT 1 FROM installment_contracts WHERE store_id=$1 AND order_id=$2 AND status IN ('active','settled')",[storeId,id]);
+    if(receipts.rowCount||contract.rowCount){await c.query("ROLLBACK");return response({error:"Faol to‘lov yoki shartnoma mavjud. Avval moliyaviy qaydlarni tartibga keltiring."},409);}
+   }
    const {rows}=await c.query("UPDATE orders SET request_status=$1,revision=revision+1 WHERE store_id=$2 AND id=$3 AND revision=$4 AND sale_status='not_sold' AND fulfillment_status='not_delivered' RETURNING id,request_status,revision",[body.status,storeId,id,body.revision]);
    if(!rows.length){await c.query("ROLLBACK");return response({error:"Buyurtma o‘zgargan yoki mavjud emas. Yangilang."},409);}
    await c.query("INSERT INTO audit_events(store_id,actor_id,action,entity_type,entity_id) VALUES($1,$2,$3,'order',$4)",[storeId,member.account_id,"request_status:"+body.status,id]);
