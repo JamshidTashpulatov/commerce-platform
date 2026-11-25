@@ -30,6 +30,8 @@ export async function PATCH(request:Request,{params}:Context){
    const lock=await c.query("SELECT id FROM orders WHERE store_id=$1 AND id=$2 FOR UPDATE",[storeId,id]);
    if(!lock.rowCount){await c.query("ROLLBACK");return response({error:"Buyurtma topilmadi"},404);}
    if(body.status==="cancelled"){
+    const funding=await c.query("SELECT 1 FROM order_funding_allocations WHERE store_id=$1 AND order_id=$2 LIMIT 1",[storeId,id]);
+    if(funding.rowCount){await c.query("ROLLBACK");return response({error:"Avval investor taqsimotini olib tashlang"},409);}
     const receipts=await c.query("SELECT 1 FROM order_manual_receipts r LEFT JOIN order_receipt_reversals v ON v.store_id=r.store_id AND v.receipt_id=r.id WHERE r.store_id=$1 AND r.order_id=$2 AND v.receipt_id IS NULL LIMIT 1",[storeId,id]);
     const contract=await c.query("SELECT 1 FROM installment_contracts WHERE store_id=$1 AND order_id=$2 AND status IN ('active','settled')",[storeId,id]);
     if(receipts.rowCount||contract.rowCount){await c.query("ROLLBACK");return response({error:"Faol to‘lov yoki shartnoma mavjud. Avval moliyaviy qaydlarni tartibga keltiring."},409);}
