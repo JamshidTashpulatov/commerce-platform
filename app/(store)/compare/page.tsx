@@ -3,10 +3,11 @@ import Link from "next/link";
 import {CompareView,type CompareProduct,type Sibling} from "../../../components/store/compare-view";
 import {pill,wrap} from "../../../components/store/bits";
 import {getProduct,listProducts} from "../../../lib/server/storefront";
+import {pageMeta} from "../../../lib/server/seo";
 import {bySize,isColorGroup} from "../../../lib/storefront";
 
 export const dynamic="force-dynamic";
-export const metadata:Metadata={title:"Solishtirish",description:"Modellarni narx, rang, variant va mavjudlik bo‘yicha yonma-yon solishtiring."};
+export const metadata:Metadata=pageMeta({title:"Solishtirish",path:"/compare",index:false,description:"Modellarni narx, rang, variant va mavjudlik bo‘yicha yonma-yon solishtiring."});
 
 const MAX=3;
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

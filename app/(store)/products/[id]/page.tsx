@@ -6,6 +6,7 @@ import {BuyPanel} from "../../../../components/store/buy-panel";
 import {CompareToggle} from "../../../../components/store/compare-toggle";
 import {pill,wrap} from "../../../../components/store/bits";
 import {getProduct} from "../../../../lib/server/storefront";
+import {pageMeta,snippet} from "../../../../lib/server/seo";
 import {checkoutEnabled} from "../../../../lib/server/checkout";
 import {telegramLoginState} from "../../../../lib/server/telegram-login-config";
 import {catalogHref,fromSoum,soum,splitDescription} from "../../../../lib/storefront";
@@ -15,7 +16,12 @@ const load=cache(async(id:string)=>{try{return await getProduct(id);}catch{retur
 
 export async function generateMetadata({params}:{params:Promise<{id:string}>}):Promise<Metadata>{
   const product=await load((await params).id);
-  return product?{title:product.name,description:`${product.name}. ${fromSoum(product.fromPrice)}. Savatga qo‘shing yoki bir bosishda xarid qiling.`}:{title:"Mahsulot"};
+  if(!product)return {title:"Mahsulot topilmadi",robots:{index:false,follow:true}};
+  const oneprice=new Set(product.skus.map(s=>s.price)).size===1;
+  const price=oneprice?soum(product.fromPrice):fromSoum(product.fromPrice);
+  const body=splitDescription(product.description).body;
+  return pageMeta({title:product.name,path:"/products/"+product.id,og:{product:product.id},
+    description:snippet(`${product.name}, ${price}. ${body||product.category+" turkumidan."}`)});
 }
 
 export default async function ProductPage({params}:{params:Promise<{id:string}>}){

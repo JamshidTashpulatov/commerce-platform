@@ -106,3 +106,12 @@ export async function imageTone(url:string|null):Promise<Tone|null>{
   tones.set(id,tone);
   return tone;
 }
+
+/** Model count and lowest price of a published category, for metadata. One cheap query. */
+export async function categorySummary(category:string):Promise<{count:number;fromPrice:string}|null>{
+  const r=await database().query(
+    `SELECT count(DISTINCT p.id)::int AS count,min(v.price_uzs)::text AS from_price
+     FROM products p JOIN variants v ON v.store_id=p.store_id AND v.product_id=p.id AND v.active
+     WHERE p.store_id=$1 AND p.published AND p.category=$2`,[configuredStoreId(),category]);
+  return r.rows[0]?.count?{count:r.rows[0].count,fromPrice:r.rows[0].from_price}:null;
+}

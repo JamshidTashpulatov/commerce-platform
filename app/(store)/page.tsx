@@ -7,9 +7,12 @@ import {ProductVisual} from "../../components/store/product-visual";
 import {Shelf} from "../../components/store/shelf";
 import {Availability,eyebrow,pill,wrap} from "../../components/store/bits";
 import {listProducts,sortCategories,type StoreProduct,type Tone} from "../../lib/server/storefront";
-import {TELEGRAM_URL,catalogHref,fromSoum,productHref} from "../../lib/storefront";
+import {STORE_NAME,STORE_TAGLINE,TELEGRAM_URL,catalogHref,fromSoum,productHref} from "../../lib/storefront";
+import {pageMeta} from "../../lib/server/seo";
 
 export const dynamic="force-dynamic";
+export const metadata=pageMeta({title:STORE_NAME+". "+STORE_TAGLINE,absoluteTitle:true,path:"/",
+  description:"iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar bir joyda. Narxlar so‘mda, buyurtma saytda, sotuvchi qo‘ng‘iroq qilib tasdiqlaydi."});
 
 // Uploaded photos lend their edge colour to the tile, so the photo bleeds into it.
 const toneStyle=(tone:Tone|null,fallback:string)=>({"--tile-bg":tone?.background??fallback}) as CSSProperties;

@@ -96,3 +96,7 @@ const capacity=(v:string)=>{const m=/^(\d+(?:[.,]\d+)?)\s*(GB|TB)\b/i.exec(v.tri
 export function bySize<T>(values:T[],label:(v:T)=>string=(v=>String(v))):T[]{
   return values.every(v=>capacity(label(v))!==null)?[...values].sort((a,b)=>capacity(label(a))!-capacity(label(b))!):values;
 }
+
+export const TITLE_TEMPLATE="%s. "+STORE_NAME;
+export const STORE_TAGLINE="Apple texnikasi do‘koni";
+export const STORE_DESCRIPTION="iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar. Narxlar so‘mda, buyurtmani sotuvchi qo‘ng‘iroq qilib tasdiqlaydi.";

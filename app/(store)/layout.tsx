@@ -9,7 +9,7 @@ import {CartSheet} from "../../components/store/cart-sheet";
 import {MiniAppSignIn} from "../../components/store/mini-app-signin";
 import {SmoothScroll} from "../../components/store/smooth-scroll";
 import {listCategories} from "../../lib/server/storefront";
-import {STORE_NAME} from "../../lib/storefront";
+import {STORE_DESCRIPTION,STORE_NAME,STORE_TAGLINE,TITLE_TEMPLATE} from "../../lib/storefront";
 
 // Inter is only the fallback: Apple devices render the system font first.
 const inter=Inter({subsets:["latin","cyrillic"],variable:"--sf-inter",display:"swap"});
@@ -18,8 +18,8 @@ const inter=Inter({subsets:["latin","cyrillic"],variable:"--sf-inter",display:"s
 export const dynamic="force-dynamic";
 
 export const metadata:Metadata={
-  title:{default:STORE_NAME+". Apple texnikasi do‘koni",template:"%s. "+STORE_NAME},
-  description:"iPhone, iPad, Mac, Apple Watch, AirPods va aksessuarlar. Narxlar so‘mda, buyurtma saytda, tasdiq sotuvchidan.",
+  title:{default:STORE_NAME+". "+STORE_TAGLINE,template:TITLE_TEMPLATE},
+  description:STORE_DESCRIPTION,
 };
 
 export default async function StoreLayout({children}:{children:ReactNode}){

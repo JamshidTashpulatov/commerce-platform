@@ -4,7 +4,7 @@ import {CheckCircle2Icon} from "lucide-react";
 import {pill,wrap} from "../../../../components/store/bits";
 import {TELEGRAM_URL} from "../../../../lib/storefront";
 
-export const metadata:Metadata={title:"So‘rov qabul qilindi",robots:{index:false}};
+export const metadata:Metadata={title:"So‘rov qabul qilindi",robots:{index:false,follow:false}};
 
 // Shows only the reference. Contact details are never put in the URL or on this page.
 export default async function Done({searchParams}:{searchParams:Promise<{ref?:string}>}){

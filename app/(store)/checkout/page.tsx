@@ -5,7 +5,7 @@ import {checkoutEnabled} from "../../../lib/server/checkout";
 import {telegramLoginState} from "../../../lib/server/telegram-login-config";
 
 export const dynamic="force-dynamic";
-export const metadata:Metadata={title:"Rasmiylashtirish",robots:{index:false}};
+export const metadata:Metadata={title:"Rasmiylashtirish",robots:{index:false,follow:false},alternates:{canonical:"/checkout"}};
 
 export default async function CheckoutPage(){
   return <div className={wrap+" pb-24"}>
