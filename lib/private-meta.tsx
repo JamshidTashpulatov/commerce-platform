@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ImageResponse } from "next/og";
-import { BRAND_MARK_ARM } from "@/components/admin/brand-mark";
+import { BRAND_MARK_D, BRAND_MARK_ROTATIONS, BRAND_MARK_VIEWBOX } from "./brand-mark";
 import { brandName } from "./brand";
 import { TITLE_TEMPLATE } from "./storefront";
 
@@ -32,10 +32,10 @@ export function privateOgImage(section: string) {
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 72, background: "#fafafa", color: "#171717", fontFamily: "sans-serif" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <svg width="72" height="72" viewBox="0 0 512 512" fill="#171717">
-            <path d={BRAND_MARK_ARM} />
-            <path d={BRAND_MARK_ARM} transform="rotate(120 256 256)" />
-            <path d={BRAND_MARK_ARM} transform="rotate(240 256 256)" />
+          <svg width="72" height="72" viewBox={BRAND_MARK_VIEWBOX} fill="#1d1d1f">
+            {BRAND_MARK_ROTATIONS.map(r => (
+              <path key={r} d={BRAND_MARK_D} transform={r ? `rotate(${r} 256 256)` : undefined} />
+            ))}
           </svg>
           <div style={{ display: "flex", fontSize: 40, fontWeight: 600 }}>{brandName}</div>
         </div>

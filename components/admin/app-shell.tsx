@@ -43,7 +43,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { brandName } from "@/lib/brand";
 import { staffFetch } from "@/lib/staff-client";
-import { BrandMark } from "./brand-mark";
+import { BrandMark } from "@/components/brand-mark";
 import { RoleProvider, isAdminRole, roleLabels, type StaffRole } from "./kit";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; match?: string[] };
@@ -185,7 +185,7 @@ export function AppShell({ role, children }: { role: StaffRole; children: ReactN
                 <SidebarMenuItem>
                   <SidebarMenuButton size="lg" render={<Link href="/staff" />}>
                     <span className="flex size-8 shrink-0 items-center justify-center">
-                      <BrandMark className="size-7" title={null} />
+                      <BrandMark className="size-7" />
                     </span>
                     <span className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">{brandName}</span>
