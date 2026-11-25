@@ -8,6 +8,7 @@ import {
   BoxesIcon,
   ChevronsUpDownIcon,
   HandCoinsIcon,
+  ImageIcon,
   KeyRoundIcon,
   LandmarkIcon,
   LogOutIcon,
@@ -63,6 +64,7 @@ const groups: NavGroup[] = [
     adminOnly: true,
     items: [
       { href: "/staff/catalog", label: "Mahsulotlar", icon: PackageIcon },
+      { href: "/staff/banner", label: "Bosh sahifa banneri", icon: ImageIcon },
       { href: "/staff/inventory", label: "Ombor", icon: BoxesIcon },
     ],
   },
