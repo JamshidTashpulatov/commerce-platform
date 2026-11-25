@@ -5,12 +5,36 @@ import {isUuid,sameOrigin,smallJson,privateHeaders} from "../../../../lib/server
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const response=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:privateHeaders});
-export async function GET(){
+export async function GET(request:Request){
  try{
   const storeId=configuredStoreId();
   if(!await requireStoreRole(storeId,["owner","admin","seller"]))return response({error:"Ruxsat yo‘q"},403);
-  const {rows}=await database().query("SELECT o.id,o.source,o.request_status,o.sale_status,o.fulfillment_status,o.revision,o.currency,o.created_at,COALESCE(SUM(i.unit_price_uzs::numeric*i.quantity),0)::text AS total_uzs FROM orders o LEFT JOIN order_items i ON i.store_id=o.store_id AND i.order_id=o.id WHERE o.store_id=$1 GROUP BY o.id ORDER BY o.created_at DESC LIMIT 100",[storeId]);
-  return response({items:rows});
+  const params = new URL(request.url).searchParams;
+  const after = params.get("after");
+  const status = params.get("status") || null;
+  const search = params.get("q")?.trim().toLowerCase() || null;
+  if ((after !== null && !isUuid(after)) || (status && !["new","in_progress","cancelled"].includes(status))
+    || (search && !/^[0-9a-f-]{1,36}$/.test(search))) {
+    return response({error:"Buyurtma raqami yoki filtrni tekshiring"},400);
+  }
+  const {rows} = await database().query(
+    `WITH page AS (
+       SELECT o.* FROM orders o WHERE o.store_id=$1
+         AND ($2::text IS NULL OR o.request_status=$2)
+         AND ($3::text IS NULL OR strpos(o.id::text,$3)>0)
+         AND ($4::uuid IS NULL OR (o.created_at,o.id) < (
+           SELECT created_at,id FROM orders WHERE store_id=$1 AND id=$4))
+       ORDER BY o.created_at DESC,o.id DESC LIMIT 101
+     )
+     SELECT o.id,o.source,o.request_status,o.sale_status,o.fulfillment_status,o.revision,
+       o.currency,o.created_at,COALESCE((
+         SELECT SUM(i.unit_price_uzs::numeric*i.quantity) FROM order_items i
+         WHERE i.store_id=o.store_id AND i.order_id=o.id
+       ),0)::text AS total_uzs FROM page o ORDER BY o.created_at DESC,o.id DESC`,
+    [storeId,status,search,after]
+  );
+  const items = rows.slice(0,100);
+  return response({items,next:rows.length>100 ? items[99].id : null});
  }catch{return response({error:"Xizmat vaqtincha ishlamayapti"},503);}
 }
 export async function POST(request:Request){

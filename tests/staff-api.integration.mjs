@@ -311,5 +311,14 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
 
 
 
+  await pool.query("INSERT INTO orders(store_id,source) SELECT $1,'staff' FROM generate_series(1,105)",[storeId]);
+  const firstPage = (await call("/api/admin/orders","GET",undefined,seller)).data;
+  assert.equal(firstPage.items.length,100);
+  const secondPage = (await call("/api/admin/orders?after="+firstPage.next,"GET",undefined,seller)).data;
+  assert.ok(secondPage.items.length>0);
+  const seen = new Set(firstPage.items.map(o=>o.id));
+  assert.ok(secondPage.items.every(o=>!seen.has(o.id)));
+  const match = await call("/api/admin/orders?q="+id+"&status=in_progress","GET",undefined,seller);
+  assert.deepEqual(match.data.items.map(o=>o.id),[id]);
  }finally{await pool.end();}
 });
