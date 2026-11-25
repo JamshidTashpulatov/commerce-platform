@@ -12,10 +12,13 @@ import {fromSoum,isColorGroup,productHref,sortCategories,swatchColor} from "../.
 import {ProductVisual} from "./product-visual";
 import {Availability,eyebrow,pill} from "./bits";
 import {CompareToggle} from "./compare-toggle";
+import {ShoppingBagIcon} from "lucide-react";
+import {addToCart} from "../../lib/cart-store";
+import {cartUi} from "../../lib/cart-ui";
 
 type Row={id:string;name:string;category:string;description:string;image_url:string|null;variant_id:string;color:string;
   storage_label:string|null;price_uzs:string;in_stock:boolean;option_groups:OptionGroup[];option_values:OptionSelection};
-type Card={id:string;name:string;category:string;image:string|null;fromPrice:string;inStock:boolean;variants:number;
+type Card={id:string;name:string;category:string;image:string|null;fromPrice:string;inStock:boolean;variants:number;onlyVariant:string|null;
   swatches:{label:string;image:string|null}[]};
 
 function toCards(rows:Row[]):Card[]{
@@ -29,7 +32,7 @@ function toCards(rows:Row[]):Card[]{
       .map(v=>({label:v.label,image:v.imageUrl})):[];
     const cover=list.find(r=>r.in_stock&&r.image_url)??list.find(r=>r.image_url)??head;
     return {id:head.id,name:head.name,category:head.category,image:cover.image_url,fromPrice:cheapest.price_uzs,
-      inStock:list.some(r=>r.in_stock),variants:list.length,swatches};
+      inStock:list.some(r=>r.in_stock),variants:list.length,onlyVariant:list.length===1?head.variant_id:null,swatches};
   });
 }
 
@@ -160,6 +163,8 @@ export function CatalogView(){
         </Link>
         <div className="flex items-center justify-between gap-3 border-t border-black/5 px-6 py-3.5">
           <CompareToggle item={{id:c.id,name:c.name,category:c.category,image:c.image}}/>
+          {c.onlyVariant&&<button type="button" aria-label={c.name+"ni savatga qo‘shish"} onClick={()=>{addToCart({variantId:c.onlyVariant!,productId:c.id,seenPrice:c.fromPrice});cartUi.open();}}
+            className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-sf-blue hover:underline"><ShoppingBagIcon className="size-3.5" aria-hidden="true"/>Savatga</button>}
         </div>
       </article>)}
     </div>}

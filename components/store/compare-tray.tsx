@@ -11,7 +11,7 @@ import {pill} from "./bits";
 export function CompareTray(){
   const list=compareStore.use();
   const pathname=usePathname();
-  if(!list.length||pathname==="/compare")return null;
+  if(!list.length||pathname==="/compare"||pathname.startsWith("/checkout"))return null;
   // The spacer keeps the end of the footer from hiding under the tray.
   return <><div aria-hidden="true" className="h-24 bg-sf-alt"/><div className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[max(12px,env(safe-area-inset-bottom))] animate-in fade-in slide-in-from-bottom-4 duration-300">
     <section aria-label="Solishtirish ro‘yxati"

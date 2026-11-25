@@ -1,6 +1,6 @@
 "use client";
 import {useMemo,useState,type CSSProperties} from "react";
-import {CheckIcon,CopyIcon,SendIcon} from "lucide-react";
+import {CheckIcon,CopyIcon,SendIcon,ShoppingBagIcon} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {NativeSelect,NativeSelectOption} from "@/components/ui/native-select";
 import {Separator} from "@/components/ui/separator";
@@ -9,6 +9,10 @@ import type {StoreProductDetail,StoreVariant} from "../../lib/server/storefront"
 import {TELEGRAM_URL,bySize,isColorGroup,soum,swatchColor} from "../../lib/storefront";
 import {Availability,pill} from "./bits";
 import {Gallery} from "./gallery";
+import {OneClick} from "./one-click";
+import type {TelegramLogin} from "./checkout-form";
+import {addToCart} from "../../lib/cart-store";
+import {cartUi} from "../../lib/cart-ui";
 
 // Picks the stored SKU closest to the current choice when one option changes:
 // keep as many other choices as possible, then prefer in stock, then cheaper.
@@ -20,7 +24,7 @@ function closest(skus:StoreVariant[],current:StoreVariant,group:string,value:str
 
 const sectionTitle="mb-5 text-[21px] leading-[1.19] font-semibold tracking-[0.011em] tablet:text-2xl tablet:leading-[1.17]";
 
-export function BuyPanel({product,demo=false}:{product:StoreProductDetail;demo?:boolean}){
+export function BuyPanel({product,demo=false,checkout}:{product:StoreProductDetail;demo?:boolean;checkout:{enabled:boolean;telegram:TelegramLogin}}){
   const {skus,groups}=product;
   const [selectedId,setSelectedId]=useState(()=>(skus.find(v=>v.inStock)??skus[0]).id);
   const selected=skus.find(v=>v.id===selectedId)??skus[0];
@@ -68,14 +72,20 @@ export function BuyPanel({product,demo=false}:{product:StoreProductDetail;demo?:
         {demo&&<p className="mt-1 text-xs text-sf-ink-3">Namuna narx. Sotuvchi tasdiqlaydi.</p>}
         <Availability inStock={selected.inStock} long className="mt-3 text-sm leading-5 [&>span:first-child]:mt-[7px]"/>
         <div className="mt-6 flex flex-col gap-3">
-          <a className={pill({className:"w-full gap-2"})} href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer">
-            <SendIcon className="size-[18px]" aria-hidden="true"/>{selected.inStock?"Telegram orqali buyurtma berish":"Telegram orqali so‘rash"}
-          </a>
-          <button type="button" className={pill({tone:"ghost",className:"w-full gap-2"})} onClick={copy}>
-            {copied?<CheckIcon className="size-[18px]" aria-hidden="true"/>:<CopyIcon className="size-[18px]" aria-hidden="true"/>}{copied?"Nusxa olindi":"Tanlovdan nusxa olish"}
+          <button type="button" className={pill({className:"w-full gap-2"})} onClick={()=>{addToCart({variantId:selected.id,productId:product.id,seenPrice:selected.price});cartUi.open();}}>
+            <ShoppingBagIcon className="size-[18px]" aria-hidden="true"/>Savatga qo‘shish
+          </button>
+          <OneClick variantId={selected.id} productName={product.name} options={ordered.map(g=>selected.options[g.name]).filter(Boolean).join(", ")||(selected.label!=="Standart"?selected.label:"")}
+            enabled={checkout.enabled} telegram={checkout.telegram}/>
+        </div>
+        {!selected.inStock&&<p className="mt-3 text-xs leading-[1.5] text-sf-ink-2">Hozir omborda yo‘q. So‘rov qoldirsangiz, sotuvchi kelish muddatini aytadi.</p>}
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-sf-line/70 pt-4 text-sm">
+          <a className="inline-flex items-center gap-1.5 text-sf-link hover:underline" href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer"><SendIcon className="size-4" aria-hidden="true"/>Telegram’da so‘rash</a>
+          <button type="button" className="inline-flex cursor-pointer items-center gap-1.5 text-sf-link hover:underline" onClick={copy}>
+            {copied?<CheckIcon className="size-4" aria-hidden="true"/>:<CopyIcon className="size-4" aria-hidden="true"/>}{copied?"Nusxa olindi":"Tanlovdan nusxa olish"}
           </button>
         </div>
-        <p className="mt-5 text-xs leading-[1.45] text-sf-ink-2">Tugma do‘konning Telegram botini ochadi. Tanlovdan nusxa olib, botga yuboring. Onlayn to‘lov yo‘q, yakuniy narxni sotuvchi tasdiqlaydi.</p>
+        <p className="mt-4 text-xs leading-[1.45] text-sf-ink-2">Onlayn to‘lov yo‘q. So‘rovdan keyin sotuvchi qo‘ng‘iroq qilib, narx va topshirishni tasdiqlaydi.</p>
       </section>
     </div>
   </div>;

@@ -6,6 +6,8 @@ import {BuyPanel} from "../../../../components/store/buy-panel";
 import {CompareToggle} from "../../../../components/store/compare-toggle";
 import {pill,wrap} from "../../../../components/store/bits";
 import {getProduct} from "../../../../lib/server/storefront";
+import {checkoutEnabled} from "../../../../lib/server/checkout";
+import {telegramLoginState} from "../../../../lib/server/telegram-login-config";
 import {InfoIcon} from "lucide-react";
 import {catalogHref,fromSoum,soum,splitDescription} from "../../../../lib/storefront";
 
@@ -38,7 +40,7 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
         <CompareToggle size="md" item={{id:product.id,name:product.name,category:product.category,image:product.image}}/>
       </div>
     </header>
-    <BuyPanel product={product} demo={!!about.demoNote}/>
+    <BuyPanel product={product} demo={!!about.demoNote} checkout={{enabled:checkoutEnabled(),telegram:await telegramLoginState("/products/"+product.id)}}/>
     {(about.body||config.length>0||about.demoNote)&&<section className="mt-20 max-w-[692px] border-t border-sf-line pt-12" aria-labelledby="about-title">
       <h2 id="about-title" className="mb-4 text-2xl leading-[1.17] font-semibold">Mahsulot haqida.</h2>
       {about.body&&<p className="text-[17px] leading-[1.6] whitespace-pre-line text-sf-ink-2">{about.body}</p>}

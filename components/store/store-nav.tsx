@@ -5,6 +5,7 @@ import {usePathname,useSearchParams} from "next/navigation";
 import {SearchIcon} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {STORE_NAME,catalogHref} from "../../lib/storefront";
+import {CartButton} from "./cart-sheet";
 
 export function StoreNav({categories}:{categories:string[]}){
   const [open,setOpen]=useState(false);
@@ -34,6 +35,7 @@ export function StoreNav({categories}:{categories:string[]}){
       </ul>
       <div className="flex items-center">
         <Link href="/catalog#qidiruv" className="inline-flex size-11 items-center justify-center text-black/80 hover:text-black" aria-label="Katalogdan izlash"><SearchIcon className="size-[17px]" strokeWidth={1.6}/></Link>
+        <CartButton/>
         <button type="button" className="inline-flex size-11 cursor-pointer items-center justify-center text-black/80 hover:text-black navbar:hidden"
           aria-expanded={open} aria-controls="sf-menu" aria-label={open?"Menyuni yopish":"Menyuni ochish"} onClick={()=>setOpen(o=>!o)}>
           <span className="relative h-3 w-[18px]" aria-hidden="true">
