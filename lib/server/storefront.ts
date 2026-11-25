@@ -115,3 +115,17 @@ export async function categorySummary(category:string):Promise<{count:number;fro
      WHERE p.store_id=$1 AND p.published AND p.category=$2`,[configuredStoreId(),category]);
   return r.rows[0]?.count?{count:r.rows[0].count,fromPrice:r.rows[0].from_price}:null;
 }
+
+export type CategoryModel={id:string;name:string;image:string|null};
+/** The models of one published category for the strip above its catalog page, most expensive first. */
+export async function categoryModels(category:string,limit=24):Promise<CategoryModel[]>{
+  const r=await database().query(
+    `SELECT p.id,p.name,p.image_url,p.option_groups,
+       (array_agg(v.image_url ORDER BY v.price_uzs,v.id))[1] AS variant_image,
+       (array_agg(v.option_values ORDER BY v.price_uzs,v.id))[1] AS first_options
+     FROM products p JOIN variants v ON v.store_id=p.store_id AND v.product_id=p.id AND v.active
+     WHERE p.store_id=$1 AND p.published AND p.category=$2
+     GROUP BY p.id ORDER BY max(v.price_uzs) DESC,p.name,p.id LIMIT $3`,[configuredStoreId(),category,limit]);
+  return r.rows.map(row=>({id:row.id,name:row.name,
+    image:variantImage(publicGroups(row.option_groups as OptionGroup[]),row.first_options as OptionSelection,safe(row.variant_image),safe(row.image_url))}));
+}

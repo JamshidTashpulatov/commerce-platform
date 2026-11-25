@@ -2,7 +2,8 @@ import type {Metadata} from "next";
 import {Suspense} from "react";
 import {CatalogView} from "../../../components/store/catalog-view";
 import {wrap} from "../../../components/store/bits";
-import {categorySummary} from "../../../lib/server/storefront";
+import {CategoryModels} from "../../../components/store/category-models";
+import {categoryModels,categorySummary} from "../../../lib/server/storefront";
 import {pageMeta} from "../../../lib/server/seo";
 import {catalogHref,fromSoum} from "../../../lib/storefront";
 
@@ -21,8 +22,13 @@ export async function generateMetadata({searchParams}:{searchParams:Promise<{cat
   return pageMeta({title:"Katalog",path:"/catalog",description:"Barcha modellar bir joyda: narxlar so‘mda, ranglar, variantlar va mavjudlik."});
 }
 
-export default function CatalogPage(){
+export default async function CatalogPage({searchParams}:{searchParams:Promise<{category?:string}>}){
+  const {category}=await searchParams;
+  // A failed lookup only hides the strip; the catalog itself loads on the client.
+  const models=typeof category==="string"&&category?await categoryModels(category).catch(()=>[]):[];
   return <div className={wrap+" pb-20"}>
-    <Suspense fallback={<h1 className="pt-16 text-5xl font-semibold">Katalog.</h1>}><CatalogView/></Suspense>
+    <Suspense fallback={<h1 className="pt-16 text-5xl font-semibold">Katalog.</h1>}>
+      <CatalogView models={models.length>1?<CategoryModels category={category!} models={models}/>:undefined}/>
+    </Suspense>
   </div>;
 }

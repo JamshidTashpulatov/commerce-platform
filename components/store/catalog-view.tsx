@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useMemo,useRef,useState} from "react";
+import {useEffect,useMemo,useRef,useState,type ReactNode} from "react";
 import Link from "next/link";
 import {usePathname,useRouter,useSearchParams} from "next/navigation";
 import {SearchIcon,XCircleIcon,SearchXIcon,WifiOffIcon} from "lucide-react";
@@ -39,7 +39,8 @@ function toCards(rows:Row[]):Card[]{
 
 const chip="h-9 flex-none cursor-pointer rounded-full border border-sf-line bg-white px-4 text-sm tracking-[-0.016em] text-sf-ink transition-[background-color,border-color,color,scale] duration-200 hover:border-sf-ink-3 active:scale-[0.97] aria-pressed:border-sf-ink aria-pressed:bg-sf-ink aria-pressed:text-white";
 
-export function CatalogView(){
+/** `models`: the strip of the category's models, rendered on the server and shown under the heading. */
+export function CatalogView({models}:{models?:ReactNode}){
   const router=useRouter();
   const pathname=usePathname();
   const params=useSearchParams();
@@ -102,6 +103,7 @@ export function CatalogView(){
     <header className="pt-10 pb-5 tablet:pt-16 tablet:pb-7">
       <h1 className="text-[40px] leading-[1.1] font-semibold tablet:text-5xl tablet:leading-[1.08] tablet:tracking-[-0.003em]">{category||"Barcha mahsulotlar"}.</h1>
       <p className="mt-2 text-[19px] leading-[1.21] text-sf-ink-2 tablet:text-[21px]">{category?"Turkumdagi barcha modellar. Narxlar so‘mda.":"Katalogdagi barcha modellar bir joyda. Narxlar so‘mda."}</p>
+      {models&&<div className="mt-7 tablet:mt-9">{models}</div>}
     </header>
 
     <div ref={top} className="flex scroll-mt-16 flex-col gap-4 pb-7">
