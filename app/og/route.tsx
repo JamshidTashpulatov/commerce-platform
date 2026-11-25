@@ -6,7 +6,8 @@ import {database,configuredStoreId} from "../../lib/server/db";
 import {approvedImageUrl,localMediaId} from "../../lib/server/catalog-media";
 import {getProduct,listProducts} from "../../lib/server/storefront";
 import {imageSources} from "../../lib/image-sources";
-import {BRAND_MARK_PATH,STORE_NAME,STORE_TAGLINE,fromSoum,soum} from "../../lib/storefront";
+import {STORE_NAME,STORE_TAGLINE,fromSoum,soum} from "../../lib/storefront";
+import {BRAND_MARK_D,BRAND_MARK_ROTATIONS} from "../../lib/brand-mark";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -55,8 +56,8 @@ async function edgeColour(image:ReturnType<typeof sharp>){
 }
 
 function Mark({size=56}:{size?:number}){
-  return <svg width={size} height={size} viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="7" fill="#1d1d1f"/>
-    <path d={BRAND_MARK_PATH} fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+  return <svg width={size} height={size} viewBox="0 0 512 512" fill="#1d1d1f">
+    {BRAND_MARK_ROTATIONS.map(r=><path key={r} d={BRAND_MARK_D} transform={r?`rotate(${r} 256 256)`:undefined}/>)}</svg>;
 }
 function Brand(){
   return <div style={{display:"flex",alignItems:"center",gap:16}}><Mark size={48}/><span style={{fontSize:34,fontWeight:700,letterSpacing:-0.5}}>{STORE_NAME}</span></div>;

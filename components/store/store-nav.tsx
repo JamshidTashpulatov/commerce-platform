@@ -4,7 +4,8 @@ import Link from "next/link";
 import {usePathname,useSearchParams} from "next/navigation";
 import {SearchIcon} from "lucide-react";
 import {cn} from "@/lib/utils";
-import {BRAND_MARK_PATH,STORE_NAME,catalogHref} from "../../lib/storefront";
+import {STORE_NAME,catalogHref} from "../../lib/storefront";
+import {BrandMark} from "@/components/brand-mark";
 import {CartButton} from "./cart-sheet";
 
 export function StoreNav({categories}:{categories:string[]}){
@@ -27,7 +28,7 @@ export function StoreNav({categories}:{categories:string[]}){
     <div aria-hidden="true" className={cn("absolute inset-0 bg-[rgba(250,250,252,0.8)] shadow-[0_1px_0_rgba(0,0,0,0.06)] backdrop-blur-xl backdrop-saturate-[1.8] transition-colors duration-200",open&&"bg-[#fafafc] shadow-none")}/>
     <nav className="relative mx-auto flex h-full max-w-[1068px] items-center gap-2 px-4 tablet:px-[22px]" aria-label="Asosiy">
       <Link href="/" className="mr-auto inline-flex items-center gap-2 text-[17px] font-semibold tracking-[-0.02em] whitespace-nowrap text-sf-ink navbar:mr-0" aria-label={STORE_NAME+". Bosh sahifa"}>
-        <BrandMark/><span>{STORE_NAME}</span>
+        <BrandMark className="size-[22px] text-sf-ink"/><span>{STORE_NAME}</span>
       </Link>
       <ul className="mx-2 ml-8 hidden flex-1 justify-between navbar:flex">
         {categories.map(c=><li key={c}><Link href={catalogHref(c)} aria-current={current===c?"page":undefined}
@@ -58,9 +59,4 @@ export function StoreNav({categories}:{categories:string[]}){
   </header>;
 }
 
-function BrandMark(){
-  return <svg className="size-[22px] text-sf-ink" viewBox="0 0 24 24" aria-hidden="true">
-    <rect x="1" y="1" width="22" height="22" rx="7" fill="currentColor"/>
-    <path d={BRAND_MARK_PATH} fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>;
-}
+
