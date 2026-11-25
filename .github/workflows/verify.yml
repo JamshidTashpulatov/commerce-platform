@@ -33,9 +33,11 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run build
+      - run: node --experimental-strip-types --test tests/telegram-verify.test.mjs
       - name: Verify PostgreSQL schema
         env:
           PGPASSWORD: test_only
         run: |
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/001_initial.sql
+          psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/migrations/002_telegram_replay.sql
           psql -h localhost -U test -d commerce_test -v ON_ERROR_STOP=1 -f db/tests/constraints.sql
