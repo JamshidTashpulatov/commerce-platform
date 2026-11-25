@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ImageResponse } from "next/og";
 import { brandName } from "./brand";
+import { TITLE_TEMPLATE } from "./storefront";
 
 export { brandName };
 export const ogSize = { width: 1200, height: 630 };
@@ -14,7 +15,9 @@ export function privateMetadata(title: string, description = "Xodimlar va invest
   // A nested segment replaces its parent's openGraph block, so it names the parent's generated image again.
   const images = image ? [{ url: image, ...ogSize, alt: title }] : undefined;
   return {
-    title,
+    // Written out in full and passed on as a template: a plain string in a layout would drop the
+    // root title template for the pages below it.
+    title: { absolute: TITLE_TEMPLATE.replace("%s", title), template: TITLE_TEMPLATE },
     description,
     robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
     openGraph: { title, description, siteName: brandName, type: "website", locale: "uz_UZ", images },
