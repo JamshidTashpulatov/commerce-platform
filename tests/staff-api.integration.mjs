@@ -190,6 +190,20 @@ test("staff requests, role checks, stock movement and delivery lifecycle",async(
   assert.equal((await call(investorPath,"POST",{accountId:investorId,type:"withdrawal",amount:"511",key:randomUUID()},admin)).status,409);
   assert.equal((await call(investorPath,"POST",{accountId:investorId,type:"withdrawal",amount:"400",key:randomUUID()},admin)).status,201);
   assert.equal((await call("/api/investor/summary","GET",undefined,investor)).data.available_uzs,"110");
+  const cashPath="/api/admin/cashbook?from="+date+"&to="+date;
+  assert.equal((await call(cashPath,"GET",undefined,investor)).status,403);
+  assert.equal((await call(cashPath,"GET",undefined,seller)).status,403);
+  const cashReport=await call(cashPath,"GET",undefined,admin);
+  assert.equal(cashReport.status,200);
+  assert.equal(cashReport.data.complete,false);
+  assert.equal(BigInt(cashReport.data.opening_uzs)+BigInt(cashReport.data.incoming_uzs)-BigInt(cashReport.data.outgoing_uzs),BigInt(cashReport.data.closing_uzs));
+  assert.equal(cashReport.data.groups.find(g=>g.kind==="initial_receipt").amount_uzs,"300");
+  assert.equal(cashReport.data.groups.some(g=>g.kind==="initial_capital_return"),false);
+  const fundReport=await call("/api/admin/finance","GET",undefined,admin);
+  assert.equal(fundReport.status,200);
+  assert.equal(fundReport.data.returned_principal_uzs,"300");
+  assert.equal(fundReport.data.outstanding_principal_uzs,"700");
+  assert.equal(fundReport.data.available_principal_uzs,"300");
 
 
  }finally{await pool.end();}
