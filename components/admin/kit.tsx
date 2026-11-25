@@ -189,10 +189,15 @@ export function TableFrame({ children }: { children: ReactNode }) {
 }
 
 type Tone = "neutral" | "success" | "warning" | "danger" | "info";
-// Only shadcn's own Badge variants are used, so status colours stay on the default theme.
-const toneVariant = { neutral: "outline", success: "secondary", warning: "outline", danger: "destructive", info: "default" } as const;
+// SortUI's own "Status" badge example: an outline badge with a coloured dot.
+const toneDot: Record<Tone, string> = { neutral: "bg-muted-foreground", success: "bg-green-500", warning: "bg-orange-500", danger: "bg-destructive", info: "bg-blue-500" };
 export function StatusBadge({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
-  return <Badge variant={toneVariant[tone]}>{children}</Badge>;
+  return (
+    <Badge variant="outline">
+      <span aria-hidden="true" data-icon="inline-start" className={cn("m-0.5 size-2 rounded-full", toneDot[tone])} />
+      {children}
+    </Badge>
+  );
 }
 
 export function TextField({ label, description, error, className, children }: { label: string; description?: ReactNode; error?: string; className?: string; children: (id: string) => ReactNode }) {

@@ -198,8 +198,8 @@ export function AppShell({ role, children }: { role: StaffRole; children: ReactN
             </SidebarFooter>
             <SidebarRail />
           </Sidebar>
-          <SidebarInset className="min-w-0">
-            <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-background px-3 sm:px-4">
+          <SidebarInset className="min-w-0 bg-card">
+            <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-card px-3 sm:px-4">
               <SidebarTrigger aria-label="Menyuni ochish yoki yopish" />
               <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4 data-[orientation=vertical]:self-center" />
               <p className="truncate text-sm font-medium">{currentTitle(pathname)}</p>
